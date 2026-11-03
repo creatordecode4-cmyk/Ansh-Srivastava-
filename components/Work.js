@@ -12,8 +12,8 @@ import VideoModal from "./VideoModal";
 // A card's preview plays when at least 35% of it is on screen
 // (low enough for tall 9:16 cards on small phones).
 const PLAY_THRESHOLD = 0.35;
-// Players are created only when a card is within 200px of the screen.
-const NEAR_MARGIN = "200px 0px";
+// Players (and the video src) exist only when a card is within ~1 screen of the viewport.
+const NEAR_MARGIN = "100% 0px"; // ~1 screen above and below
 // If YouTube hasn't started within this time, autoplay was blocked → show a Play button.
 const BLOCKED_AFTER_MS = 1500;
 
@@ -160,12 +160,12 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
     : getPreviewSource(video.videoUrl);
 
   return (
-    <div className="card-fx glass group relative overflow-hidden rounded-2xl hover:border-white/30">
+    <div className="card-fx card-surface group relative overflow-hidden rounded-2xl">
       {/* Thumbnail / preview: 16:9 for horizontal, 9:16 for vertical (shorts/reels) */}
       <div className={vertical ? "bg-black/40 px-6 pt-4 sm:px-10" : ""}>
         <div
           data-preview-id={video.title}
-          className={`card-shine relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
+          className={`relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
             vertical ? "aspect-[9/16] w-full max-w-[280px] rounded-xl" : "aspect-video"
           }`}
         >
@@ -183,11 +183,11 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
           )}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[0.6rem] uppercase tracking-wider text-white/90 backdrop-blur">
+          <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[0.6rem] uppercase tracking-wider text-white/90">
             {vertical ? "Vertical · 9:16" : video.category}
           </span>
           {/* "open full video" hint */}
-          <span className="pointer-events-none absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
+          <span className="pointer-events-none absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/60 text-white transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
             <Icon name="arrow" className="h-4 w-4" />
           </span>
 
@@ -215,9 +215,12 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
 }
 
 /**
- * Muted looping preview inside a card. Works for self-hosted MP4s (native <video>)
- * and YouTube (IFrame Player API). Shows a Play button if the browser blocks autoplay,
- * and a small Sound button to unmute while it plays.
+ * ALWAYS-MUTED looping preview inside a card (sound only ever plays in the modal).
+ * Works for local MP4s (native <video>) and YouTube (IFrame Player API).
+ * This component only exists while the card is within ~1 screen of the viewport,
+ * so far-away cards have no <video>/src at all. Only the playing card uses
+ * preload="metadata"; nearby paused cards use preload="none" and show just the thumbnail.
+ * If the browser blocks autoplay, a Play button appears; one tap starts it.
  */
 function Preview({ source, poster, playing, onManualPlay, title }) {
   const videoRef = useRef(null); // <video> for files
@@ -229,32 +232,16 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [blocked, setBlocked] = useState(false);
-  const [muted, setMuted] = useState(true);
 
   const isFile = source.type === "file";
   const saveData = typeof navigator !== "undefined" && navigator.connection?.saveData;
 
-  // ---- low-level controls (both player types) ----
-  const doMute = (m) => {
-    if (isFile) {
-      if (videoRef.current) videoRef.current.muted = m;
-    } else if (ytReadyRef.current) {
-      m ? ytRef.current.mute() : ytRef.current.unMute();
-    }
-    setMuted(m);
-  };
-
-  const doPause = () => {
-    clearTimeout(timerRef.current);
-    if (isFile) videoRef.current?.pause();
-    else if (ytReadyRef.current) ytRef.current.pauseVideo();
-    setIsPlaying(false);
-  };
-
   // play() wrapped in try/catch: older browsers can throw synchronously, newer ones reject the promise.
-  const playFile = async (v, why) => {
+  const playFile = async (why) => {
+    const v = videoRef.current;
+    if (!v) return;
     try {
-      v.muted = true; // muted autoplay is what mobile browsers allow
+      v.muted = true; // previews are permanently muted
       await v.play();
       setBlocked(false);
       previewLog("info", `playing ${source.src} (${why})`);
@@ -265,28 +252,32 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
     }
   };
 
+  const doPause = () => {
+    clearTimeout(timerRef.current);
+    if (isFile) videoRef.current?.pause();
+    else if (ytReadyRef.current) ytRef.current.pauseVideo();
+    setIsPlaying(false);
+  };
+
   const doPlay = () => {
     clearTimeout(timerRef.current);
     if (isFile) {
-      const v = videoRef.current;
-      if (!v) return;
-      playFile(v, "scroll");
-    } else {
-      if (!ytReadyRef.current) return; // onReady will call doPlay again
-      ytRef.current.mute();
-      ytRef.current.playVideo();
-      timerRef.current = setTimeout(() => {
-        const YT = window.YT;
-        if (ytRef.current?.getPlayerState?.() !== YT?.PlayerState?.PLAYING) {
-          previewLog("warn", `YouTube ${source.id} did not start within ${BLOCKED_AFTER_MS}ms (state ${ytRef.current?.getPlayerState?.()}) → showing Play button`);
-          setBlocked(true);
-        }
-      }, BLOCKED_AFTER_MS);
+      playFile("scroll");
+      return;
     }
-    setMuted(true);
+    if (!ytReadyRef.current) return; // onReady will call doPlay again
+    ytRef.current.mute();
+    ytRef.current.playVideo();
+    timerRef.current = setTimeout(() => {
+      const YT = window.YT;
+      if (ytRef.current?.getPlayerState?.() !== YT?.PlayerState?.PLAYING) {
+        previewLog("warn", `YouTube ${source.id} did not start within ${BLOCKED_AFTER_MS}ms (state ${ytRef.current?.getPlayerState?.()}) → showing Play button`);
+        setBlocked(true);
+      }
+    }, BLOCKED_AFTER_MS);
   };
 
-  // ---- create the YouTube player lazily (component only mounts when "near") ----
+  // ---- create the YouTube player lazily ----
   useEffect(() => {
     if (isFile) return;
     let cancelled = false;
@@ -300,16 +291,7 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
           videoId: source.id,
           width: "100%",
           height: "100%",
-          playerVars: {
-            mute: 1,
-            controls: 0,
-            playsinline: 1,
-            loop: 1,
-            playlist: source.id,
-            modestbranding: 1,
-            rel: 0,
-            disablekb: 1,
-          },
+          playerVars: { mute: 1, controls: 0, playsinline: 1, loop: 1, playlist: source.id, modestbranding: 1, rel: 0, disablekb: 1 },
           events: {
             onReady: () => {
               ytReadyRef.current = true;
@@ -319,6 +301,7 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
             onStateChange: (e) => {
               if (e.data === YT.PlayerState.PLAYING) {
                 clearTimeout(timerRef.current);
+                ytRef.current.mute(); // stay muted, always
                 setBlocked(false);
                 setIsPlaying(true);
               } else if (e.data === YT.PlayerState.ENDED) {
@@ -348,18 +331,16 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFile, source.id]);
 
-  // ---- play when this card is the most visible one, pause otherwise ----
+  // ---- play when this card is the most visible one, pause (and hide) otherwise ----
   useEffect(() => {
     playingRef.current = playing;
     if (playing) {
       if (saveData) {
         previewLog("info", "Data Saver is on → waiting for a tap");
         setBlocked(true);
-      }
-      else doPlay();
+      } else doPlay();
     } else {
       doPause();
-      doMute(true); // never leave sound on for a card you scrolled past
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
@@ -371,18 +352,11 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
     e.stopPropagation();
     setBlocked(false);
     onManualPlay();
-    if (isFile) {
-      const v = videoRef.current;
-      if (v) playFile(v, "tap");
-    } else if (ytReadyRef.current) {
+    if (isFile) playFile("tap");
+    else if (ytReadyRef.current) {
       ytRef.current.mute();
       ytRef.current.playVideo();
     }
-  };
-
-  const handleSound = (e) => {
-    e.stopPropagation();
-    doMute(!muted);
   };
 
   const show = playing && isPlaying;
@@ -397,13 +371,17 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
           muted
           loop
           playsInline
-          preload="metadata"
+          disablePictureInPicture
+          preload={playing ? "metadata" : "none"}
           aria-hidden="true"
           tabIndex={-1}
           onPlaying={() => setIsPlaying(true)}
-          onError={() => previewLog("error", `video error for ${source.src}: code ${videoRef.current?.error?.code} ${videoRef.current?.error?.message || ""}`)}
           onPause={() => setIsPlaying(false)}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+          onVolumeChange={(e) => {
+            if (!e.currentTarget.muted) e.currentTarget.muted = true; // never allow sound on a card
+          }}
+          onError={() => previewLog("error", `video error for ${source.src}: code ${videoRef.current?.error?.code} ${videoRef.current?.error?.message || ""}`)}
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
             show ? "opacity-100" : "opacity-0"
           }`}
         />
@@ -411,14 +389,14 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
         <div
           ref={ytHostRef}
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 scale-[1.02] transition-opacity duration-500 [&_iframe]:pointer-events-none [&_iframe]:h-full [&_iframe]:w-full ${
+          className={`pointer-events-none absolute inset-0 scale-[1.02] transition-opacity duration-300 [&_iframe]:pointer-events-none [&_iframe]:h-full [&_iframe]:w-full ${
             show ? "opacity-100" : "opacity-0"
           }`}
         />
       )}
 
       {show && (
-        <span className="pointer-events-none absolute right-3 top-3 z-[5] flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[0.6rem] uppercase tracking-wider text-white/80 backdrop-blur">
+        <span className="pointer-events-none absolute right-3 top-3 z-[5] flex items-center gap-1.5 rounded-full bg-black/75 px-2.5 py-1 text-[0.6rem] uppercase tracking-wider text-white/85">
           <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> Preview
         </span>
       )}
@@ -429,23 +407,9 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
           type="button"
           onClick={handleTapPlay}
           aria-label={`Play preview: ${title}`}
-          className="btn-fx absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black shadow-lg shadow-black/40"
+          className="btn-fx absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black"
         >
           <Icon name="play" className="h-6 w-6 translate-x-[2px]" />
-        </button>
-      )}
-
-      {/* Tiny Sound button while the preview plays (not for silent "preview" clips) */}
-      {show && !source.silent && (
-        <button
-          type="button"
-          onClick={handleSound}
-          aria-label={muted ? "Turn sound on" : "Turn sound off"}
-          aria-pressed={!muted}
-          className="btn-fx absolute bottom-3 left-3 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/60 px-3 py-1.5 text-[0.65rem] uppercase tracking-wider text-white backdrop-blur"
-        >
-          <Icon name={muted ? "muted" : "speaker"} className="h-4 w-4" />
-          {muted ? "Sound" : "On"}
         </button>
       )}
     </>
@@ -484,7 +448,7 @@ function DrivePreview({ src, near, title }) {
         setLoaded(true);
       }}
       aria-label={`Play preview: ${title}`}
-      className="btn-fx absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black shadow-lg shadow-black/40"
+      className="btn-fx absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black"
     >
       <Icon name="play" className="h-6 w-6 translate-x-[2px]" />
     </button>
