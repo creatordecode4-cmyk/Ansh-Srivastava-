@@ -70,9 +70,9 @@ function VideoCard({ video, onOpen }) {
       type="button"
       onClick={(e) => onOpen(video, e)}
       aria-label={`Play video: ${video.title}`}
-      className="glass group block w-full overflow-hidden rounded-2xl text-left transition duration-300 hover:-translate-y-1 hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      className="glass group relative block aspect-[5/4] w-full overflow-hidden rounded-2xl text-left transition duration-300 hover:-translate-y-1 hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
     >
-      <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1c1f24] to-[#0f1114]">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013]">
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -80,25 +80,21 @@ function VideoCard({ video, onOpen }) {
             alt=""
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <span className="font-display text-metal text-3xl uppercase opacity-60">{video.category}</span>
-          </div>
+          <Icon name="film" className="absolute right-6 top-6 h-20 w-20 text-white/10" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <span className="glass absolute left-3 top-3 rounded-full px-3 py-1 text-[0.65rem] uppercase tracking-wider text-white/85">
-          {video.category}
-        </span>
-        <span className="absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/30 text-white backdrop-blur transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
-          <Icon name="play" className="h-4 w-4 translate-x-[1px]" />
-        </span>
       </div>
-      <div className="p-4">
-        <h3 className="text-base font-semibold text-white">{video.title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-white/65">{video.description}</p>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-5 pr-20">
+        <h3 className="text-2xl font-semibold leading-tight text-white">{video.title}</h3>
+        <p className="mt-3 text-[0.65rem] uppercase tracking-[0.18em] text-white/70">{video.category}</p>
+        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/60">{video.description}</p>
       </div>
+      <span className="absolute bottom-5 right-5 grid h-12 w-12 place-items-center rounded-full border border-white/40 bg-black/30 text-white backdrop-blur transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
+        <Icon name="play" className="h-4 w-4 translate-x-[1px]" />
+      </span>
     </button>
   );
 }

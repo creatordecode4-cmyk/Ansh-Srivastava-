@@ -7,14 +7,14 @@
 
 export const site = {
   // ---------- BASIC INFO ----------
-  name: "Your Name", //                 <-- EDIT: your full name
-  initials: "AV", //                    <-- EDIT: logo initials (2 letters)
+  name: "Ansh Srivastava",
+  initials: "AS",
   role: "Video Editor",
   url: "https://your-site.vercel.app", // <-- EDIT: after deploying on Vercel
 
   // SEO (Google search + WhatsApp/Instagram link previews)
   seo: {
-    title: "Your Name — Video Editor & Web Developer", //   <-- EDIT
+    title: "Ansh Srivastava — Video Editor",
     description:
       "Video editor for documentaries, slow-motion edits, shorts and ads. I also design and build websites with React, Next.js and AI tools.", // <-- EDIT
   },
@@ -26,7 +26,7 @@ export const site = {
     subtext:
       "I edit engaging videos — documentaries, slow-motion edits, shorts and ads — and build websites using modern web tech and AI.",
     photo: "/profile.jpg", //  <-- EDIT: replace the file public/profile.jpg with your own photo (same name)
-    photoAlt: "Portrait of Your Name, video editor", // <-- EDIT
+    photoAlt: "Portrait of Ansh Srivastava, video editor", // <-- EDIT if you change the photo
     badgeTop: "Available for",
     badgeMain: "Freelance",
     badgeBottom: "Projects",
@@ -130,9 +130,9 @@ export const site = {
     heading: "About Me",
     paragraphs: [
       // <-- EDIT these lines in your own words
-      "Hi! I'm Your Name. I've been editing videos for 5+ years — starting on my phone and learning motion graphics, pacing and sound along the way.",
-      "I also design and develop websites with React and Next.js, and I use AI tools to research, script and work faster.",
-      "I love informative content, tech and storytelling — videos that teach something and keep people hooked till the last second.",
+      "Hi, I'm Ansh Srivastava. I've been editing videos for 5+ years.",
+      "I also do web design and web development, and I use AI tools to work faster.",
+      "I don't have clients yet — I'm open to my first freelance projects. If you need a video edited or a website built, let's talk.",
     ],
   },
 
@@ -141,7 +141,7 @@ export const site = {
     heading: ["Let's create", "something", "extraordinary"],
     text: "I'm currently available for freelance projects and collaborations.",
     email: "yourname@gmail.com", //            <-- EDIT: your email
-    location: "India", //                       <-- EDIT (or "")
+    location: "", //                            <-- optional: your city (leave "" to hide)
     // Free key from https://web3forms.com (enter your email → key comes in inbox).
     // This key is meant to be public, it only lets people SEND you messages.
     web3formsKey: "YOUR_WEB3FORMS_KEY", //      <-- EDIT: paste your key
