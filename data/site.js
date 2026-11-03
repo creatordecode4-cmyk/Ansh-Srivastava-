@@ -49,6 +49,10 @@ export const site = {
   //   Your own file: put the .mp4 in /public/videos/ and write "/videos/my-video.mp4"
   // orientation: "horizontal" (16:9, default) or "vertical" (9:16 shorts/reels)
   // short: 1 line shown on the card · description: full text shown under the player
+  // preview: OPTIONAL short silent clip that autoplays on the card while you scroll,
+  //   e.g. "/previews/my-video.mp4" (put the file in /public/previews/, 10-15 sec, 720p, under 4 MB).
+  //   The full video (videoUrl — Drive, YouTube or .mp4) still opens with sound when the card is tapped.
+  //   No preview → the card shows the thumbnail (+ a Play button for Drive).
   // thumbnail: optional. Leave "" for YouTube = auto thumbnail.
   //   Your own image: put it in /public/thumbs/ and write "/thumbs/my-image.jpg"
   workCategories: ["All", "Motion Graphics", "Documentary", "Others"],
@@ -61,6 +65,7 @@ export const site = {
       description:
         "A 40-second motion-graphics promo for an AI app called Orbit, showing it answer questions, reply by voice in Hindi and English, and run deep research. Dark, glossy and smooth, with soft 3D icons and clean UI animations.",
       videoUrl: "/videos/orbit-promo.mp4",
+      preview: "/previews/orbit.mp4",
       thumbnail: "/thumbs/orbit-promo.jpg",
     },
     {
@@ -71,6 +76,7 @@ export const site = {
       description:
         "A 30-second motion-graphics promo for an AI assistant called Ember, following a Diwali launch plan from idea to research to code. Warm amber tones and cinematic camera moves give it a premium, glowing feel.",
       videoUrl: "/videos/ember-promo.mp4",
+      preview: "/previews/ember.mp4",
       thumbnail: "/thumbs/ember-promo.jpg",
     },
     {
@@ -81,6 +87,7 @@ export const site = {
       description:
         "An unofficial 30-second spec ad for the voice-typing app Wispr Flow, showing spoken words turning into clean, edited text. Bright, minimal and smooth, with floating 3D shapes and crisp kinetic typography.",
       videoUrl: "/videos/wispr-flow-spec-ad.mp4",
+      preview: "/previews/wispr-flow.mp4",
       thumbnail: "/thumbs/wispr-flow-spec-ad.jpg",
     },
     {
@@ -91,6 +98,7 @@ export const site = {
       description:
         "A 90-second Hinglish talking-head reel explaining what an AI agent is and how people use it for AI automation, custom bots and lead generation. Fast-paced and clean, with animated captions, pop-up UI cards and soft pastel backgrounds.",
       videoUrl: "/videos/ai-agent-reel.mp4",
+      preview: "/previews/ai-agent-reel.mp4",
       thumbnail: "/thumbs/ai-agent-reel.jpg",
     },
     {

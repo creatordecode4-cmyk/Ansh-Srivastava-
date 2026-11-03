@@ -47,13 +47,26 @@ export default function Work() {
 
     // 2) "play" observer → the most visible card (>= 35%) plays, all others pause
     const ratios = new Map();
+    const els = new Map();
     const play = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => ratios.set(e.target.dataset.previewId, e.intersectionRatio));
+        entries.forEach((e) => {
+          ratios.set(e.target.dataset.previewId, e.intersectionRatio);
+          els.set(e.target.dataset.previewId, e.target);
+        });
+        // Most visible card wins; if two are equally visible (e.g. both 100%),
+        // the one closest to the middle of the screen wins.
+        const mid = window.innerHeight / 2;
+        const distance = (id) => {
+          const r = els.get(id).getBoundingClientRect();
+          return Math.abs(r.top + r.height / 2 - mid);
+        };
         let best = null;
         let bestRatio = 0;
         ratios.forEach((r, id) => {
-          if (r >= PLAY_THRESHOLD && r > bestRatio) {
+          if (r < PLAY_THRESHOLD) return;
+          const better = r > bestRatio + 0.01 || (Math.abs(r - bestRatio) <= 0.01 && best && distance(id) < distance(best));
+          if (!best || better) {
             best = id;
             bestRatio = r;
           }
@@ -140,7 +153,11 @@ export default function Work() {
 function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
   const thumb = getThumbnail(video);
   const vertical = isVertical(video);
-  const preview = getPreviewSource(video.videoUrl);
+  // Short local clip ("preview" in site.js) wins; otherwise fall back to the full video link.
+  // The modal always plays the full video (videoUrl) with sound.
+  const preview = video.preview
+    ? { type: "file", src: video.preview, silent: true }
+    : getPreviewSource(video.videoUrl);
 
   return (
     <div className="card-fx glass group relative overflow-hidden rounded-2xl hover:border-white/30">
@@ -234,22 +251,26 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
     setIsPlaying(false);
   };
 
+  // play() wrapped in try/catch: older browsers can throw synchronously, newer ones reject the promise.
+  const playFile = async (v, why) => {
+    try {
+      v.muted = true; // muted autoplay is what mobile browsers allow
+      await v.play();
+      setBlocked(false);
+      previewLog("info", `playing ${source.src} (${why})`);
+    } catch (err) {
+      // NotAllowedError = browser blocked autoplay; AbortError = paused/scrolled away before it started
+      previewLog(err?.name === "AbortError" ? "info" : "warn", `play() failed for ${source.src}: ${err?.name} – ${err?.message}`);
+      if (err?.name === "NotAllowedError" || why === "tap") setBlocked(true);
+    }
+  };
+
   const doPlay = () => {
     clearTimeout(timerRef.current);
     if (isFile) {
       const v = videoRef.current;
       if (!v) return;
-      v.muted = true; // muted autoplay is what mobile browsers allow
-      v.play()
-        .then(() => {
-          setBlocked(false);
-          previewLog("info", `playing ${source.src}`);
-        })
-        .catch((err) => {
-          // NotAllowedError = browser blocked autoplay; AbortError = paused/scrolled away before it started
-          previewLog(err?.name === "AbortError" ? "info" : "warn", `play() failed for ${source.src}: ${err?.name} – ${err?.message}`);
-          if (err?.name === "NotAllowedError") setBlocked(true);
-        });
+      playFile(v, "scroll");
     } else {
       if (!ytReadyRef.current) return; // onReady will call doPlay again
       ytRef.current.mute();
@@ -352,13 +373,7 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
     onManualPlay();
     if (isFile) {
       const v = videoRef.current;
-      if (v) {
-        v.muted = true;
-        v.play().catch((err) => {
-          previewLog("warn", `tap play() failed: ${err?.name} – ${err?.message}`);
-          setBlocked(true);
-        });
-      }
+      if (v) playFile(v, "tap");
     } else if (ytReadyRef.current) {
       ytRef.current.mute();
       ytRef.current.playVideo();
@@ -420,8 +435,8 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
         </button>
       )}
 
-      {/* Tiny Sound button while the preview plays */}
-      {show && (
+      {/* Tiny Sound button while the preview plays (not for silent "preview" clips) */}
+      {show && !source.silent && (
         <button
           type="button"
           onClick={handleSound}
