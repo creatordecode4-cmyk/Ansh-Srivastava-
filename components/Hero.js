@@ -5,7 +5,7 @@ import Icon from "./Icons";
 export default function Hero() {
   const { hero } = site;
   return (
-    <section id="top" className="relative grid grid-cols-[1fr_0.75fr] items-end gap-0 pt-6 pb-8 md:grid-cols-[1.2fr_0.8fr] md:pt-10">
+    <section id="top" className="relative grid grid-cols-[1fr_0.75fr] items-end gap-0 pt-6 pb-8 md:grid-cols-[1.1fr_0.9fr] md:pt-10">
       {/* Text (left) */}
       <div className="relative z-10 col-span-2 row-start-2 md:col-span-1 md:row-start-1 md:pb-10">
         <p data-reveal className="eyebrow mb-3">{hero.label}</p>
@@ -33,18 +33,22 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Photo (right) — blends into the background like the reference */}
-      <div data-reveal className="relative col-span-2 row-start-1 mx-auto -mb-16 w-full max-w-[360px] md:col-span-1 md:col-start-2 md:mb-0 md:max-w-none">
+      {/* Photo (right on desktop, behind the heading on mobile).
+          Edges fade into the page with a CSS mask (see .hero-photo in globals.css). */}
+      <div data-reveal className="relative col-span-2 row-start-1 mx-auto -mb-20 w-full max-w-[420px] md:col-span-1 md:col-start-2 md:mb-0 md:max-w-none">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-4 top-8 h-[80%] w-[75%] rounded-r-full border border-l-0 border-white/15"
         />
-        <div className="relative aspect-[4/5]">
-          <Image src={hero.photo} alt={hero.photoAlt} fill priority sizes="(max-width: 768px) 360px, 460px" className="object-cover object-top" />
-          {/* soft fades so the photo melts into the background */}
-          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#121418] via-transparent via-40% to-transparent" />
-          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#121418] via-transparent via-30% to-transparent" />
-          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-[#121418]/70 via-transparent via-20% to-transparent" />
+        <div className="hero-photo relative aspect-[928/985] w-full md:scale-110 md:origin-bottom-right">
+          <Image
+            src={hero.photo}
+            alt={hero.photoAlt}
+            fill
+            priority
+            unoptimized /* served as-is from /public, so a new profile.jpg shows up immediately (no stale image cache) */
+            className="object-cover object-top"
+          />
         </div>
         <Icon name="sparkle" className="absolute right-6 top-1/3 h-5 w-5 text-white/70" />
         <div className="absolute bottom-20 right-0 z-10 text-right md:bottom-12">

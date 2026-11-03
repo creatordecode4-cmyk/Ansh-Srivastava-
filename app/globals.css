@@ -56,6 +56,30 @@ body {
   color: var(--color-muted);
 }
 
+/* ---------- HERO PHOTO ----------
+   Fades the photo's edges into the page so there's no visible box.
+   Mobile: soft fade on left, right and bottom. Desktop: left + bottom (like the reference). */
+.hero-photo {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(to top, transparent 0%, #000 38%, #000 94%, transparent 100%);
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(to top, transparent 0%, #000 38%, #000 94%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+@media (min-width: 768px) {
+  .hero-photo {
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0%, #000 32%, #000 94%, transparent 100%),
+      linear-gradient(to top, transparent 0%, #000 32%, #000 92%, transparent 100%);
+    mask-image:
+      linear-gradient(to right, transparent 0%, #000 32%, #000 94%, transparent 100%),
+      linear-gradient(to top, transparent 0%, #000 32%, #000 92%, transparent 100%);
+  }
+}
+
 /* ---------- BUTTON EFFECTS: shine sweep + pop ----------
    Add class "btn-fx" to any button or link-button.
    Phones have no hover, so the shine also plays by itself every ~3s. */

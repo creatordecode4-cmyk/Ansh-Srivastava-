@@ -26,7 +26,7 @@ export const site = {
     subtext:
       "I edit engaging videos — documentaries, motion graphics, shorts and ads — and build websites using modern web tech and AI.",
     photo: "/profile.jpg", //  <-- EDIT: replace the file public/profile.jpg with your own photo (same name)
-    photoAlt: "Portrait of Ansh Srivastava, video editor", // <-- EDIT if you change the photo
+    photoAlt: "Ansh Srivastava, video editor",
     badgeTop: "Available for",
     badgeMain: "Freelance",
     badgeBottom: "Projects",
