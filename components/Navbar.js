@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { site } from "@/data/site";
-import Icon from "./Icons";
+import Icon, { SocialLinks } from "./Icons";
 
 const links = [
   { href: "#work", label: "Work" },
@@ -51,12 +51,15 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <a
-          href="#contact"
-          className="btn-fx btn-silver hidden items-center gap-2 rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110 md:inline-flex"
-        >
-          Let&apos;s Talk <Icon name="arrow" className="h-3.5 w-3.5" />
-        </a>
+        <div className="hidden items-center gap-3 md:flex">
+          <SocialLinks socials={site.socials} small className="hidden !gap-2 lg:flex" />
+          <a
+            href="#contact"
+            className="btn-fx btn-silver inline-flex items-center gap-2 rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110"
+          >
+            Let&apos;s Talk <Icon name="arrow" className="h-3.5 w-3.5" />
+          </a>
+        </div>
 
         <button
           type="button"
@@ -92,6 +95,9 @@ export default function Navbar() {
               >
                 Let&apos;s Talk <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
+            </li>
+            <li className="flex justify-center pb-3">
+              <SocialLinks socials={site.socials} />
             </li>
           </ul>
         </div>

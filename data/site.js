@@ -217,16 +217,12 @@ export const site = {
   },
 
   // ---------- SOCIAL LINKS ----------
-  // Leave url "" to hide an icon.
+  // Shown in the navbar, contact/CTA box and footer. Leave url "" to hide one.
+  // icon must be one of: "instagram", "youtube", "x"
   socials: [
-    { name: "Instagram", url: "https://instagram.com/yourhandle" }, // <-- EDIT
-    { name: "YouTube", url: "https://youtube.com/@yourchannel" }, //   <-- EDIT
-    { name: "LinkedIn", url: "https://linkedin.com/in/yourname" }, //  <-- EDIT
-    // Gmail icon → opens a new Gmail message to your email (built from EMAIL above)
-    {
-      name: "Gmail",
-      url: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(EMAIL)}&su=${encodeURIComponent(EMAIL_SUBJECT)}`,
-    },
+    { name: "Instagram", icon: "instagram", url: "https://www.instagram.com/ansh.ai01" },
+    { name: "YouTube", icon: "youtube", url: "https://www.youtube.com/@Ansh.Ai0lk" },
+    { name: "X", icon: "x", url: "https://x.com/Ansh_9h" },
   ],
 
   footerYear: 2026,

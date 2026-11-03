@@ -150,11 +150,12 @@ const paths = {
       <path d="M10 9v6l5-3-5-3z" fill="currentColor" />
     </>
   ),
-  linkedin: (
-    <>
-      <rect x="3" y="3" width="18" height="18" rx="3" />
-      <path d="M7.5 10.5V17M7.5 7.2v.1M11.5 17v-6.5M11.5 13c0-1.6 1-2.5 2.3-2.5S16.5 11.3 16.5 13v4" />
-    </>
+  x: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.78L17.75 3zm-1.08 16.18h1.7L7.4 4.73H5.58l11.09 14.45z"
+    />
   ),
 };
 
@@ -177,7 +178,7 @@ export default function Icon({ name, className = "h-5 w-5", ...props }) {
   );
 }
 
-export function SocialLinks({ socials, className = "" }) {
+export function SocialLinks({ socials, className = "", small = false }) {
   return (
     <ul className={`flex items-center gap-3 ${className}`}>
       {socials
@@ -188,10 +189,13 @@ export function SocialLinks({ socials, className = "" }) {
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`${s.name} (opens in new tab)`}
-              className="btn-fx grid h-10 w-10 place-items-center rounded-lg border border-white/10 text-white/70 hover:-translate-y-0.5 hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              aria-label={s.name}
+              title={s.name}
+              className={`btn-fx grid place-items-center rounded-lg border border-white/15 text-[#c9ccd1] hover:border-white/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
+                small ? "h-9 w-9" : "h-10 w-10"
+              }`}
             >
-              <Icon name={s.name.toLowerCase()} className="h-5 w-5" />
+              <Icon name={s.icon || s.name.toLowerCase()} className={small ? "h-4 w-4" : "h-5 w-5"} />
             </a>
           </li>
         ))}
