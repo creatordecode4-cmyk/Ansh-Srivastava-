@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { site } from "@/data/site";
-import { getThumbnail } from "@/lib/video";
+import { getThumbnail, isVertical } from "@/lib/video";
 import Icon from "./Icons";
 import VideoModal from "./VideoModal";
 
@@ -49,7 +49,7 @@ export default function Work() {
         </div>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((v) => (
           <li key={v.title}>
             <VideoCard video={v} onOpen={openVideo} />
@@ -65,36 +65,47 @@ export default function Work() {
 
 function VideoCard({ video, onOpen }) {
   const thumb = getThumbnail(video);
+  const vertical = isVertical(video);
   return (
     <button
       type="button"
       onClick={(e) => onOpen(video, e)}
       aria-label={`Play video: ${video.title}`}
-      className="glass group relative block aspect-[5/4] w-full overflow-hidden rounded-2xl text-left transition duration-300 hover:-translate-y-1 hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      className="glass group block w-full overflow-hidden rounded-2xl text-left transition duration-300 hover:-translate-y-1 hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013]">
-        {thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumb}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
-          />
-        ) : (
-          <Icon name="film" className="absolute right-6 top-6 h-20 w-20 text-white/10" />
-        )}
+      {/* Thumbnail: 16:9 for horizontal videos, 9:16 for vertical (shorts/reels) */}
+      <div className={vertical ? "bg-black/40 px-6 pt-4 sm:px-10" : ""}>
+        <div
+          className={`relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
+            vertical ? "aspect-[9/16] w-full max-w-[280px] rounded-xl" : "aspect-video"
+          }`}
+        >
+          {thumb ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thumb}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <Icon name="film" className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-white/10" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[0.6rem] uppercase tracking-wider text-white/90 backdrop-blur">
+            {vertical ? "Vertical · 9:16" : video.category}
+          </span>
+          <span className="absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/40 text-white backdrop-blur transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
+            <Icon name="play" className="h-4 w-4 translate-x-[1px]" />
+          </span>
+        </div>
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 p-5 pr-20">
-        <h3 className="text-2xl font-semibold leading-tight text-white">{video.title}</h3>
-        <p className="mt-3 text-[0.65rem] uppercase tracking-[0.18em] text-white/70">{video.category}</p>
-        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/60">{video.description}</p>
+      <div className="p-5">
+        <p className="text-[0.65rem] uppercase tracking-[0.18em] text-white/55">{video.category}</p>
+        <h3 className="mt-1.5 text-lg font-semibold leading-snug text-white">{video.title}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-white/65">{video.short || video.description}</p>
       </div>
-      <span className="absolute bottom-5 right-5 grid h-12 w-12 place-items-center rounded-full border border-white/40 bg-black/30 text-white backdrop-blur transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
-        <Icon name="play" className="h-4 w-4 translate-x-[1px]" />
-      </span>
     </button>
   );
 }

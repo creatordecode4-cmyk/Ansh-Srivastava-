@@ -46,23 +46,52 @@ export const site = {
   //   YouTube:  https://www.youtube.com/watch?v=XXXX  or  https://youtu.be/XXXX  or  /shorts/XXXX
   //   Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
   //     (Drive file ko "Anyone with the link → Viewer" share karna zaroori hai)
+  //   Your own file: put the .mp4 in /public/videos/ and write "/videos/my-video.mp4"
+  // orientation: "horizontal" (16:9, default) or "vertical" (9:16 shorts/reels)
+  // short: 1 line shown on the card · description: full text shown under the player
   // thumbnail: optional. Leave "" for YouTube = auto thumbnail.
   //   Your own image: put it in /public/thumbs/ and write "/thumbs/my-image.jpg"
   workCategories: ["All", "Slow Motion", "Documentary", "Others"],
   videos: [
     {
-      title: "REPLACE ME — Slow Motion Edit 1",
+      title: "Orbit — AI App Promo",
       category: "Slow Motion",
-      description: "REPLACE ME: short line about this edit (music, speed ramps, mood).",
-      videoUrl: "", // <-- EDIT: paste YouTube or Google Drive link
-      thumbnail: "",
+      orientation: "horizontal",
+      short: "Motion-graphics promo for an AI app called Orbit.",
+      description:
+        "A 40-second motion-graphics promo for an AI app called Orbit, showing it answer questions, reply by voice in Hindi and English, and run deep research. Dark, glossy and smooth, with soft 3D icons and clean UI animations.",
+      videoUrl: "/videos/orbit-promo.mp4",
+      thumbnail: "/thumbs/orbit-promo.jpg",
     },
     {
-      title: "REPLACE ME — Slow Motion Edit 2",
+      title: "Ember — AI Assistant Promo",
       category: "Slow Motion",
-      description: "REPLACE ME: what makes this edit special?",
-      videoUrl: "",
-      thumbnail: "",
+      orientation: "horizontal",
+      short: "Warm, cinematic promo for an AI assistant called Ember.",
+      description:
+        "A 30-second motion-graphics promo for an AI assistant called Ember, following a Diwali launch plan from idea to research to code. Warm amber tones and cinematic camera moves give it a premium, glowing feel.",
+      videoUrl: "/videos/ember-promo.mp4",
+      thumbnail: "/thumbs/ember-promo.jpg",
+    },
+    {
+      title: "Wispr Flow — Unofficial Spec Ad",
+      category: "Slow Motion",
+      orientation: "horizontal",
+      short: "Spec ad for a voice-typing app, made as a practice project.",
+      description:
+        "An unofficial 30-second spec ad for the voice-typing app Wispr Flow, showing spoken words turning into clean, edited text. Bright, minimal and smooth, with floating 3D shapes and crisp kinetic typography.",
+      videoUrl: "/videos/wispr-flow-spec-ad.mp4",
+      thumbnail: "/thumbs/wispr-flow-spec-ad.jpg",
+    },
+    {
+      title: "AI Agents Explained — Hinglish Reel",
+      category: "Slow Motion",
+      orientation: "vertical",
+      short: "Hinglish tech explainer reel with animated captions.",
+      description:
+        "A 90-second Hinglish talking-head reel explaining what an AI agent is and how people use it for AI automation, custom bots and lead generation. Fast-paced and clean, with animated captions, pop-up UI cards and soft pastel backgrounds.",
+      videoUrl: "/videos/ai-agent-reel.mp4",
+      thumbnail: "/thumbs/ai-agent-reel.jpg",
     },
     {
       title: "REPLACE ME — Documentary 1",
