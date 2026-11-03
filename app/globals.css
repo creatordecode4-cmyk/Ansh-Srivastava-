@@ -57,37 +57,85 @@ body {
 }
 
 /* ---------- BUTTON EFFECTS: shine sweep + pop ----------
-   Add class "btn-fx" to any button or link-button. */
+   Add class "btn-fx" to any button or link-button.
+   Phones have no hover, so the shine also plays by itself every ~3s. */
+/* position lives in a layer so Tailwind's "absolute"/"fixed" classes can still win
+   (otherwise floating buttons like the card Play/Sound buttons get pushed out of place) */
+@layer components {
+  .btn-fx { position: relative; }
+}
 .btn-fx {
-  position: relative;
   overflow: hidden;
   isolation: isolate;
+  transform: scale(1);
   transition:
-    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.45s cubic-bezier(0.34, 1.8, 0.64, 1), /* spring back with a small overshoot */
     background-color 0.2s, border-color 0.2s, color 0.2s, filter 0.2s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .btn-fx::after {
   content: "";
   position: absolute;
-  inset: -2px;
-  background: linear-gradient(110deg, transparent 25%, rgb(255 255 255 / 0.65) 50%, transparent 75%);
-  transform: translateX(-130%);
+  top: -2px;
+  bottom: -2px;
+  left: 0;
+  width: 60%;
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.55) 50%, transparent 100%);
+  transform: translateX(-120%) skewX(-12deg);
   pointer-events: none;
   z-index: 1;
+  animation: fx-shine-loop 3s ease-in-out infinite;
 }
-.btn-fx:hover::after,
-.btn-fx:focus-visible::after,
-.btn-fx:active::after {
-  animation: btn-shine 0.75s ease-out;
+/* tap / click / keyboard: a brighter, faster sweep */
+.btn-fx:active::after,
+.btn-fx:focus-visible::after {
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.9) 50%, transparent 100%);
+  animation: fx-shine-once 0.5s ease-out;
 }
-.btn-fx:hover { transform: scale(1.05); }
+/* POP: press down to 0.94, release springs back to 1 with overshoot */
 .btn-fx:active {
-  transform: scale(0.92);
-  transition-duration: 0.08s; /* quick press-down, then springs back with the bounce curve */
+  transform: scale(0.94);
+  transition-duration: 0.07s;
+  transition-timing-function: ease-out;
 }
-@keyframes btn-shine {
-  to { transform: translateX(130%); }
+@media (hover: hover) {
+  .btn-fx:hover { transform: scale(1.05); }
+  .btn-fx:hover::after { animation: fx-shine-once 0.7s ease-out; }
+  .btn-fx:active { transform: scale(0.94); }
+}
+
+/* ---------- VIDEO CARD SHINE ----------
+   .card-shine on the thumbnail (sweeps every ~4s), .card-fx on the card (brighter on tap). */
+.card-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 55%;
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.22) 50%, transparent 100%);
+  transform: translateX(-120%) skewX(-12deg);
+  pointer-events: none;
+  z-index: 4;
+  animation: fx-shine-loop 4s ease-in-out infinite;
+}
+.card-fx:active .card-shine::after {
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.6) 50%, transparent 100%);
+  animation: fx-shine-once 0.55s ease-out;
+}
+.card-fx {
+  transition: transform 0.45s cubic-bezier(0.34, 1.8, 0.64, 1), border-color 0.3s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-fx:active { transform: scale(0.97); transition-duration: 0.07s; }
+
+/* sweep for ~1/4 of the cycle, then rest */
+@keyframes fx-shine-loop {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  28%, 100% { transform: translateX(260%) skewX(-12deg); }
+}
+@keyframes fx-shine-once {
+  from { transform: translateX(-120%) skewX(-12deg); }
+  to { transform: translateX(260%) skewX(-12deg); }
 }
 
 /* ---------- FADE IN / OUT ON SCROLL ----------
@@ -106,10 +154,13 @@ body {
   transform: none;
 }
 
+/* Reduced motion: ONLY the fade/slide gets shorter and smaller.
+   Shine, pop and video previews keep working on purpose. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { transition: none !important; animation: none !important; }
-  .reveal-ready [data-reveal] { opacity: 1 !important; transform: none !important; }
-  .btn-fx:hover, .btn-fx:active { transform: none; }
-  .btn-fx::after { display: none; }
+  .reveal-ready [data-reveal] {
+    transform: translateY(6px);
+    transition-duration: 0.25s, 0.25s;
+    transition-delay: 0ms;
+  }
 }

@@ -34,13 +34,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${anton.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
-        {/* Turn on scroll animations before first paint (skipped for reduced motion). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('reveal-ready')",
-          }}
-        />
+        {/* Turn on scroll animations before first paint (reduced motion only shortens them, see globals.css). */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('reveal-ready')" }} />
       </head>
       <body className="font-sans">
         {children}

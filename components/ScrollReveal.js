@@ -7,13 +7,16 @@ import { useEffect } from "react";
 export default function ScrollReveal() {
   useEffect(() => {
     const root = document.documentElement;
-    if (!root.classList.contains("reveal-ready")) return; // reduced motion → nothing to do
+    root.classList.add("reveal-ready");
+    // Makes :active (pop + tap shine) fire reliably on touch screens.
+    const noop = () => {};
+    document.addEventListener("touchstart", noop, { passive: true });
 
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => e.target.classList.toggle("is-visible", e.isIntersecting));
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.05, rootMargin: "0px" }
     );
 
     const watched = new WeakSet();
@@ -29,14 +32,10 @@ export default function ScrollReveal() {
     const mo = new MutationObserver(scan);
     mo.observe(document.body, { childList: true, subtree: true });
 
-    const mq = matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = () => mq.matches && root.classList.remove("reveal-ready");
-    mq.addEventListener("change", onChange);
-
     return () => {
       io.disconnect();
       mo.disconnect();
-      mq.removeEventListener("change", onChange);
+      document.removeEventListener("touchstart", noop);
     };
   }, []);
 

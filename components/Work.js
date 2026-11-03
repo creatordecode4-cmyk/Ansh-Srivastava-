@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
 import { getPreviewSource, getThumbnail, isVertical, sameCategory } from "@/lib/video";
 import { loadYouTubeAPI } from "@/lib/youtube";
+import { previewLog } from "@/lib/previewLog";
+import PreviewDebug from "./PreviewDebug";
 import Icon from "./Icons";
 import VideoModal from "./VideoModal";
 
@@ -56,7 +58,10 @@ export default function Work() {
             bestRatio = r;
           }
         });
-        setPreviewId(best);
+        setPreviewId((prev) => {
+          if (prev !== best) previewLog("info", `most visible card: ${best ?? "none"}`);
+          return best;
+        });
       },
       { threshold: [0, 0.2, PLAY_THRESHOLD, 0.5, 0.65, 0.8, 1] }
     );
@@ -127,6 +132,7 @@ export default function Work() {
       {videos.length === 0 && <p className="py-10 text-center text-sm text-white/60">No videos in this category yet.</p>}
 
       {active && <VideoModal video={active} onClose={closeVideo} />}
+      <PreviewDebug />
     </section>
   );
 }
@@ -137,12 +143,12 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
   const preview = getPreviewSource(video.videoUrl);
 
   return (
-    <div className="glass group relative overflow-hidden rounded-2xl transition duration-300 hover:-translate-y-1 hover:border-white/30 active:scale-[0.98]">
+    <div className="card-fx glass group relative overflow-hidden rounded-2xl hover:border-white/30">
       {/* Thumbnail / preview: 16:9 for horizontal, 9:16 for vertical (shorts/reels) */}
       <div className={vertical ? "bg-black/40 px-6 pt-4 sm:px-10" : ""}>
         <div
           data-preview-id={video.title}
-          className={`relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
+          className={`card-shine relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
             vertical ? "aspect-[9/16] w-full max-w-[280px] rounded-xl" : "aspect-video"
           }`}
         >
@@ -168,7 +174,8 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
             <Icon name="arrow" className="h-4 w-4" />
           </span>
 
-          {preview && near && (
+          {preview?.type === "drive" && <DrivePreview src={preview.src} near={near} title={video.title} />}
+          {preview && preview.type !== "drive" && near && (
             <Preview source={preview} poster={thumb} playing={playing} onManualPlay={onManualPlay} title={video.title} />
           )}
         </div>
@@ -234,8 +241,13 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
       if (!v) return;
       v.muted = true; // muted autoplay is what mobile browsers allow
       v.play()
-        .then(() => setBlocked(false))
+        .then(() => {
+          setBlocked(false);
+          previewLog("info", `playing ${source.src}`);
+        })
         .catch((err) => {
+          // NotAllowedError = browser blocked autoplay; AbortError = paused/scrolled away before it started
+          previewLog(err?.name === "AbortError" ? "info" : "warn", `play() failed for ${source.src}: ${err?.name} – ${err?.message}`);
           if (err?.name === "NotAllowedError") setBlocked(true);
         });
     } else {
@@ -244,7 +256,10 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
       ytRef.current.playVideo();
       timerRef.current = setTimeout(() => {
         const YT = window.YT;
-        if (ytRef.current?.getPlayerState?.() !== YT?.PlayerState?.PLAYING) setBlocked(true);
+        if (ytRef.current?.getPlayerState?.() !== YT?.PlayerState?.PLAYING) {
+          previewLog("warn", `YouTube ${source.id} did not start within ${BLOCKED_AFTER_MS}ms (state ${ytRef.current?.getPlayerState?.()}) → showing Play button`);
+          setBlocked(true);
+        }
       }, BLOCKED_AFTER_MS);
     }
     setMuted(true);
@@ -295,7 +310,10 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
           },
         });
       })
-      .catch(() => setBlocked(true));
+      .catch((err) => {
+        previewLog("error", `YouTube API failed to load: ${err?.message}`);
+        setBlocked(true);
+      });
     return () => {
       cancelled = true;
       clearTimeout(timerRef.current);
@@ -313,7 +331,10 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
   useEffect(() => {
     playingRef.current = playing;
     if (playing) {
-      if (saveData) setBlocked(true); // Data Saver on → wait for a tap
+      if (saveData) {
+        previewLog("info", "Data Saver is on → waiting for a tap");
+        setBlocked(true);
+      }
       else doPlay();
     } else {
       doPause();
@@ -333,7 +354,10 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
       const v = videoRef.current;
       if (v) {
         v.muted = true;
-        v.play().catch(() => setBlocked(true));
+        v.play().catch((err) => {
+          previewLog("warn", `tap play() failed: ${err?.name} – ${err?.message}`);
+          setBlocked(true);
+        });
       }
     } else if (ytReadyRef.current) {
       ytRef.current.mute();
@@ -362,6 +386,7 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
           aria-hidden="true"
           tabIndex={-1}
           onPlaying={() => setIsPlaying(true)}
+          onError={() => previewLog("error", `video error for ${source.src}: code ${videoRef.current?.error?.code} ${videoRef.current?.error?.message || ""}`)}
           onPause={() => setIsPlaying(false)}
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
             show ? "opacity-100" : "opacity-0"
@@ -409,5 +434,44 @@ function Preview({ source, poster, playing, onManualPlay, title }) {
         </button>
       )}
     </>
+  );
+}
+
+/**
+ * Google Drive can't be started/paused from our page, so scroll-autoplay is unreliable.
+ * Instead: a clear Play button; tapping it loads Drive's player right in the card
+ * (Drive may ask for one more tap on its own ▶). Unloaded again when scrolled far away.
+ */
+function DrivePreview({ src, near, title }) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!near) setLoaded(false);
+  }, [near]);
+
+  if (loaded) {
+    return (
+      <iframe
+        src={src}
+        title={`Preview: ${title}`}
+        allow="autoplay; encrypted-media; fullscreen"
+        allowFullScreen
+        className="absolute inset-0 z-20 h-full w-full border-0 bg-black"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        previewLog("info", `Drive preview loaded: ${src}`);
+        setLoaded(true);
+      }}
+      aria-label={`Play preview: ${title}`}
+      className="btn-fx absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black shadow-lg shadow-black/40"
+    >
+      <Icon name="play" className="h-6 w-6 translate-x-[2px]" />
+    </button>
   );
 }
