@@ -131,6 +131,32 @@ export const site = {
     },
   ],
 
+  // ---------- WEB PROJECTS ----------
+  // url: your live site (https:// is added automatically if missing)
+  // description: 1 short line about what the site is (leave "" to hide)
+  // screenshot: OPTIONAL image in /public/sites/, e.g. "/sites/kaashi-weaves.jpg"
+  //   (shown on the card, and in the viewer if the site can't be embedded)
+  websites: [
+    {
+      title: "Clothes Web",
+      url: "https://kaashi-weaves.vercel.app",
+      description: "", // <-- EDIT: 1 line about what the site is
+      screenshot: "",
+    },
+    {
+      title: "3D Showcase",
+      url: "https://ansh-3d-showcase.vercel.app",
+      description: "", // <-- EDIT: 1 line about what the site is
+      screenshot: "",
+    },
+    {
+      title: "Arum",
+      url: "https://ansh-cloth.vercel.app",
+      description: "", // <-- EDIT: 1 line about what the site is
+      screenshot: "",
+    },
+  ],
+
   // ---------- CAPABILITIES ----------
   capabilities: [
     { title: "Video Editing", text: "Clean, engaging edits for YouTube, documentaries, shorts and ads.", icon: "film" },

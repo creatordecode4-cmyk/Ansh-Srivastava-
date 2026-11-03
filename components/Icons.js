@@ -83,6 +83,20 @@ const paths = {
     </>
   ),
   arrow: <path d="M7 17L17 7M9 7h8v8" />,
+  chevLeft: <path d="M15 5l-7 7 7 7" />,
+  chevRight: <path d="M9 5l7 7-7 7" />,
+  external: (
+    <>
+      <path d="M14 4h6v6M20 4l-9 9" />
+      <path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />
+    </>
+  ),
+  browser: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9h18M6.5 6.5h.01M9 6.5h.01" />
+    </>
+  ),
   play: <path d="M8 5.5v13l11-6.5-11-6.5z" fill="currentColor" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   muted: (

@@ -6,6 +6,7 @@ import Icon from "./Icons";
 
 const links = [
   { href: "#work", label: "Work" },
+  { href: "#web", label: "Web" },
   { href: "#capabilities", label: "Capabilities" },
   { href: "#about", label: "About" },
   { href: "#contact", label: "Contact" },
