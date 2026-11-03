@@ -150,7 +150,7 @@ export function SocialLinks({ socials, className = "" }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${s.name} (opens in new tab)`}
-              className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 text-white/70 transition hover:-translate-y-0.5 hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="btn-fx grid h-10 w-10 place-items-center rounded-lg border border-white/10 text-white/70 hover:-translate-y-0.5 hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
               <Icon name={s.name.toLowerCase()} className="h-5 w-5" />
             </a>

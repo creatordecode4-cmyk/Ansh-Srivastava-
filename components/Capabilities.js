@@ -5,10 +5,10 @@ export default function Capabilities() {
   return (
     <section id="capabilities" className="grid gap-10 pt-20 lg:grid-cols-[1.4fr_1fr] lg:gap-0">
       <div className="lg:border-r lg:border-white/10 lg:pr-10">
-        <h2 className="eyebrow mb-6 border-b border-white/10 pb-4 !text-xs !text-white/80">Core Capabilities</h2>
+        <h2 data-reveal className="eyebrow mb-6 border-b border-white/10 pb-4 !text-xs !text-white/80">Core Capabilities</h2>
         <ul className="grid gap-6 sm:grid-cols-2">
-          {site.capabilities.map((c) => (
-            <li key={c.title} className="group flex gap-4">
+          {site.capabilities.map((c, i) => (
+            <li key={c.title} data-reveal style={{ "--reveal-delay": `${(i % 2) * 80}ms` }} className="group flex gap-4">
               <Icon
                 name={c.icon}
                 className="mt-0.5 h-8 w-8 shrink-0 text-white/70 transition group-hover:-translate-y-0.5 group-hover:text-white"
@@ -23,8 +23,8 @@ export default function Capabilities() {
       </div>
 
       <div className="lg:pl-10">
-        <h2 className="eyebrow mb-6 border-b border-white/10 pb-4 !text-xs !text-white/80">Tools &amp; Technologies</h2>
-        <ul className="glass grid grid-cols-2 gap-3 rounded-2xl p-4 sm:grid-cols-3">
+        <h2 data-reveal className="eyebrow mb-6 border-b border-white/10 pb-4 !text-xs !text-white/80">Tools &amp; Technologies</h2>
+        <ul data-reveal className="glass grid grid-cols-2 gap-3 rounded-2xl p-4 sm:grid-cols-3">
           {site.tools.map((t) => (
             <li
               key={t.name}

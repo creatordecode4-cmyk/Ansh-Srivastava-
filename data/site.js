@@ -16,7 +16,7 @@ export const site = {
   seo: {
     title: "Ansh Srivastava — Video Editor",
     description:
-      "Video editor for documentaries, slow-motion edits, shorts and ads. I also design and build websites with React, Next.js and AI tools.", // <-- EDIT
+      "Video editor for documentaries, motion graphics, shorts and ads. I also design and build websites with React, Next.js and AI tools.", // <-- EDIT
   },
 
   // ---------- HERO ----------
@@ -24,7 +24,7 @@ export const site = {
     label: "Stories that move people",
     heading: ["Video", "Editor"], // big heading, one word per line
     subtext:
-      "I edit engaging videos — documentaries, slow-motion edits, shorts and ads — and build websites using modern web tech and AI.",
+      "I edit engaging videos — documentaries, motion graphics, shorts and ads — and build websites using modern web tech and AI.",
     photo: "/profile.jpg", //  <-- EDIT: replace the file public/profile.jpg with your own photo (same name)
     photoAlt: "Portrait of Ansh Srivastava, video editor", // <-- EDIT if you change the photo
     badgeTop: "Available for",
@@ -41,7 +41,7 @@ export const site = {
   ],
 
   // ---------- WORK / VIDEOS ----------
-  // category must be EXACTLY one of: "Slow Motion", "Documentary", "Others"
+  // category must be EXACTLY one of: "Motion Graphics", "Documentary", "Others"
   // videoUrl supports:
   //   YouTube:  https://www.youtube.com/watch?v=XXXX  or  https://youtu.be/XXXX  or  /shorts/XXXX
   //   Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
@@ -51,11 +51,11 @@ export const site = {
   // short: 1 line shown on the card · description: full text shown under the player
   // thumbnail: optional. Leave "" for YouTube = auto thumbnail.
   //   Your own image: put it in /public/thumbs/ and write "/thumbs/my-image.jpg"
-  workCategories: ["All", "Slow Motion", "Documentary", "Others"],
+  workCategories: ["All", "Motion Graphics", "Documentary", "Others"],
   videos: [
     {
       title: "Orbit — AI App Promo",
-      category: "Slow Motion",
+      category: "Motion Graphics",
       orientation: "horizontal",
       short: "Motion-graphics promo for an AI app called Orbit.",
       description:
@@ -65,7 +65,7 @@ export const site = {
     },
     {
       title: "Ember — AI Assistant Promo",
-      category: "Slow Motion",
+      category: "Motion Graphics",
       orientation: "horizontal",
       short: "Warm, cinematic promo for an AI assistant called Ember.",
       description:
@@ -75,7 +75,7 @@ export const site = {
     },
     {
       title: "Wispr Flow — Unofficial Spec Ad",
-      category: "Slow Motion",
+      category: "Motion Graphics",
       orientation: "horizontal",
       short: "Spec ad for a voice-typing app, made as a practice project.",
       description:
@@ -85,7 +85,7 @@ export const site = {
     },
     {
       title: "AI Agents Explained — Hinglish Reel",
-      category: "Slow Motion",
+      category: "Motion Graphics",
       orientation: "vertical",
       short: "Hinglish tech explainer reel with animated captions.",
       description:

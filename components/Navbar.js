@@ -52,14 +52,14 @@ export default function Navbar() {
 
         <a
           href="#contact"
-          className="btn-silver hidden items-center gap-2 rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110 md:inline-flex"
+          className="btn-fx btn-silver hidden items-center gap-2 rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110 md:inline-flex"
         >
           Let&apos;s Talk <Icon name="arrow" className="h-3.5 w-3.5" />
         </a>
 
         <button
           type="button"
-          className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 md:hidden"
+          className="btn-fx grid h-10 w-10 place-items-center rounded-lg border border-white/15 md:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
@@ -87,7 +87,7 @@ export default function Navbar() {
               <a
                 href="#contact"
                 onClick={() => setOpen(false)}
-                className="btn-silver flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                className="btn-fx btn-silver flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-wider"
               >
                 Let&apos;s Talk <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>

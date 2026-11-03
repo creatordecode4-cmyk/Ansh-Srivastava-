@@ -7,6 +7,8 @@ export default function Stats() {
       {site.stats.map((s, i) => (
         <div
           key={s.label}
+          data-reveal
+          style={{ "--reveal-delay": `${i * 80}ms` }}
           className={`flex flex-col items-center px-3 py-6 text-center md:py-8 ${
             i % 2 === 1 ? "border-l border-white/10" : ""
           } ${i >= 2 ? "border-t border-white/10 md:border-t-0" : ""} ${i === 2 ? "md:border-l" : ""}`}

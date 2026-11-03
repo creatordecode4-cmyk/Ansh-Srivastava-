@@ -44,7 +44,7 @@ export default function Contact() {
 
   return (
     <section id="contact" className="pt-20 pb-10" aria-labelledby="contact-title">
-      <div className="cta-metal relative grid gap-10 overflow-hidden rounded-2xl border border-white/15 p-6 sm:p-10 lg:grid-cols-2">
+      <div data-reveal className="cta-metal relative grid gap-10 overflow-hidden rounded-2xl border border-white/15 p-6 sm:p-10 lg:grid-cols-2">
         <div>
           <h2 id="contact-title" className="font-display text-metal text-5xl uppercase leading-[0.95] sm:text-6xl">
             {contact.heading.map((l) => (
@@ -73,7 +73,7 @@ export default function Contact() {
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <a
               href={`mailto:${contact.email}`}
-              className="btn-silver inline-flex items-center gap-2 rounded-md px-6 py-3 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110"
+              className="btn-fx btn-silver inline-flex items-center gap-2 rounded-md px-6 py-3 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110"
             >
               Email Me <Icon name="arrow" className="h-3.5 w-3.5" />
             </a>
@@ -112,7 +112,7 @@ export default function Contact() {
           <button
             type="submit"
             disabled={status.state === "loading"}
-            className="btn-silver inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110 disabled:opacity-60 sm:w-auto"
+            className="btn-fx btn-silver inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110 disabled:opacity-60 sm:w-auto"
           >
             {status.state === "loading" ? "Sending…" : "Let's Work Together"} <Icon name="arrow" className="h-3.5 w-3.5" />
           </button>

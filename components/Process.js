@@ -4,12 +4,12 @@ import Icon from "./Icons";
 export default function Process() {
   return (
     <section id="process" className="pt-20" aria-labelledby="process-title">
-      <h2 id="process-title" className="eyebrow mb-6 !text-xs !text-white/80">
+      <h2 id="process-title" data-reveal className="eyebrow mb-6 !text-xs !text-white/80">
         My Editing Process
       </h2>
       <ol className="glass grid gap-px overflow-hidden rounded-2xl sm:grid-cols-2 lg:grid-cols-5">
         {site.process.map((step, i) => (
-          <li key={step.title} className="group relative p-5 transition hover:bg-white/[0.03]">
+          <li key={step.title} data-reveal style={{ "--reveal-delay": `${i * 80}ms` }} className="group relative p-5 hover:bg-white/[0.03]">
             <p className="text-xs uppercase tracking-wider text-white/85">
               <span className="mr-2 text-white/45">{String(i + 1).padStart(2, "0")}</span>
               {step.title}

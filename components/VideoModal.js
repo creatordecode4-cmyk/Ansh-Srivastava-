@@ -64,7 +64,7 @@ export default function VideoModal({ video, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close video"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 text-white transition hover:bg-white hover:text-black"
+            className="btn-fx grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 text-white hover:bg-white hover:text-black"
           >
             <Icon name="close" />
           </button>

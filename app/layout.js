@@ -1,6 +1,7 @@
 import { Anton, Inter } from "next/font/google";
 import "./globals.css";
 import { site } from "@/data/site";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-anton", display: "swap" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -31,8 +32,20 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${anton.variable} ${inter.variable}`}>
-      <body className="font-sans">{children}</body>
+    <html lang="en" className={`${anton.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Turn on scroll animations before first paint (skipped for reduced motion). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('reveal-ready')",
+          }}
+        />
+      </head>
+      <body className="font-sans">
+        {children}
+        <ScrollReveal />
+      </body>
     </html>
   );
 }
