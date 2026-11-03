@@ -4,7 +4,7 @@ Dark, metallic portfolio for a video editor who also does web design/dev and use
 
 ## Edit your content
 Everything lives in **`data/site.js`**: name, videos, stats, email, socials and the Web3Forms key.
-Replace `public/profile.jpg` with your own photo (keep the same file name).
+To change the photo, overwrite `public/profile.jpg` (keep the same file name).
 
 ## Run locally
 ```bash

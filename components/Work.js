@@ -26,6 +26,14 @@ export default function Work() {
   const lastTrigger = useRef(null);
 
   // "All" shows everything; every other tab shows ONLY its own category.
+  // Tabs are built from the data: a category only gets a tab if it has at least one video
+  // (in the order categories first appear in site.js).
+  const categories = ["All"];
+  site.videos.forEach((v) => {
+    const c = (v.category || "").trim();
+    if (c && !categories.some((x) => sameCategory(x, c))) categories.push(c);
+  });
+
   const videos = filter === "All" ? site.videos : site.videos.filter((v) => sameCategory(v.category, filter));
 
   useEffect(() => {
@@ -111,7 +119,7 @@ export default function Work() {
           data-reveal
           className="-mx-4 flex gap-2 overflow-x-auto px-4 py-2 sm:mx-0 sm:px-0"
         >
-          {site.workCategories.map((c) => (
+          {categories.map((c) => (
             <button
               key={c}
               type="button"
@@ -129,9 +137,9 @@ export default function Work() {
         </div>
       </div>
 
-      <ul ref={listRef} className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul ref={listRef} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((v, i) => (
-          <li key={`${filter}-${v.title}`} data-reveal style={{ "--reveal-delay": `${(i % 3) * 80}ms` }}>
+          <li key={`${filter}-${v.title}`} className="h-full" data-reveal style={{ "--reveal-delay": `${(i % 3) * 80}ms` }}>
             <VideoCard
               video={v}
               onOpen={openVideo}
@@ -160,13 +168,16 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
     : getPreviewSource(video.videoUrl);
 
   return (
-    <div className="card-fx card-surface group relative overflow-hidden rounded-2xl">
+    <div className="card-fx card-surface group relative flex h-full flex-col overflow-hidden rounded-2xl">
       {/* Thumbnail / preview: 16:9 for horizontal, 9:16 for vertical (shorts/reels) */}
-      <div className={vertical ? "bg-black/40 px-6 pt-4 sm:px-10" : ""}>
+      {/* Vertical videos: full 9:16 on phones (one column, no gaps possible); on 2-3 column
+          screens they sit inside the same 16:9 frame as the others (video still uncropped,
+          9:16 with dark sides) so every card has the same height and the grid has no holes. */}
+      <div className={vertical ? "bg-black/40 px-6 pt-4 sm:bg-transparent sm:p-0" : ""}>
         <div
           data-preview-id={video.title}
           className={`relative mx-auto overflow-hidden bg-gradient-to-br from-[#2b2f37] via-[#1a1c20] to-[#0e1013] ${
-            vertical ? "aspect-[9/16] w-full max-w-[280px] rounded-xl" : "aspect-video"
+            vertical ? "vertical-frame aspect-[9/16] w-full max-w-[280px] rounded-xl sm:aspect-video sm:max-w-none sm:rounded-none" : "aspect-video"
           }`}
         >
           {thumb ? (

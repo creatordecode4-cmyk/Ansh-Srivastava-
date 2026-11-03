@@ -92,7 +92,7 @@ export default function Contact() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* honeypot: hidden field that bots fill, humans don't */}
           <input type="checkbox" name="botcheck" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-          {/* Web3Forms delivers to the email the access key was created with (creatordecode4@gmail.com).
+          {/* Web3Forms delivers to the email the access key was created with (anshsrivastavaedit3@gmail.com).
               The visitor's "email" field becomes the reply-to address automatically. */}
           <input type="hidden" name="from_name" value={`${site.name} — Portfolio`} />
           <div>

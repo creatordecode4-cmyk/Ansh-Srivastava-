@@ -152,6 +152,12 @@ body {
   to { transform: translateX(260%) skewX(-12deg); }
 }
 
+/* Vertical (9:16) videos on 2-3 column screens: show the whole video, never cropped */
+@media (min-width: 640px) {
+  .vertical-frame img,
+  .vertical-frame video { object-fit: contain; }
+}
+
 /* ---------- WEBSITE VIEWER: smooth swap between sites (transform + opacity only) ---------- */
 .viewer-swap-next { animation: viewer-in-right 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .viewer-swap-prev { animation: viewer-in-left 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }

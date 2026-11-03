@@ -6,7 +6,7 @@
 // =====================================================================
 
 // ---------- YOUR EMAIL (used everywhere: Email Me, Gmail, Copy, footer, social icon) ----------
-const EMAIL = "creatordecode4@gmail.com"; //               <-- EDIT: change it here only
+const EMAIL = "anshsrivastavaedit3@gmail.com"; //          <-- change it here only
 const EMAIL_SUBJECT = "Video editing project enquiry"; // subject for Email Me / Gmail
 
 export const site = {
@@ -14,7 +14,11 @@ export const site = {
   name: "Ansh Srivastava",
   initials: "AS",
   role: "Video Editor",
-  url: "https://your-site.vercel.app", // <-- EDIT: after deploying on Vercel
+  // Your live address, used for Google / WhatsApp link previews.
+  // On Vercel it is filled in automatically; set NEXT_PUBLIC_SITE_URL in Vercel to use a custom domain.
+  url:
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
 
   // SEO (Google search + WhatsApp/Instagram link previews)
   seo: {
@@ -29,7 +33,7 @@ export const site = {
     heading: ["Video", "Editor"], // big heading, one word per line
     subtext:
       "I edit engaging videos — documentaries, motion graphics, shorts and ads — and build websites using modern web tech and AI.",
-    photo: "/profile.jpg", //  <-- EDIT: replace the file public/profile.jpg with your own photo (same name)
+    photo: "/profile.jpg", // to change the photo, overwrite public/profile.jpg (same name)
     photoAlt: "Ansh Srivastava, video editor",
     badgeTop: "Available for",
     badgeMain: "Freelance",
@@ -45,7 +49,8 @@ export const site = {
   ],
 
   // ---------- WORK / VIDEOS ----------
-  // category must be EXACTLY one of: "Motion Graphics", "Documentary", "Others"
+  // category: any name, e.g. "Motion Graphics", "Documentary", "Others".
+  //   Filter tabs are built automatically: a tab only appears if it has at least one video.
   // videoUrl supports:
   //   YouTube:  https://www.youtube.com/watch?v=XXXX  or  https://youtu.be/XXXX  or  /shorts/XXXX
   //   Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
@@ -59,7 +64,6 @@ export const site = {
   //   No preview → the card shows the thumbnail (+ a Play button for Drive).
   // thumbnail: optional. Leave "" for YouTube = auto thumbnail.
   //   Your own image: put it in /public/thumbs/ and write "/thumbs/my-image.jpg"
-  workCategories: ["All", "Motion Graphics", "Documentary", "Others"],
   videos: [
     {
       title: "Orbit — AI App Promo",
@@ -104,34 +108,6 @@ export const site = {
       videoUrl: "/videos/ai-agent-reel.mp4",
       preview: "/previews/ai-agent-reel.mp4",
       thumbnail: "/thumbs/ai-agent-reel.jpg",
-    },
-    {
-      title: "REPLACE ME — Documentary 1",
-      category: "Documentary",
-      description: "REPLACE ME: topic of the documentary and your role (script, edit, sound).",
-      videoUrl: "",
-      thumbnail: "",
-    },
-    {
-      title: "REPLACE ME — Documentary 2",
-      category: "Documentary",
-      description: "REPLACE ME: storytelling, research visuals, pacing.",
-      videoUrl: "",
-      thumbnail: "",
-    },
-    {
-      title: "REPLACE ME — Short / Reel",
-      category: "Others",
-      description: "REPLACE ME: a short-form video, ad or motion graphics piece.",
-      videoUrl: "",
-      thumbnail: "",
-    },
-    {
-      title: "REPLACE ME — Ad / Promo",
-      category: "Others",
-      description: "REPLACE ME: product ad, promo or channel intro.",
-      videoUrl: "",
-      thumbnail: "",
     },
   ],
 
@@ -210,7 +186,7 @@ export const site = {
     email: EMAIL, //                            (set at the top of this file)
     emailSubject: EMAIL_SUBJECT,
     location: "", //                            <-- optional: your city (leave "" to hide)
-    // Free key from https://web3forms.com — create it with creatordecode4@gmail.com,
+    // Free key from https://web3forms.com — create it with anshsrivastavaedit3@gmail.com,
     // because form messages go to the email the key was created with (not set in code).
     // This key is meant to be public, it only lets people SEND you messages.
     web3formsKey: "YOUR_WEB3FORMS_KEY", //      <-- EDIT: paste your key
