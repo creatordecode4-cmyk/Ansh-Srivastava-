@@ -1,0 +1,19 @@
+{
+  "name": "video-editor-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "16.4.4",
+    "react": "19.2.9",
+    "react-dom": "19.2.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.18",
+    "tailwindcss": "4.1.18"
+  }
+}

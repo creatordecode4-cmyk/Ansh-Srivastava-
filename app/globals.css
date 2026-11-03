@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #121418;
+  --color-panel: #1a1d22;
+  --color-line: rgb(255 255 255 / 0.1);
+  --color-muted: #a3a8b3;
+  --font-display: var(--font-anton), "Impact", sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background-color: var(--color-ink);
+  background-image: radial-gradient(1200px 600px at 70% -10%, #2a2e36 0%, transparent 60%);
+  color: #e8eaee;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Silver / metallic text like the reference */
+.text-metal {
+  background: linear-gradient(180deg, #ffffff 0%, #d9dce1 40%, #8e939c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Glassy card */
+.glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.015));
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(8px);
+}
+
+/* Silver button */
+.btn-silver {
+  background: linear-gradient(135deg, #f4f5f7 0%, #b9bdc4 50%, #eceef1 100%);
+  color: #111;
+}
+
+/* Metallic CTA banner */
+.cta-metal {
+  background:
+    linear-gradient(115deg, rgb(255 255 255 / 0) 30%, rgb(255 255 255 / 0.22) 45%, rgb(255 255 255 / 0) 60%),
+    linear-gradient(180deg, #2a2d33, #1b1d21);
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
