@@ -83,6 +83,19 @@ const paths = {
     </>
   ),
   arrow: <path d="M7 17L17 7M9 7h8v8" />,
+  gmail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7.5l9 6.5 9-6.5M3 19V8M21 19V8" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+    </>
+  ),
+  check: <path d="M5 12.5l4.5 4.5L19 7" />,
   chevLeft: <path d="M15 5l-7 7 7 7" />,
   chevRight: <path d="M9 5l7 7-7 7" />,
   external: (

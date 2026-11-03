@@ -5,6 +5,10 @@
 //  Rule: text ko hamesha "quotes" ke andar rakho, aur har item ke baad comma (,) lagao.
 // =====================================================================
 
+// ---------- YOUR EMAIL (used everywhere: Email Me, Gmail, Copy, footer, social icon) ----------
+const EMAIL = "creatordecode4@gmail.com"; //               <-- EDIT: change it here only
+const EMAIL_SUBJECT = "Video editing project enquiry"; // subject for Email Me / Gmail
+
 export const site = {
   // ---------- BASIC INFO ----------
   name: "Ansh Srivastava",
@@ -203,9 +207,11 @@ export const site = {
   contact: {
     heading: ["Let's create", "something", "extraordinary"],
     text: "I'm currently available for freelance projects and collaborations.",
-    email: "yourname@gmail.com", //            <-- EDIT: your email
+    email: EMAIL, //                            (set at the top of this file)
+    emailSubject: EMAIL_SUBJECT,
     location: "", //                            <-- optional: your city (leave "" to hide)
-    // Free key from https://web3forms.com (enter your email → key comes in inbox).
+    // Free key from https://web3forms.com — create it with creatordecode4@gmail.com,
+    // because form messages go to the email the key was created with (not set in code).
     // This key is meant to be public, it only lets people SEND you messages.
     web3formsKey: "YOUR_WEB3FORMS_KEY", //      <-- EDIT: paste your key
   },
@@ -216,6 +222,11 @@ export const site = {
     { name: "Instagram", url: "https://instagram.com/yourhandle" }, // <-- EDIT
     { name: "YouTube", url: "https://youtube.com/@yourchannel" }, //   <-- EDIT
     { name: "LinkedIn", url: "https://linkedin.com/in/yourname" }, //  <-- EDIT
+    // Gmail icon → opens a new Gmail message to your email (built from EMAIL above)
+    {
+      name: "Gmail",
+      url: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(EMAIL)}&su=${encodeURIComponent(EMAIL_SUBJECT)}`,
+    },
   ],
 
   footerYear: 2026,

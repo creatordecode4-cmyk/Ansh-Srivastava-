@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { site } from "@/data/site";
 import Icon, { SocialLinks } from "./Icons";
+import CopyEmail from "./CopyEmail";
+import { gmailHref, mailtoHref } from "@/lib/contact";
 
 export default function Contact() {
   const { contact } = site;
@@ -23,7 +25,7 @@ export default function Contact() {
     setStatus({ state: "loading", msg: "Sending…" });
     const data = new FormData(form);
     data.append("access_key", contact.web3formsKey);
-    data.append("subject", `New message from your portfolio — ${data.get("name")}`);
+    data.append("subject", `${contact.emailSubject} — ${data.get("name")}`);
 
     try {
       const res = await fetch("https://api.web3forms.com/submit", { method: "POST", body: data });
@@ -57,10 +59,8 @@ export default function Contact() {
 
           <ul className="mt-6 space-y-3 text-sm text-white/80">
             <li className="flex items-center gap-3">
-              <Icon name="mail" className="h-4 w-4 text-white/60" />
-              <a href={`mailto:${contact.email}`} className="hover:text-white hover:underline">
-                {contact.email}
-              </a>
+              <Icon name="mail" className="h-4 w-4 shrink-0 text-white/60" />
+              <CopyEmail />
             </li>
             {contact.location && (
               <li className="flex items-center gap-3">
@@ -72,18 +72,29 @@ export default function Contact() {
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <a
-              href={`mailto:${contact.email}`}
+              href={mailtoHref}
               className="btn-fx btn-silver inline-flex items-center gap-2 rounded-md px-6 py-3 text-xs font-semibold uppercase tracking-wider transition hover:brightness-110"
             >
               Email Me <Icon name="arrow" className="h-3.5 w-3.5" />
             </a>
-            <SocialLinks socials={site.socials} />
+            <a
+              href={gmailHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-fx inline-flex items-center gap-2 rounded-md border border-white/25 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white/90 hover:border-white/50 hover:text-white"
+            >
+              <Icon name="gmail" className="h-4 w-4" /> Open in Gmail
+            </a>
           </div>
+          <SocialLinks socials={site.socials} className="mt-5" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* honeypot: hidden field that bots fill, humans don't */}
           <input type="checkbox" name="botcheck" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+          {/* Web3Forms delivers to the email the access key was created with (creatordecode4@gmail.com).
+              The visitor's "email" field becomes the reply-to address automatically. */}
+          <input type="hidden" name="from_name" value={`${site.name} — Portfolio`} />
           <div>
             <label htmlFor="name" className="mb-1.5 block text-xs uppercase tracking-wider text-white/70">
               Name
