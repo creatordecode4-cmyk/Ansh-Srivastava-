@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
-import { getPreviewSource, getThumbnail, isVertical, sameCategory } from "@/lib/video";
+import { getPreviewSource, getThumbnail, isVertical, isVideoFile, sameCategory } from "@/lib/video";
 import { loadYouTubeAPI } from "@/lib/youtube";
 import { previewLog } from "@/lib/previewLog";
 import PreviewDebug from "./PreviewDebug";
@@ -163,9 +163,14 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
   const vertical = isVertical(video);
   // Short local clip ("preview" in site.js) wins; otherwise fall back to the full video link.
   // The modal always plays the full video (videoUrl) with sound.
+  // A full self-hosted video (/videos/*.mp4) is never loaded on the card: without a short
+  // "preview" clip, the card just shows its poster + a Play button, and the video loads in the modal.
   const preview = video.preview
     ? { type: "file", src: video.preview, silent: true }
-    : getPreviewSource(video.videoUrl);
+    : isVideoFile(video.videoUrl)
+      ? null
+      : getPreviewSource(video.videoUrl);
+  const tag = video.tag || (/^re-?edit/i.test(video.credit || "") ? "Re-edit" : null);
 
   return (
     <div className="card-fx card-surface group relative flex h-full flex-col overflow-hidden rounded-2xl">
@@ -194,9 +199,22 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
           )}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[0.6rem] uppercase tracking-wider text-white/90">
-            {vertical ? "Vertical · 9:16" : video.category}
-          </span>
+          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[0.6rem] uppercase tracking-wider text-white/90">
+              {vertical ? "Vertical · 9:16" : video.category}
+            </span>
+            {tag && (
+              <span className="rounded-full border border-white/30 bg-white/90 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-wider text-black">
+                {tag}
+              </span>
+            )}
+          </div>
+          {/* Poster-only cards (no preview clip): a clear Play button; tapping the card opens the player */}
+          {!preview && video.videoUrl && (
+            <span className="pointer-events-none absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/50 bg-white/90 text-black transition group-hover:scale-110">
+              <Icon name="play" className="h-6 w-6 translate-x-[2px]" />
+            </span>
+          )}
           {/* "open full video" hint */}
           <span className="pointer-events-none absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-black/60 text-white transition group-hover:scale-110 group-hover:bg-white group-hover:text-black">
             <Icon name="arrow" className="h-4 w-4" />
@@ -212,6 +230,7 @@ function VideoCard({ video, onOpen, near, playing, onManualPlay }) {
         <p className="text-[0.65rem] uppercase tracking-[0.18em] text-white/55">{video.category}</p>
         <h3 className="mt-1.5 text-lg font-semibold leading-snug text-white">{video.title}</h3>
         <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-white/65">{video.short || video.description}</p>
+        {video.credit && <p className="mt-2 text-xs text-white/45">{video.credit}</p>}
       </div>
 
       {/* The whole card is one big button → opens the full player with sound */}

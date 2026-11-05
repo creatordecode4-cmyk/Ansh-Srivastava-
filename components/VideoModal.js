@@ -107,7 +107,12 @@ export default function VideoModal({ video, onClose }) {
             )}
           </div>
         </div>
-        {video.description && <p className="p-4 text-sm leading-relaxed text-white/70">{video.description}</p>}
+        {(video.description || video.credit) && (
+          <div className="p-4">
+            {video.description && <p className="text-sm leading-relaxed text-white/70">{video.description}</p>}
+            {video.credit && <p className="mt-2 text-xs text-white/45">{video.credit}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

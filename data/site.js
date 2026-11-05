@@ -58,6 +58,10 @@ export const site = {
   //   Your own file: put the .mp4 in /public/videos/ and write "/videos/my-video.mp4"
   // orientation: "horizontal" (16:9, default) or "vertical" (9:16 shorts/reels)
   // short: 1 line shown on the card · description: full text shown under the player
+  // credit: OPTIONAL small credit line (card + under the player). A credit starting with
+  //   "Re-edit" also shows a small "Re-edit" tag on the card.
+  // Full videos in /public/videos/ are NEVER loaded on the card — only when the video is opened
+  //   (cards autoplay only a short "preview" clip, if you add one).
   // preview: OPTIONAL short silent clip that autoplays on the card while you scroll,
   //   e.g. "/previews/my-video.mp4" (put the file in /public/previews/, 10-15 sec, 720p, under 4 MB).
   //   The full video (videoUrl — Drive, YouTube or .mp4) still opens with sound when the card is tapped.
@@ -108,6 +112,16 @@ export const site = {
       videoUrl: "/videos/ai-agent-reel.mp4",
       preview: "/previews/ai-agent-reel.mp4",
       thumbnail: "/thumbs/ai-agent-reel.jpg",
+    },
+    {
+      title: "2D Animation Story: Re-edit",
+      category: "2D Animation",
+      orientation: "vertical",
+      description:
+        "A vertical story video mixing live-action clips with 2D cartoon-style scenes. My re-edit: pacing, scene transitions and captions. Original concept by @Abhay.create.",
+      credit: "Re-edit. Original: @Abhay.create",
+      videoUrl: "/videos/2d-animation.mp4",
+      thumbnail: "/posters/2d-animation.jpg",
     },
   ],
 
