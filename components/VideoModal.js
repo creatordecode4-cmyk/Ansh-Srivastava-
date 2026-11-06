@@ -50,7 +50,9 @@ export default function VideoModal({ video, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="video-modal-title"
-        className={`glass my-auto w-full overflow-hidden rounded-2xl bg-[#15171b] ${vertical ? "max-w-md" : "max-w-4xl"}`}
+        className={`glass my-auto w-full overflow-hidden rounded-2xl bg-[#15171b] ${
+          vertical ? "max-w-md" : "max-w-[min(90vw,calc(85vh*16/9))]" /* 16:9 player: max 90vw wide, max 85vh tall */
+        }`}
       >
         <div className="flex items-start justify-between gap-4 p-4">
           <div>

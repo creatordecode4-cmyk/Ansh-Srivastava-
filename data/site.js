@@ -123,6 +123,16 @@ export const site = {
       videoUrl: "/videos/2d-animation.mp4",
       thumbnail: "/posters/2d-animation.jpg",
     },
+    {
+      title: "SaaS Product Launch Motion",
+      category: "SaaS Motion",
+      orientation: "horizontal",
+      description:
+        "A dark, cinematic product-launch motion piece with 3D object reveals, UI screen animations and kinetic text. Style study inspired by modern AI product ads.",
+      credit: "Own edit. Unofficial spec ad for Google Gemini, not affiliated.",
+      videoUrl: "/videos/saas-motion.mp4",
+      thumbnail: "/posters/saas-motion.jpg",
+    },
   ],
 
   // ---------- WEB PROJECTS ----------
