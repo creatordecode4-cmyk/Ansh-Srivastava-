@@ -135,7 +135,7 @@ export const site = {
     },
     {
       title: "SaaS Product Launch Motion",
-      category: "SaaS Motion",
+      category: "Motion Graphics",
       orientation: "horizontal",
       description:
         "A dark, cinematic product-launch motion piece with 3D object reveals, UI screen animations and kinetic text. Style study inspired by modern AI product ads.",
