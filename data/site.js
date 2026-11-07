@@ -124,6 +124,16 @@ export const site = {
       thumbnail: "/posters/2d-animation.jpg",
     },
     {
+      title: "2D Animation Story #2: Re-edit",
+      category: "2D Animation",
+      orientation: "vertical",
+      description:
+        "A vertical story video mixing face-cam clips with 2D cartoon-style scenes: a studio stage, colourful street scenes, an office and money and growth graphics. My re-edit: pacing, scene transitions and captions. Original concept by @Abhay.create.",
+      credit: "Re-edit. Original: @Abhay.create",
+      videoUrl: "/videos/2d-animation-2.mp4",
+      thumbnail: "/posters/2d-animation-2.jpg",
+    },
+    {
       title: "SaaS Product Launch Motion",
       category: "SaaS Motion",
       orientation: "horizontal",
