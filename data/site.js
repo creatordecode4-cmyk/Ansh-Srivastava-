@@ -70,6 +70,17 @@ export const site = {
   //   Your own image: put it in /public/thumbs/ and write "/thumbs/my-image.jpg"
   videos: [
     {
+      title: "Edited with Claude — Hinglish Motion Video",
+      category: "Motion Graphics",
+      orientation: "horizontal",
+      short: "Hinglish face-cam video with motion graphics, 100% edited with Claude.",
+      description:
+        "A Hinglish face-cam video packed with motion graphics: animated UI cards, percentage counters, a 3D mic, toggles and kinetic captions about making AI edits that don't feel AI-made. 100% edited with Claude, as shown in the video.",
+      credit: "Own edit. Edited with Claude.",
+      videoUrl: "/videos/claude-edit.mp4",
+      thumbnail: "/posters/claude-edit.jpg",
+    },
+    {
       title: "Orbit — AI App Promo",
       category: "Motion Graphics",
       orientation: "horizontal",
