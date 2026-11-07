@@ -154,6 +154,28 @@ export const site = {
       videoUrl: "/videos/saas-motion.mp4",
       thumbnail: "/posters/saas-motion.jpg",
     },
+    {
+      title: "Velvo Chocolate Cola — 3D Product Ad",
+      category: "3D Animation",
+      orientation: "horizontal",
+      short: "3D product ad for a chocolate cola: bottle reveal, liquid chocolate and fizz.",
+      description:
+        "A 30-second 3D product ad for a chocolate cola called Velvo: a dark bottle reveal, flowing liquid chocolate, falling cocoa beans and rising bubbles, ending on the logo. Warm, premium and cinematic, with smooth camera moves and elegant text.",
+      credit: "Own 3D animation. Concept ad, not a client project.",
+      videoUrl: "/videos/3d-chocolate-ad.mp4",
+      thumbnail: "/posters/3d-chocolate-ad.jpg",
+    },
+    {
+      title: "Desert Car Chase — 3D Animation",
+      category: "3D Animation",
+      orientation: "horizontal",
+      short: "3D car chase: a red sports car and a police car on a desert highway.",
+      description:
+        "A 20-second 3D animated car chase: a red sports car speeds down a desert highway with a police car close behind. Fast and dramatic, with low tracking shots, side angles and a film-grain look.",
+      credit: "Own 3D animation.",
+      videoUrl: "/videos/3d-car-chase.mp4",
+      thumbnail: "/posters/3d-car-chase.jpg",
+    },
   ],
 
   // ---------- WEB PROJECTS ----------
