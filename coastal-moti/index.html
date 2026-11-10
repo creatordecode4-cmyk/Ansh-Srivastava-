@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Coastal Moti: The Lost Pearl</title>
+  <meta name="description" content="An original 3D action-adventure set on the Konkan coast.">
+  <meta name="theme-color" content="#0b2a3a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="src/ui/base.css">
+  <!-- Three.js is pinned to 0.160.0 and vendored locally so the game works offline. -->
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game" aria-label="Game view"></canvas>
+
+  <div id="hud">
+    <div id="title">Coastal Moti <span>The Lost Pearl</span></div>
+    <div id="top-right">
+      <button id="quality-btn" type="button" aria-label="Change graphics quality">Quality: …</button>
+      <div id="fps" aria-hidden="true"></div>
+    </div>
+    <div id="controls-hint"></div>
+  </div>
+
+  <div id="error" hidden></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

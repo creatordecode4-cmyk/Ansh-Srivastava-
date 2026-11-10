@@ -24,3 +24,6 @@ data/site.js   ALL editable content
 lib/video.js   YouTube / Google Drive link → embed URL
 public/        profile.jpg (+ add /thumbs/ for custom thumbnails)
 ```
+
+## Coastal Moti (game)
+The `coastal-moti/` folder is a separate, self-contained static browser game. It is not part of the Next.js site. See `coastal-moti/README.md`.
