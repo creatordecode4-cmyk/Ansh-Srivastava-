@@ -10,6 +10,7 @@
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="src/ui/base.css">
+  <link rel="stylesheet" href="src/ui/hud.css">
   <!-- Three.js is pinned to 0.160.0 and vendored locally so the game works offline. -->
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
@@ -18,13 +19,83 @@
 <body>
   <canvas id="game" aria-label="Game view"></canvas>
 
+  <!-- Touch only: catches joystick (left half) and look-drag (right half) pointers. -->
+  <div id="touch-layer" hidden></div>
+
   <div id="hud">
-    <div id="title">Coastal Moti <span>The Lost Pearl</span></div>
+    <div id="vitals">
+      <div class="bar" id="health"><i></i><span id="health-label"></span></div>
+      <div class="bar" id="burst"><i></i><span>BURST</span></div>
+      <div id="shaktis"></div>
+    </div>
+
+    <div id="objective">
+      <div id="compass" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2 19 21 12 16.5 5 21z"/></svg>
+      </div>
+      <div>
+        <div id="objective-text"></div>
+        <div id="objective-dist"></div>
+      </div>
+    </div>
+
     <div id="top-right">
-      <button id="quality-btn" type="button" aria-label="Change graphics quality">Quality: …</button>
+      <button id="pause-btn" type="button" aria-label="Pause"><i></i><i></i></button>
       <div id="fps" aria-hidden="true"></div>
     </div>
-    <div id="controls-hint"></div>
+
+    <div id="radio" hidden>
+      <b id="radio-callsign"></b>
+      <span id="radio-text"></span>
+    </div>
+
+    <div id="hint"></div>
+
+    <div id="touch-ui" hidden>
+      <div id="stick"><div id="stick-knob"></div></div>
+      <button class="tbtn" id="btn-attack" data-action="attack" type="button">Attack</button>
+      <button class="tbtn" id="btn-dodge" data-action="dodge" type="button">Dodge</button>
+      <button class="tbtn" id="btn-shakti" data-action="shakti" type="button">Shakti</button>
+      <button class="tbtn" id="btn-burst" data-action="burst" type="button">Burst</button>
+      <button class="tbtn" id="btn-tool" data-action="tool" type="button">Tool</button>
+    </div>
+  </div>
+
+  <div id="damage-flash"></div>
+
+  <div id="down" class="overlay" hidden>
+    <div class="down-text">Disha is down. Restarting.</div>
+  </div>
+
+  <div id="mission-card" class="overlay" hidden>
+    <div id="card-meta"></div>
+    <h1 id="card-name"></h1>
+    <div id="card-skip"></div>
+  </div>
+
+  <div id="pause-menu" class="overlay" hidden>
+    <div class="panel">
+      <h2>Paused</h2>
+      <button type="button" id="pm-resume" class="wide primary">Resume</button>
+      <div class="row">
+        <span>Graphics</span>
+        <div class="seg" id="pm-quality">
+          <button type="button" data-quality="low">Low</button>
+          <button type="button" data-quality="medium">Medium</button>
+          <button type="button" data-quality="high">High</button>
+        </div>
+      </div>
+      <div class="row">
+        <span>Sound</span>
+        <div class="seg" id="pm-sound">
+          <button type="button" data-muted="false">On</button>
+          <button type="button" data-muted="true">Off</button>
+        </div>
+      </div>
+      <button type="button" id="pm-restart" class="wide">Restart mission</button>
+      <button type="button" id="pm-reset" class="wide danger">Reset all progress</button>
+      <div id="pm-help"></div>
+    </div>
   </div>
 
   <div id="error" hidden></div>

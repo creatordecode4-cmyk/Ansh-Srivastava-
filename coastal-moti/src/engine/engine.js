@@ -3,7 +3,7 @@ import { QUALITY } from './quality.js';
 import { createSky, SKY } from './sky.js';
 import { createSea } from './sea.js';
 
-// Owns the renderer, scene, camera and the frame loop.
+// Owns the renderer, scene, camera, lights and the frame loop.
 export function createEngine(canvas, initialQuality) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -14,17 +14,17 @@ export function createEngine(canvas, initialQuality) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 2000);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 2000);
   camera.position.set(0, 6, 14);
 
   // Lighting budget: one hemisphere fill + ONE directional sun (the only shadow caster).
-  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x3a5a4a, 0.9));
-  const sun = new THREE.DirectionalLight(SKY.sun, 1.6);
-  sun.position.copy(SKY.sunDir).multiplyScalar(100);
-  sun.shadow.camera.left = sun.shadow.camera.bottom = -40;
-  sun.shadow.camera.right = sun.shadow.camera.top = 40;
-  sun.shadow.camera.far = 250;
-  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x6b6a4a, 1.1));
+  const sun = new THREE.DirectionalLight(SKY.sun, 1.7);
+  sun.position.copy(SKY.sunDir).multiplyScalar(80);
+  const sc = sun.shadow.camera;
+  sc.left = sc.bottom = -28; sc.right = sc.top = 28; sc.near = 1; sc.far = 200;
+  sun.shadow.bias = -0.0015;
+  scene.add(sun, sun.target);
 
   const sky = createSky();
   scene.add(sky);
@@ -54,21 +54,22 @@ export function createEngine(canvas, initialQuality) {
     resize();
   }
 
+  // Keep the (small) shadow box centred on the action.
+  function setShadowFocus(p) {
+    sun.target.position.copy(p);
+    sun.position.copy(SKY.sunDir).multiplyScalar(80).add(p);
+  }
+
+  const updaters = [];
   let fpsCallback = null;
-  let frames = 0, fpsFrames = 0, fpsTime = 0, running = false;
+  let frames = 0, fpsFrames = 0, fpsTime = 0;
   const clock = new THREE.Clock();
 
   function frame() {
-    if (!running) return;
     const dt = Math.min(clock.getDelta(), 0.1);
-    const t = clock.elapsedTime;
-
-    // Placeholder camera: a slow drift so the empty scene is visibly alive.
-    camera.position.set(Math.sin(t * 0.08) * 14, 6 + Math.sin(t * 0.3) * 0.4, Math.cos(t * 0.08) * 14);
-    camera.lookAt(SKY.sunDir.x * 60, 3, SKY.sunDir.z * 60);
+    for (const fn of updaters) fn(dt);
     sky.position.copy(camera.position);
-    sea.update(t);
-
+    sea.update(clock.elapsedTime);
     renderer.render(scene, camera);
 
     frames++; fpsFrames++; fpsTime += dt;
@@ -83,10 +84,11 @@ export function createEngine(canvas, initialQuality) {
 
   return {
     renderer, scene, camera,
-    setQuality,
+    setQuality, setShadowFocus,
+    onUpdate(fn) { updaters.push(fn); },
     onFps(cb) { fpsCallback = cb; },
     get frames() { return frames; },
-    start() { running = true; clock.start(); renderer.setAnimationLoop(frame); },
-    stop() { running = false; renderer.setAnimationLoop(null); },
+    start() { clock.start(); renderer.setAnimationLoop(frame); },
+    stop() { renderer.setAnimationLoop(null); },
   };
 }

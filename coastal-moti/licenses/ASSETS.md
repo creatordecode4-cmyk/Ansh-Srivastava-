@@ -11,12 +11,16 @@ Format: `name | author | URL | license | where it is used`
 
 ## Third-party art, audio, fonts
 
-- None yet. The sky and sea are generated in code (shaders); the UI uses the device's system font.
+- None yet. Sky, sea, terrain, characters and props are generated in code; sounds are synthesized in code;
+  the UI uses the device's system font.
 
 ## Original work made for this project (no third-party licence needed)
 
 - App icon (`assets/icons/icon.svg`, `icon-192.png`, `icon-512.png`) | project team | – | original | PWA / home-screen icon
 - Sky and sea shaders (`src/engine/sky.js`, `src/engine/sea.js`) | project team | – | original | environment
+- Placeholder models: player, bots, boat, walls, crates, rocks, palms (`src/engine/world.js`, `player.js`, `src/ai/bot.js`) | project team | – | original | built from basic shapes in code
+- Shakti icons (`src/engine/shaktis.js`) and HUD (`src/ui/`) | project team | – | original | interface
+- Placeholder sound effects (`src/audio/audio.js`) | project team | – | original | synthesized with the Web Audio API, no files
 
 ## Free assets to add later (suggested sources, all CC0 — check each pack's page again when downloading)
 

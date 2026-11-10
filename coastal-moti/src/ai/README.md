@@ -1,1 +1,1 @@
-Placeholder so the folder exists in git. Code for 'ai' goes here.
+Bot behaviours live in bot.js. Squad-mate AI and battle-mode bots will be added here.

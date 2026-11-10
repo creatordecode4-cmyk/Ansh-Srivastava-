@@ -1,6 +1,8 @@
-// Shows which control scheme this device will use. The real controls arrive with gameplay.
-export function showControlsHint(el, mobile) {
-  el.textContent = mobile
-    ? 'Touch: left joystick to move · right buttons: Attack, Shakti, Burst, Tool, Dodge'
-    : 'Keyboard + mouse: WASD to move · mouse to look · 1-5 for Shaktis';
+// A short reminder of the controls for this device. It fades out after a few seconds;
+// the full list is in the pause menu.
+export function showControlsHint(mobile) {
+  const el = document.getElementById('hint');
+  if (mobile) return; // the touch buttons are labelled already
+  el.textContent = 'Click to capture the mouse · WASD move · Shift run · Space dodge · Click attack · Q Shakti · Esc pause';
+  setTimeout(() => el.classList.add('gone'), 9000);
 }

@@ -27,7 +27,7 @@ export function createSea(segments) {
       void main() {
         vec4 world = modelMatrix * vec4(position, 1.0);
         float w = wave(world.xz);
-        world.y += w;
+        world.y += w * 0.22; // small swell so the shoreline stays readable
         vWave = w;
         vWorld = world.xyz;
         gl_Position = projectionMatrix * viewMatrix * world;
