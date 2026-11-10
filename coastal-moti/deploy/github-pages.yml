@@ -1,0 +1,38 @@
+# GitHub Pages workflow for the Coastal Moti game.
+#
+# THIS FILE DOES NOTHING HERE. It is a template. It only runs after it is copied to
+#   .github/workflows/deploy.yml
+# in the NEW game-only repository (not the portfolio repository).
+#
+# It publishes ONLY the coastal-moti/ folder. Nothing is built: the folder is uploaded as it is.
+name: Deploy game to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['coastal-moti/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:        # allows a manual run from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: coastal-moti
+      - id: deployment
+        uses: actions/deploy-pages@v4

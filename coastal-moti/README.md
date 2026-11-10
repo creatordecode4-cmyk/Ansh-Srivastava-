@@ -36,8 +36,25 @@ python3 -m http.server 8080      # or: npx serve -l 8080
 Open <http://localhost:8080>. To test on a phone on the same Wi-Fi, open `http://<your-PC-IP>:8080`
 (note: install-to-home-screen and offline mode need **https** or `localhost`, so test those after deploying).
 
-Free hosting that works as-is: GitHub Pages, Netlify, Cloudflare Pages, Vercel (deploy the `coastal-moti` folder).
-All paths are relative, so it also works from a sub-folder URL.
+All paths are relative, so the game works from a sub-folder URL (tested over https at `/coastal-moti/`:
+the manifest, the service worker and offline mode all work there).
+
+## Put it online for free (GitHub Pages, separate repository)
+
+The game gets its **own** repository, so the portfolio and its hosting are never touched.
+
+1. On github.com create a new **public** repository, for example `coastal-moti` (free GitHub Pages needs a public repository).
+2. Put two things in it: this `coastal-moti/` folder, and the file `coastal-moti/deploy/github-pages.yml`
+   copied to `.github/workflows/deploy.yml`.
+3. In the new repository open **Settings -> Pages -> Build and deployment -> Source** and choose **GitHub Actions**.
+4. Push to `main` (or run the workflow by hand from the **Actions** tab). After about a minute the game is at
+   `https://<your-username>.github.io/<repository-name>/`.
+5. On the phone: open that link in Chrome, then menu -> **Add to Home screen** to install it.
+
+Every later push that changes `coastal-moti/` republishes automatically.
+When you release a new version, bump `CACHE_VERSION` in `sw.js`.
+
+Other free hosts work too (Netlify, Cloudflare Pages): publish the `coastal-moti` folder with no build command.
 
 ## Folder structure
 
@@ -73,6 +90,7 @@ src/
   audio/audio.js      sound hooks (synthesized placeholder sounds, storm ambience, thunder)
   save/               save.js (progress, checkpoint, flags), settings.js (quality, sound)
 assets/               icons/ (original) · models/ textures/ audio/ are still empty
+deploy/github-pages.yml   GitHub Pages workflow template (see "Put it online for free")
 licenses/ASSETS.md    one line per third-party asset: name, author, URL, license
 ```
 
