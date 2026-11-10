@@ -4,19 +4,21 @@ import { SKY } from './sky.js';
 const SIZE = 800;
 
 // Animated low-poly sea. Waves are computed in the vertex shader (cheap on phones);
-// segment count comes from the quality preset.
+// segment count comes from the quality preset, colours and wave size from the environment.
 export function createSea(segments) {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
+      uAmp: { value: 0.22 },
       uDeep: { value: new THREE.Color(0x0b4f6c) },
       uShallow: { value: new THREE.Color(0x2fa7a0) },
       uHorizon: { value: SKY.horizon },
       uSun: { value: SKY.sun },
       uSunDir: { value: SKY.sunDir },
+      uFlash: SKY.flash,
     },
     vertexShader: /* glsl */`
-      uniform float uTime;
+      uniform float uTime, uAmp;
       varying vec3 vWorld;
       varying float vWave;
       float wave(vec2 p) {
@@ -27,7 +29,7 @@ export function createSea(segments) {
       void main() {
         vec4 world = modelMatrix * vec4(position, 1.0);
         float w = wave(world.xz);
-        world.y += w * 0.22; // small swell so the shoreline stays readable
+        world.y += w * uAmp;
         vWave = w;
         vWorld = world.xyz;
         gl_Position = projectionMatrix * viewMatrix * world;
@@ -35,6 +37,7 @@ export function createSea(segments) {
     fragmentShader: /* glsl */`
       precision mediump float;
       uniform vec3 uDeep, uShallow, uHorizon, uSun, uSunDir;
+      uniform float uFlash;
       varying vec3 vWorld;
       varying float vWave;
       void main() {
@@ -49,6 +52,7 @@ export function createSea(segments) {
         col = mix(col, uHorizon, fres * 0.55);
         float dist = length(cameraPosition.xz - vWorld.xz);
         col = mix(col, uHorizon, smoothstep(120.0, 390.0, dist));
+        col += vec3(0.3, 0.34, 0.42) * uFlash;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -56,13 +60,20 @@ export function createSea(segments) {
   const mesh = new THREE.Mesh(buildGeometry(segments), material);
   mesh.name = 'sea';
   mesh.frustumCulled = false;
+  let time = 0, speed = 1;
 
   return {
     mesh,
-    update(time) { material.uniforms.uTime.value = time; },
+    update(dt) { time += dt * speed; material.uniforms.uTime.value = time; },
     setSegments(n) {
       mesh.geometry.dispose();
       mesh.geometry = buildGeometry(n);
+    },
+    setLook({ deep, shallow, amp, speed: s }) {
+      material.uniforms.uDeep.value.setHex(deep);
+      material.uniforms.uShallow.value.setHex(shallow);
+      material.uniforms.uAmp.value = amp;
+      speed = s;
     },
   };
 }

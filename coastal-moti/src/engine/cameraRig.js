@@ -12,7 +12,20 @@ export function createCameraRig(game) {
 
   rig.snap = () => { snapped = false; };
 
+  // Cutscene camera: set rig.cinematic = { from, to, look, duration } (THREE.Vector3s) and clear it after.
+  rig.cinematic = null;
+
   rig.update = (dt, live) => {
+    const c = rig.cinematic;
+    if (c) {
+      c.t = Math.min(1, (c.t || 0) + dt / c.duration);
+      const k = c.t * c.t * (3 - 2 * c.t);
+      camera.position.lerpVectors(c.from, c.to, k);
+      camera.lookAt(c.look);
+      game.input.lookDelta();
+      snapped = false;
+      return;
+    }
     const p = game.player.pos;
     if (live) {
       const look = game.input.lookDelta();

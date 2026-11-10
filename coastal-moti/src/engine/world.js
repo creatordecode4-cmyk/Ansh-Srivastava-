@@ -1,141 +1,152 @@
 import * as THREE from 'three';
-import { clamp, smoothstep, seededRandom } from './mathx.js';
+import { clamp, seededRandom } from './mathx.js';
 
-// TEST ARENA (placeholder art): a small island with a walled compound, crates, rocks and palms.
-// Story locations will replace the layout; the collision API below stays the same.
+// The world loads one LEVEL at a time. A level (see src/levels/) is a plain object:
+//
+//   { id, env, heightAt(x, z), build(b) -> handles }
+//
+// build() receives a builder `b` with helpers to add terrain, instanced props and colliders.
+// Whatever build() returns is available as world.level (for example the lighthouse controls).
+// The collision API (move, lineOfSight, ...) is the same for every level.
 
 const MIN_STAND_HEIGHT = -0.55; // deeper water than this blocks movement
-const TERRAIN_SIZE = 180;
-
-// Analytic height field: the same function drives the mesh and the collision.
-export function heightAt(x, z) {
-  const r = Math.hypot(x, z);
-  const land = 1.5 - 4.5 * smoothstep(44, 72, r);
-  const bumps = 0.35 * Math.sin(x * 0.15) * Math.cos(z * 0.13) * (1 - smoothstep(40, 60, r));
-  const hill = 3.2 * Math.exp(-((x + 26) ** 2 + (z + 22) ** 2) / 180);
-  return land + bumps + hill;
-}
 
 export function createWorld(scene) {
-  const colliders = []; // axis-aligned boxes on the XZ plane
-  const rand = seededRandom(7);
-
-  // ---- terrain -------------------------------------------------------------
-  const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 90, 90);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  const sand = new THREE.Color(0xe2cf9b), wet = new THREE.Color(0xb9a374);
-  const grass = new THREE.Color(0x7fae5a), high = new THREE.Color(0x5f8f4a), c = new THREE.Color();
-  for (let i = 0; i < pos.count; i++) {
-    const h = heightAt(pos.getX(i), pos.getZ(i));
-    pos.setY(i, h);
-    if (h < 0.25) c.copy(wet);
-    else if (h < 1.0) c.copy(wet).lerp(sand, smoothstep(0.25, 0.6, h));
-    else if (h < 1.9) c.copy(sand).lerp(grass, smoothstep(1.0, 1.35, h));
-    else c.copy(grass).lerp(high, smoothstep(1.9, 4, h));
-    colors.set([c.r, c.g, c.b], i * 3);
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-  const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-  terrain.receiveShadow = true;
-  terrain.name = 'terrain';
-  scene.add(terrain);
-
-  // ---- props (all instanced: one draw call per prop type) -------------------
+  let heightFn = () => 0;
+  let owned = [];
   const dummy = new THREE.Object3D();
-  function instanced(geometry, color, items, place) {
-    const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshLambertMaterial({ color, flatShading: true }), items.length);
-    items.forEach((item, i) => {
-      dummy.position.set(0, 0, 0); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
-      place(item, dummy);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.castShadow = mesh.receiveShadow = true;
-    scene.add(mesh);
-    return mesh;
+
+  const world = {
+    id: null,
+    level: {},        // handles returned by the level's build()
+    colliders: [],    // axis-aligned boxes on the XZ plane
+    coverPoints: [],
+    lights: [],       // lit ground circles { x, z, r }: stealth uses them
+    heightAt: (x, z) => heightFn(x, z),
+    canStand: (x, z) => heightFn(x, z) > MIN_STAND_HEIGHT,
+  };
+
+  // ---- builder: what a level uses to construct itself ----------------------
+  const builder = {
+    rand: Math.random,
+    heightAt: (x, z) => heightFn(x, z),
+
+    add(object) { scene.add(object); owned.push(object); return object; },
+
+    collider(cx, cz, sx, sz, height, blocksSight) {
+      const col = { minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2,
+        cx, cz, y: heightFn(cx, cz), height, blocksSight };
+      world.colliders.push(col);
+      return col;
+    },
+
+    // Height-field terrain. colorAt(height, x, z, outColor) paints each vertex.
+    terrain({ size = 180, segments = 90, colorAt }) {
+      const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+      geo.rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position;
+      const colors = new Float32Array(pos.count * 3);
+      const c = new THREE.Color();
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), z = pos.getZ(i), h = heightFn(x, z);
+        pos.setY(i, h);
+        colorAt(h, x, z, c);
+        colors.set([c.r, c.g, c.b], i * 3);
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+      mesh.receiveShadow = true;
+      mesh.name = 'terrain';
+      return builder.add(mesh);
+    },
+
+    // One draw call for many copies. place(item, dummy) positions each copy.
+    instanced(geometry, material, items, place, shadows = true) {
+      if (typeof material === 'number') material = new THREE.MeshLambertMaterial({ color: material, flatShading: true });
+      const mesh = new THREE.InstancedMesh(geometry, material, items.length);
+      items.forEach((item, i) => {
+        dummy.position.set(0, 0, 0); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
+        place(item, dummy);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = mesh.receiveShadow = shadows;
+      mesh.frustumCulled = false;
+      return builder.add(mesh);
+    },
+
+    // Solid boxes with colliders: [x, z, sizeX, sizeZ, height]. Tall ones (>= 1.8 m) block sight.
+    boxes(color, list) {
+      return builder.instanced(new THREE.BoxGeometry(1, 1, 1), color, list, ([x, z, sx, sz, h], d) => {
+        const col = builder.collider(x, z, sx, sz, h, h >= 1.8);
+        d.position.set(x, col.y - 1.5 + (h + 1.5) / 2, z); // sunk 1.5 m so slopes leave no gap
+        d.scale.set(sx, h + 1.5, sz);
+      });
+    },
+
+    // A soft lit circle on the ground that follows the terrain. Registers a stealth light zone.
+    groundGlow(cx, cz, radius, color, strength = 0.5, register = true) {
+      const RINGS = 4, SEGS = 24;
+      const pos = [cx, heightFn(cx, cz) + 0.12, cz], col = [], idx = [];
+      const base = new THREE.Color(color);
+      col.push(base.r * strength, base.g * strength, base.b * strength);
+      for (let i = 1; i <= RINGS; i++) {
+        const k = strength * (1 - i / RINGS);
+        for (let j = 0; j < SEGS; j++) {
+          const a = (j / SEGS) * Math.PI * 2, r = radius * (i / RINGS);
+          const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+          pos.push(x, heightFn(x, z) + 0.12, z);
+          col.push(base.r * k, base.g * k, base.b * k);
+        }
+      }
+      const ring = (i, j) => 1 + (i - 1) * SEGS + (j % SEGS);
+      for (let j = 0; j < SEGS; j++) {
+        idx.push(0, ring(1, j + 1), ring(1, j));
+        for (let i = 1; i < RINGS; i++) idx.push(ring(i, j), ring(i, j + 1), ring(i + 1, j), ring(i, j + 1), ring(i + 1, j + 1), ring(i + 1, j));
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.setIndex(idx);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true,
+        blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      if (register) world.lights.push({ x: cx, z: cz, r: radius });
+      return builder.add(mesh);
+    },
+  };
+
+  function unload() {
+    for (const obj of owned) {
+      scene.remove(obj);
+      obj.traverse((o) => {
+        o.geometry?.dispose();
+        if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose()); else o.material?.dispose();
+      });
+    }
+    owned = [];
+    world.colliders.length = 0;
+    world.coverPoints.length = 0;
+    world.lights.length = 0;
+    world.level = {};
   }
-  function addCollider(cx, cz, sx, sz, height, blocksSight) {
-    const col = { minX: cx - sx / 2, maxX: cx + sx / 2, minZ: cz - sz / 2, maxZ: cz + sz / 2,
-      cx, cz, y: heightAt(cx, cz), height, blocksSight };
-    colliders.push(col);
-    return col;
-  }
 
-  // Walls: [centreX, centreZ, sizeX, sizeZ]. 3 m tall, they block movement AND line of sight.
-  const WALL_H = 3;
-  const walls = [
-    [12, -20, 8, 0.8], [25, -20, 6, 0.8],      // compound north (gap = gate)
-    [11, -4, 6, 0.8], [23, -4, 10, 0.8],       // compound south (gap = gate)
-    [8, -15, 0.8, 10], [28, -16, 0.8, 8],      // compound west / east
-    [18, -12, 0.8, 6],                         // inner wall
-    [-8, 14, 5, 0.8], [-14, -6, 0.8, 5], [2, -28, 6, 0.8], [34, 4, 0.8, 6], [0, 18, 6, 0.8], // loose cover
-  ];
-  instanced(new THREE.BoxGeometry(1, 1, 1), 0xd9c7a3, walls, ([x, z, sx, sz], d) => {
-    const col = addCollider(x, z, sx, sz, WALL_H, true);
-    d.position.set(x, col.y - 1 + (WALL_H + 1) / 2, z);
-    d.scale.set(sx, WALL_H + 1, sz);
-  });
+  world.load = (def) => {
+    unload();
+    world.id = def.id;
+    heightFn = def.heightAt;
+    builder.rand = seededRandom(7); // same layout every run
+    world.level = def.build(builder) || {};
+    buildCoverPoints();
+  };
+  world.update = (dt, time) => world.level.update?.(dt, time);
 
-  // Crates: low cover. Block movement, not sight.
-  const crates = [[14, -13], [15.2, -13], [14.5, -11.8], [22, -9], [23.2, -9], [21, -17], [4, 6], [5.2, 6],
-    [-4, -12], [30, 12], [-20, 12], [10, 28]];
-  instanced(new THREE.BoxGeometry(1.1, 1.1, 1.1), 0x9a6b3f, crates, ([x, z], d) => {
-    const col = addCollider(x, z, 1.1, 1.1, 1.1, false);
-    d.position.set(x, col.y + 0.5, z);
-    d.rotation.y = rand() * 0.3;
-  });
-
-  // Rocks: big ones block sight.
-  const rocks = [[-18, 24, 1.8], [26, 26, 1.5], [40, -10, 1.9], [-32, 4, 1.4], [-6, -36, 1.7], [16, 38, 1.2],
-    [-36, -30, 1.6], [44, 20, 1.3]];
-  instanced(new THREE.IcosahedronGeometry(1, 0), 0x8d8a82, rocks, ([x, z, r], d) => {
-    const col = addCollider(x, z, r * 1.4, r * 1.4, r * 1.5, r >= 1.5);
-    d.position.set(x, col.y + r * 0.45, z);
-    d.scale.set(r, r * 0.85, r);
-    d.rotation.set(rand(), rand() * 6, rand());
-  });
-
-  // Palms: trunk blocks movement only.
-  const palms = [];
-  while (palms.length < 16) {
-    const a = rand() * Math.PI * 2, r = 30 + rand() * 20;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (Math.abs(x) < 6 && z > 20) continue; // keep the landing beach clear
-    if (colliders.some((k) => x > k.minX - 2 && x < k.maxX + 2 && z > k.minZ - 2 && z < k.maxZ + 2)) continue;
-    palms.push([x, z, 4.5 + rand() * 1.5, rand() * 6]);
-  }
-  instanced(new THREE.CylinderGeometry(0.16, 0.28, 1, 6), 0x8a6a45, palms, ([x, z, h], d) => {
-    const col = addCollider(x, z, 0.6, 0.6, h, false);
-    d.position.set(x, col.y + h / 2 - 0.2, z);
-    d.scale.set(1, h, 1);
-  });
-  instanced(new THREE.ConeGeometry(2.3, 1.3, 6), 0x3f8f4f, palms, ([x, z, h, rot], d) => {
-    d.position.set(x, heightAt(x, z) + h + 0.2, z);
-    d.rotation.y = rot;
-  });
-
-  // Placeholder boat at the landing beach (also the mission start/end point).
-  const boat = new THREE.Group();
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 4.2), new THREE.MeshLambertMaterial({ color: 0x2f6f8f }));
-  const rim = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 4.4), new THREE.MeshLambertMaterial({ color: 0xe8a33d }));
-  rim.position.y = 0.4;
-  boat.add(hull, rim);
-  boat.position.set(3.5, 0.25, 56.5);
-  boat.rotation.y = 0.35;
-  boat.traverse((o) => { o.castShadow = true; });
-  scene.add(boat);
-  addCollider(3.5, 56.5, 2.4, 4.2, 1, false);
-
-  // ---- collision API -----------------------------------------------------
-  const canStand = (x, z) => heightAt(x, z) > MIN_STAND_HEIGHT;
-
+  // ---- collision API -------------------------------------------------------
   // Push a circle (p.x, p.z, radius) out of every box it overlaps.
-  function resolveCircle(p, radius) {
-    for (const k of colliders) {
+  world.resolveCircle = (p, radius) => {
+    for (const k of world.colliders) {
       const nx = clamp(p.x, k.minX, k.maxX), nz = clamp(p.z, k.minZ, k.maxZ);
       const dx = p.x - nx, dz = p.z - nz;
       const d2 = dx * dx + dz * dz;
@@ -151,24 +162,24 @@ export function createWorld(scene) {
         else if (m === t) p.z = k.minZ - radius; else p.z = k.maxZ + radius;
       }
     }
-  }
+  };
 
   // Move with sliding. Sub-steps stop fast moves (dodge-roll) from tunnelling through thin walls.
-  function move(p, dx, dz, radius) {
+  world.move = (p, dx, dz, radius) => {
     const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.3));
     dx /= steps; dz /= steps;
     for (let i = 0; i < steps; i++) {
-      if (canStand(p.x + dx, p.z)) p.x += dx;
-      if (canStand(p.x, p.z + dz)) p.z += dz;
-      resolveCircle(p, radius);
+      if (world.canStand(p.x + dx, p.z)) p.x += dx;
+      if (world.canStand(p.x, p.z + dz)) p.z += dz;
+      world.resolveCircle(p, radius);
     }
-  }
+  };
 
   // First hit of segment A->B against sight-blocking boxes, as t in [0,1]. Returns 2 when clear.
-  function segmentT(ax, az, bx, bz) {
+  world.segmentT = (ax, az, bx, bz) => {
     const dx = bx - ax, dz = bz - az;
     let best = 2;
-    for (const k of colliders) {
+    for (const k of world.colliders) {
       if (!k.blocksSight) continue;
       let t0 = 0, t1 = 1;
       if (Math.abs(dx) < 1e-9) { if (ax < k.minX || ax > k.maxX) continue; }
@@ -188,22 +199,26 @@ export function createWorld(scene) {
       if (t0 < best) best = t0;
     }
     return best;
-  }
-  const lineOfSight = (ax, az, bx, bz) => segmentT(ax, az, bx, bz) > 1;
+  };
+  world.lineOfSight = (ax, az, bx, bz) => world.segmentT(ax, az, bx, bz) > 1;
+
+  // Is this spot inside a lit circle (street lamp)? Guards see much further there.
+  world.isLit = (x, z) => world.lights.some((l) => Math.hypot(x - l.x, z - l.z) < l.r);
 
   // Cover points: spots hugging each sight-blocking box. Bots pick one that hides them from the player.
-  const coverPoints = [];
-  for (const k of colliders) {
-    if (!k.blocksSight) continue;
-    const off = 0.95;
-    const add = (x, z) => {
-      if (!canStand(x, z)) return;
-      if (colliders.some((o) => x > o.minX - 0.4 && x < o.maxX + 0.4 && z > o.minZ - 0.4 && z < o.maxZ + 0.4)) return;
-      coverPoints.push({ x, z });
-    };
-    for (let x = k.minX + 0.6; x <= k.maxX - 0.5; x += 2.2) { add(x, k.minZ - off); add(x, k.maxZ + off); }
-    for (let z = k.minZ + 0.6; z <= k.maxZ - 0.5; z += 2.2) { add(k.minX - off, z); add(k.maxX + off, z); }
+  function buildCoverPoints() {
+    for (const k of world.colliders) {
+      if (!k.blocksSight) continue;
+      const off = 0.95;
+      const add = (x, z) => {
+        if (!world.canStand(x, z)) return;
+        if (world.colliders.some((o) => x > o.minX - 0.4 && x < o.maxX + 0.4 && z > o.minZ - 0.4 && z < o.maxZ + 0.4)) return;
+        world.coverPoints.push({ x, z });
+      };
+      for (let x = k.minX + 0.6; x <= k.maxX - 0.5; x += 2.2) { add(x, k.minZ - off); add(x, k.maxZ + off); }
+      for (let z = k.minZ + 0.6; z <= k.maxZ - 0.5; z += 2.2) { add(k.minX - off, z); add(k.maxX + off, z); }
+    }
   }
 
-  return { heightAt, canStand, colliders, coverPoints, resolveCircle, move, segmentT, lineOfSight };
+  return world;
 }

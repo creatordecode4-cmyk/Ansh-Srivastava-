@@ -4,21 +4,32 @@ const KEY = 'coastal-moti:save:v1';
 
 export const freshProgress = () => ({
   currentMission: null,   // id of the mission to resume
+  checkpoint: null,       // { mission, id } - where to resume INSIDE the current mission
   completed: [],          // ids of finished missions
   unlockedShaktis: [],    // 'vayu' | 'agni' | 'jal' | 'bijli' | 'dharti'
+  flags: {},              // story facts, e.g. compassPointsToIsland, hasHalfMap
   playerLevel: 1,
   xp: 0,
 });
+
+const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
 
 export function loadProgress() {
   const base = freshProgress();
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (!raw || typeof raw !== 'object') return base;
+    const cp = raw.checkpoint;
+    const flags = {};
+    if (raw.flags && typeof raw.flags === 'object') {
+      for (const [k, v] of Object.entries(raw.flags)) if (['boolean', 'number', 'string'].includes(typeof v)) flags[k] = v;
+    }
     return {
       currentMission: typeof raw.currentMission === 'string' ? raw.currentMission : null,
-      completed: Array.isArray(raw.completed) ? raw.completed.filter((x) => typeof x === 'string') : [],
-      unlockedShaktis: Array.isArray(raw.unlockedShaktis) ? raw.unlockedShaktis.filter((x) => typeof x === 'string') : [],
+      checkpoint: cp && typeof cp.mission === 'string' && typeof cp.id === 'string' ? { mission: cp.mission, id: cp.id } : null,
+      completed: strings(raw.completed),
+      unlockedShaktis: strings(raw.unlockedShaktis),
+      flags,
       playerLevel: Number.isInteger(raw.playerLevel) && raw.playerLevel > 0 ? raw.playerLevel : 1,
       xp: Number.isFinite(raw.xp) && raw.xp >= 0 ? raw.xp : 0,
     };

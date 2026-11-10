@@ -18,9 +18,10 @@ Format: `name | author | URL | license | where it is used`
 
 - App icon (`assets/icons/icon.svg`, `icon-192.png`, `icon-512.png`) | project team | – | original | PWA / home-screen icon
 - Sky and sea shaders (`src/engine/sky.js`, `src/engine/sea.js`) | project team | – | original | environment
-- Placeholder models: player, bots, boat, walls, crates, rocks, palms (`src/engine/world.js`, `player.js`, `src/ai/bot.js`) | project team | – | original | built from basic shapes in code
+- Placeholder models: player, bots, guards, village, lighthouse, props (`src/levels/`, `src/engine/player.js`, `src/ai/`) | project team | – | original | built from basic shapes in code
 - Shakti icons (`src/engine/shaktis.js`) and HUD (`src/ui/`) | project team | – | original | interface
-- Placeholder sound effects (`src/audio/audio.js`) | project team | – | original | synthesized with the Web Audio API, no files
+- Placeholder sound effects, storm ambience and thunder (`src/audio/audio.js`) | project team | – | original | synthesized with the Web Audio API, no files
+- Compass dial, half-map drawing and Dadaji's letter (`index.html`, `src/ui/`) | project team | – | original | Mission 0 interface
 
 ## Free assets to add later (suggested sources, all CC0 — check each pack's page again when downloading)
 
@@ -30,4 +31,5 @@ Format: `name | author | URL | license | where it is used`
 - Sand, rock, wood, plaster textures (1K is enough for mobile): Poly Haven — https://polyhaven.com/textures
 - Sky HDRIs, if we ever replace the shader sky: Poly Haven — https://polyhaven.com/hdris
 - UI click and combat sound effects: Kenney audio packs — https://kenney.nl/assets/category:Audio
+- Rain, wind and thunder recordings (to replace the synthesized storm): must be CC0, for example from freesound.org with the CC0 filter — https://freesound.org
 - Music and the lullaby: must be ORIGINAL (record or compose it ourselves); do not use an existing song.

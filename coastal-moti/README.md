@@ -3,9 +3,8 @@
 An original 3D third-person action-adventure for the browser, set on the Konkan coast.
 Story campaign + a battle mode against bots. Runs on phones (touch) and PC (keyboard + mouse).
 
-**Status: core engine.** Movement, camera, controls, HUD, mission system, save, combat and bot AI work
-with placeholder art. There are **no story missions yet**: the only mission is an engine test
-("Systems Check") that exercises every system.
+**Status: Mission 0 "Andhera" is playable** with placeholder art (about 4 minutes: storm night, compass
+tutorial, lighthouse cutscene, stealth escape with checkpoints). Mission 1 is only a placeholder card.
 
 ## Controls
 
@@ -51,60 +50,88 @@ src/
   main.js             entry point: device check, settings, starts the game
   game.js             wires all systems together and runs the frame loop
   engine/
-    engine.js         renderer, scene, lights, loop, quality switching
-    world.js          TEST ARENA: terrain height field, instanced props, collision + line-of-sight API
+    engine.js         renderer, scene, lights, loop, quality + environment switching
+    environments.js   look presets: ENV_DAY, ENV_STORM_NIGHT (sky, light, sea, fog, rain, lightning)
+    weather.js        rain (one draw call, animated in the shader) and lightning
+    world.js          level loader + builder helpers + collision / line-of-sight API
     player.js         third-person controller: walk, run, dodge-roll, attack, Shakti, Burst, Tool
-    cameraRig.js      smooth follow camera with wall avoidance
-    input.js          one input state for keyboard, mouse and touch
-    combat.js         pooled projectiles, ring/beam effects
-    health.js         shared health component
-    shaktis.js        the five Shaktis (data + icons)
-    sky.js sea.js quality.js device.js events.js mathx.js
-  ai/bot.js           bot state machine: patrol, investigate, chase, shoot, cover
+    cameraRig.js      follow camera with wall avoidance + cutscene camera
+    input.js combat.js health.js shaktis.js sky.js sea.js quality.js device.js events.js mathx.js
+  levels/
+    seepgaon.js       the village, the hill and the Diya-Ghar lighthouse (storm night)
+    testArena.js      daytime combat test island
+  ai/
+    guard.js          stealth guard: fixed waypoint route, torch vision cone, hearing
+    bot.js            combat bot: patrol, investigate, chase, shoot, cover
   missions/
-    missionManager.js mission flow, objectives, saving
-    systemsCheck.js   the engine test mission (replace with Mission 1 later)
-  ui/                 hud.js, touchControls.js, pauseMenu.js, missionCard.js, radio.js, *.css
-  audio/audio.js      sound hooks (synthesized placeholder beeps)
-  save/               save.js (progress), settings.js (quality, sound)
+    missionManager.js mission flow, objectives, checkpoints, scripts, saving
+    andhera.js        Mission 0 "Andhera"
+    mission1Placeholder.js
+    systemsCheck.js   combat test mission (developer only)
+  ui/                 hud.js, touchControls.js, pauseMenu.js, missionCard.js, radio.js, overlays.js,
+                      compassTutorial.js, letter.js, *.css
+  audio/audio.js      sound hooks (synthesized placeholder sounds, storm ambience, thunder)
+  save/               save.js (progress, checkpoint, flags), settings.js (quality, sound)
 assets/               icons/ (original) · models/ textures/ audio/ are still empty
 licenses/ASSETS.md    one line per third-party asset: name, author, URL, license
 ```
 
+## Mission 0 "Andhera" (23:40 · Seepgaon Diya-Ghar)
+
+1. The lighthouse flickers three times and goes dark. Baba's radio call cuts off.
+2. **Compass tutorial:** take Dadaji's brass compass from the porch and turn it. The needle always swings
+   back to the same direction: the island. Saves the flag `compassPointsToIsland` (needed in the finale).
+3. Climb the lane to the Diya-Ghar. Cutscene: men in black cut the lamp wires.
+4. **Stealth escape:** four guards walk fixed routes. The lit cone on the ground is exactly what a torch
+   can see; walls and houses cut it. Standing under a street lamp makes Veer visible from far away
+   (the HUD shows HIDDEN / IN LIGHT / SEEN). Running close to a guard makes it stop and look.
+   If the meter fills: "Spotted", then back to the last checkpoint.
+5. Take Dadaji's tin box at the boat shed (half a map + a letter), then get home.
+6. Objective card, one-line card, then the Mission 1 placeholder card.
+
+Checkpoints (saved to localStorage, a refresh resumes there): `compass`, `escape`, `mid`, `box`.
+Flags saved in `progress.flags`: `hasCompass`, `compassPointsToIsland`, `hasHalfMap`, `hasDadajiLetter1`.
+To replay the mission after finishing it: pause menu -> "Reset all progress".
+Developer option: open `/?mission=t0_systems_check` for the daytime combat test arena.
+
 ## How to add a mission
 
 A mission is a plain object registered in `src/game.js` with `game.missions.register(mission)`.
-Copy `src/missions/systemsCheck.js` as a template:
+`src/missions/andhera.js` is the full example. The minimum is:
 
 ```js
 export const mission = {
   id: 'm1_example', name: 'Mission name', location: 'Seepgaon Diya-Ghar', time: '23:40',
+  level: 'seepgaon',
   objectives: [{ id: 'reach', text: 'Reach the gate', target: { x: 0, z: 0 } }],
-  start(ctx)      { ctx.placePlayer(0, 51); ctx.radio('Deepak', 'Move.'); },
-  update(ctx, dt) { if (ctx.playerNear({ x: 0, z: 0 }, 2.5)) ctx.completeObjective('reach'); },
-  complete(ctx)   { ctx.unlockShakti('vayu'); },
+  endLine: 'Optional one-line card at the end.',
+  start(ctx, checkpoint) { ctx.placePlayer(0, 38); ctx.radio('Aangan', 'Move.'); },
+  update(ctx, dt)        { if (ctx.playerNear({ x: 0, z: 0 }, 2.5)) ctx.completeObjective('reach'); },
+  complete(ctx)          { ctx.unlockShakti('vayu'); },
 };
 ```
 
-`ctx` also offers `spawnBot({ x, z, patrol: [{x, z}, ...] })`, `setTarget(pos)` and `setObjectiveText(id, text)`.
-The card shows `time · location` and the name, then fades to gameplay. Radio lines over 12 words are cut
-and reported in the console. Saved to localStorage: current mission, completed missions, unlocked Shaktis,
-player level. Progress *inside* a mission is not saved: a refresh restarts the current mission.
+`ctx` also offers `checkpoint(id)`, `fail(title)`, `setFlag(name)`, `skipTo(objectiveId)`,
+`script(async (s) => { await s.wait(2); ... })` for timed sequences, `spawnBot(...)`, `setTarget(pos)` and
+`setObjectiveText(id, text)`. Radio lines over 12 words are cut and reported in the console.
 
 ## Sound hooks
 
-Every event calls `game.audio.play('<name>')` (attack, hit, hurt, dodge, shoot, shakti, burst, radio,
-objective, missionComplete ...). Today each name is a short synthesized beep. To swap in a real file:
-`game.audio.load('attack', 'assets/audio/attack.ogg')`, then add the file to `licenses/ASSETS.md`.
+Every event calls `game.audio.play('<name>')` (attack, hit, hurt, dodge, radio, objective, thunder, static,
+flicker, pickup ...). Today each name is a short synthesized sound, and the storm ambience is filtered noise.
+To swap in a real file: `game.audio.load('attack', 'assets/audio/attack.ogg')`, then add the file to
+`licenses/ASSETS.md`.
 
-## Known limits (engine stage)
+## Known limits
 
 - All art is placeholder shapes; characters have no skeletal animation.
-- Bots steer in straight lines with a sidestep when stuck. There is no path-finding (nav-mesh) yet.
-- Line of sight and bullets are checked in 2D against walls and big rocks; crates and palms do not block shots.
-- No jumping or climbing; water deeper than knee height is a wall.
+- "Climbing the lighthouse" is a cutscene: there are no interiors, stairs, jumping or climbing yet.
+- Guards never leave their routes (by design for this mission) and do not search for the player.
+- Line of sight is checked in 2D against walls, houses and tall stacks; low props do not hide Veer.
+- Combat bots (test arena) still have no path-finding.
 - Shakti effects and all damage numbers are placeholder tuning.
 - Not yet profiled on a real phone. The 30 FPS target must be checked on a mid-range Android device.
+- Stealth difficulty was tuned with an automated walker, not with human players.
 
 ## Tech rules
 

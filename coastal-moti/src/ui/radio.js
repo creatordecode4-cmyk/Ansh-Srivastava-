@@ -16,7 +16,7 @@ export function createRadio(game) {
     who.textContent = next.callsign;
     line.textContent = next.text;
     el.hidden = false;
-    game.audio.play('radio');
+    game.audio.play(next.sound || 'radio');
     game.events.emit('radio', next);
     const words = next.text.split(/\s+/).length;
     timer = setTimeout(() => {
@@ -27,13 +27,14 @@ export function createRadio(game) {
   }
 
   return {
-    say(callsign, text) {
+    // options.sound: play this sound hook instead of the normal radio blip.
+    say(callsign, text, options = {}) {
       const words = text.trim().split(/\s+/);
       if (words.length > MAX_WORDS) {
         console.warn(`Radio line is over ${MAX_WORDS} words and was cut: "${text}"`);
         text = words.slice(0, MAX_WORDS).join(' ');
       }
-      queue.push({ callsign, text: text.trim() });
+      queue.push({ callsign, text: text.trim(), sound: options.sound });
       pump();
     },
     hold(v) { held = v; if (!v) pump(); },

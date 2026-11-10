@@ -11,6 +11,7 @@ export function createHud(game) {
   const compass = $('compass'), arrow = compass.firstElementChild;
   const flash = $('damage-flash');
   const btnShakti = $('btn-shakti'), btnBurst = $('btn-burst');
+  const stealth = $('stealth'), stealthFill = stealth.querySelector('i'), stealthLabel = $('stealth-label');
   const last = {};
   const set = (key, value, apply) => { if (last[key] !== value) { last[key] = value; apply(value); } };
 
@@ -52,6 +53,19 @@ export function createHud(game) {
       btnShakti.classList.toggle('locked', curLocked);
       btnShakti.style.setProperty('--c', curLocked ? '' : hex(cur.color));
     });
+
+    // Stealth meter (only while a stealth mission sets game.stealth).
+    const st = game.stealth;
+    set('stealthOn', !!st, (v) => { stealth.hidden = !v; });
+    if (st) {
+      const mode = st.level > 0.02 ? 'seen' : st.lit ? 'lit' : 'hidden';
+      set('stealthMode', mode, (v) => {
+        stealth.classList.toggle('seen', v === 'seen');
+        stealth.classList.toggle('lit', v === 'lit');
+        stealthLabel.textContent = v === 'seen' ? 'SEEN' : v === 'lit' ? 'IN LIGHT' : 'HIDDEN';
+      });
+      set('stealthLevel', st.level.toFixed(2), (v) => { stealthFill.style.transform = `scaleX(${v})`; });
+    }
 
     // Objective text + compass arrow (points at the objective relative to where the camera looks).
     const text = game.missions.objectiveText;

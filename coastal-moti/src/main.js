@@ -8,7 +8,8 @@ const errorEl = document.getElementById('error');
 try {
   const mobile = isMobile();
   const settings = loadSettings({ quality: mobile ? 'low' : 'medium', muted: false });
-  const game = createGame({ canvas: document.getElementById('game'), mobile, settings });
+  const devMission = new URLSearchParams(location.search).get('mission');
+  const game = createGame({ canvas: document.getElementById('game'), mobile, settings, devMission });
   game.start();
   window.__moti = game; // handy for debugging and automated smoke tests
 } catch (err) {

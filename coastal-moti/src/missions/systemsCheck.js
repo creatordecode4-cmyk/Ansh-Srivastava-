@@ -1,6 +1,5 @@
-// ENGINE TEST MISSION. Not part of the story campaign: it exists to exercise every system
-// (movement, objectives, compass, radio, Shakti unlock, bots, save). Replace or remove it
-// when Mission 1 is built. Radio lines follow the bible: max 12 words, radio tone.
+// ENGINE TEST MISSION. Not part of the story campaign: it exists to exercise the combat systems
+// (bots, Shakti unlock, Burst). It only loads when the game is opened with ?mission=t0_systems_check. Radio lines follow the bible: max 12 words, radio tone.
 
 const MARKER = { x: -10, z: 30 };
 const BOAT = { x: 0, z: 51 };
@@ -15,6 +14,7 @@ export const systemsCheck = {
   name: 'Systems Check',
   location: 'Seepgaon Beach',
   time: '06:10',
+  level: 'testArena',
   objectives: [
     { id: 'move', text: 'Reach the marker on the beach', target: MARKER },
     { id: 'clear', text: 'Clear the training bots' },

@@ -39,6 +39,14 @@
       </div>
     </div>
 
+    <!-- Stealth meter: only shown by stealth missions -->
+    <div id="stealth" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12c3-5 6.5-7 10-7s7 2 10 7c-3 5-6.5 7-10 7s-7-2-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      <div class="st-bar"><i></i></div>
+      <span id="stealth-label"></span>
+    </div>
+    <div id="toast"></div>
+
     <div id="top-right">
       <button id="pause-btn" type="button" aria-label="Pause"><i></i><i></i></button>
       <div id="fps" aria-hidden="true"></div>
@@ -61,7 +69,47 @@
     </div>
   </div>
 
+  <div id="banner"></div>
   <div id="damage-flash"></div>
+  <div id="fade"></div>
+
+  <div id="alert" class="overlay" hidden>
+    <div id="alert-title"></div>
+    <div id="alert-sub"></div>
+  </div>
+
+  <!-- Dadaji's brass compass (Mission 0 tutorial) -->
+  <div id="compass-ui" class="overlay" hidden>
+    <div class="cz-title">Dadaji's brass compass</div>
+    <div class="cz-stage" id="cz-stage">
+      <div class="cz-mark" id="cz-mark"><i></i><span>THE ISLAND</span></div>
+      <svg class="cz-case" id="cz-case" viewBox="-110 -110 220 220"></svg>
+      <svg class="cz-needle" id="cz-needle" viewBox="-110 -110 220 220">
+        <path d="M0 -78 9 0 0 12 -9 0z" fill="#c8402f"/><path d="M0 78 9 0 0 -12 -9 0z" fill="#d9dde2"/><circle r="6" fill="#3a2a12"/>
+      </svg>
+    </div>
+    <div class="cz-pips" id="cz-pips"><i></i><i></i><i></i></div>
+    <div class="cz-text" id="cz-text"></div>
+    <div class="cz-hint" id="cz-hint"></div>
+    <button type="button" id="cz-done" hidden>Keep the compass</button>
+  </div>
+
+  <!-- Dadaji's tin box: half a map and a letter -->
+  <div id="letter" class="overlay" hidden>
+    <div class="lt-paper">
+      <div class="lt-title">Dadaji's tin box</div>
+      <svg class="lt-map" viewBox="0 0 200 110" aria-label="Half of a hand-drawn map">
+        <path d="M4 6h150l10 14-8 12 12 14-9 13 11 15-8 13 6 17H4z" fill="#e6d3a3" stroke="#6b4f2a" stroke-width="2"/>
+        <path d="M22 78c14-22 30-8 44-26s30-4 46-20 26-6 38-10" fill="none" stroke="#6b4f2a" stroke-width="2" stroke-dasharray="5 5"/>
+        <path d="M30 34l8 12 8-12zM20 84c6-5 12-5 18 0M92 70c6-5 12-5 18 0" fill="none" stroke="#6b4f2a" stroke-width="2"/>
+        <circle cx="26" cy="78" r="4" fill="#8f3a2e"/>
+      </svg>
+      <div class="lt-item">Half a map. The other half is torn away.</div>
+      <p class="lt-text" id="lt-text"></p>
+      <div class="lt-sign">Dadaji</div>
+      <button type="button" id="lt-done">Keep it safe</button>
+    </div>
+  </div>
 
   <div id="down" class="overlay" hidden>
     <div class="down-text">Disha is down. Restarting.</div>

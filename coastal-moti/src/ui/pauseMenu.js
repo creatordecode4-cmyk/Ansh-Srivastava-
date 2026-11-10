@@ -53,6 +53,7 @@ export function createPauseMenu(game) {
     game.settings.muted = b.dataset.muted === 'true';
     saveSettings(game.settings);
     refresh();
+    game.audio.refresh();
     game.audio.play('ui');
   }));
 

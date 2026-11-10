@@ -10,7 +10,14 @@ import { createBot } from './ai/bot.js';
 import { createAudio } from './audio/audio.js';
 import { loadProgress, saveProgress, clearProgress, freshProgress } from './save/save.js';
 import { createMissionManager } from './missions/missionManager.js';
+import { andhera } from './missions/andhera.js';
+import { mission1Placeholder } from './missions/mission1Placeholder.js';
 import { systemsCheck } from './missions/systemsCheck.js';
+import { testArena } from './levels/testArena.js';
+import { seepgaon } from './levels/seepgaon.js';
+import { createOverlays } from './ui/overlays.js';
+import { createCompassTutorial } from './ui/compassTutorial.js';
+import { createLetter } from './ui/letter.js';
 import { createHud } from './ui/hud.js';
 import { createRadio } from './ui/radio.js';
 import { createMissionCard } from './ui/missionCard.js';
@@ -19,9 +26,10 @@ import { enableTouchControls } from './ui/touchControls.js';
 import { showControlsHint } from './ui/controlsHint.js';
 
 const XP_PER_BOT = 40, XP_PER_LEVEL = 100;
+const LEVELS = { testArena, seepgaon };
 
 // Wires every system together. `game` is the shared context that systems receive.
-export function createGame({ canvas, mobile, settings }) {
+export function createGame({ canvas, mobile, settings, devMission = null }) {
   const engine = createEngine(canvas, settings.quality);
   const game = {
     engine, scene: engine.scene, mobile, settings,
@@ -31,6 +39,7 @@ export function createGame({ canvas, mobile, settings }) {
     paused: false,   // pause menu open
     frozen: true,    // mission card / "down" screen: the world does not tick
     objectiveTarget: null,
+    stealth: null,   // { level: 0..1, lit: boolean } while a stealth mission runs
   };
   game.audio = createAudio(settings);
   game.input = createInput(canvas);
@@ -40,6 +49,9 @@ export function createGame({ canvas, mobile, settings }) {
   game.combat = createCombat(game);
   game.radio = createRadio(game);
   game.card = createMissionCard(mobile);
+  game.compassTutorial = createCompassTutorial(game);
+  game.letter = createLetter();
+  Object.assign(game, createOverlays()); // fade, toast, banner, showAlert, hideAlert, setCinematic
   game.missions = createMissionManager(game);
   game.pauseMenu = createPauseMenu(game);
   game.hud = createHud(game);
@@ -56,11 +68,28 @@ export function createGame({ canvas, mobile, settings }) {
   // ---- shared services -----------------------------------------------------
   game.persist = () => saveProgress(game.progress);
   game.setObjectiveTarget = (pos) => { game.objectiveTarget = pos; };
-  game.noise = (pos, radius) => { for (const b of game.bots) b.hear(pos, radius); };
+  game.noise = (pos, radius) => {
+    for (const b of game.bots) b.hear(pos, radius);
+    game.events.emit('noise', { pos, radius });
+  };
 
-  game.placePlayer = (x, z, yaw = 0) => {
+  // Levels: build the world and apply its sky, sea, fog, weather and background sound.
+  game.loadLevel = (id) => {
+    if (game.world.id === id) return;
+    const def = LEVELS[id];
+    game.world.load(def);
+    engine.setEnvironment(def.env);
+    game.audio.setAmbient(def.env.ambientSound);
+  };
+  engine.weather.onStrike = () => setTimeout(() => game.audio.play('thunder'), 300 + Math.random() * 900);
+
+  // Missions register clean-up for the things they create (guards, props).
+  const resetHooks = [];
+  game.onReset = (fn) => resetHooks.push(fn);
+
+  game.placePlayer = (x, z, yaw = 0, pitch = 0.32) => {
     game.player.reset(x, z, yaw + Math.PI); // face the way the camera looks
-    game.rig.yaw = yaw; game.rig.pitch = 0.32;
+    game.rig.yaw = yaw; game.rig.pitch = pitch;
     game.rig.snap();
   };
 
@@ -101,6 +130,13 @@ export function createGame({ canvas, mobile, settings }) {
     game.bots.length = 0;
     game.combat.clear();
     game.radio.clear();
+    resetHooks.splice(0).forEach((fn) => fn());
+    game.stealth = null;
+    game.rig.cinematic = null;
+    game.setCinematic(false);
+    game.hideAlert();
+    game.compassTutorial.close();
+    game.letter.close();
     document.getElementById('down').hidden = true;
   };
 
@@ -111,17 +147,18 @@ export function createGame({ canvas, mobile, settings }) {
     game.player.root.visible = false;
     document.getElementById('down').hidden = false;
     clearTimeout(downTimer);
-    downTimer = setTimeout(() => game.missions.restart(), 1800);
+    downTimer = setTimeout(() => game.missions.restartFromCheckpoint(), 1800);
   };
 
   game.resetProgress = () => {
     clearProgress();
     Object.assign(game.progress, freshProgress());
     game.player.currentShakti = 0;
-    game.missions.start(game.missions.list[0].id);
+    game.missions.start(game.missions.list[0].id, { useCheckpoint: false });
   };
 
   // ---- frame loop ----------------------------------------------------------
+  let time = 0;
   engine.onUpdate((dt) => {
     const { input, player } = game;
     if (input.take('lockLost') && !game.frozen) game.pauseMenu.open();
@@ -136,11 +173,17 @@ export function createGame({ canvas, mobile, settings }) {
       }
       game.combat.update(dt);
       game.missions.update(dt);
-    } else input.lookDelta(); // drop look input gathered while paused
+    }
+    if (!game.paused) {           // cutscenes and level animation keep running while the world is frozen
+      time += dt;
+      game.world.update(dt, time);
+      game.missions.tick(dt);
+    }
     game.rig.update(dt, live);
+    if (!live) input.lookDelta(); // drop look input gathered while paused
 
     const t = game.objectiveTarget;
-    beacon.visible = !!t;
+    beacon.visible = !!t && !game.rig.cinematic;
     if (t) {
       beaconPulse = Math.max(0, beaconPulse - dt);
       beacon.position.set(t.x, game.world.heightAt(t.x, t.z) + 7, t.z);
@@ -169,11 +212,14 @@ export function createGame({ canvas, mobile, settings }) {
   document.addEventListener('visibilitychange', () => { if (document.hidden && !game.frozen) game.pauseMenu.open(); });
 
   // ---- missions ------------------------------------------------------------
-  game.missions.register(systemsCheck);
+  game.missions.register(andhera);
+  game.missions.register(mission1Placeholder);
+  // Developer option: ?mission=t0_systems_check loads the combat test arena.
+  if (devMission === systemsCheck.id) game.missions.register(systemsCheck);
 
   game.start = () => {
     engine.start();
-    game.missions.start(game.progress.currentMission);
+    game.missions.start(devMission || game.progress.currentMission);
   };
   return game;
 }

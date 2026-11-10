@@ -104,3 +104,64 @@
 .seg button.on { background: var(--ink); color: #0b2a3a; font-weight: 700; }
 #pm-help { margin-top: 10px; font-size: 11.5px; line-height: 1.5; opacity: .75; text-align: left; }
 @media (max-height: 420px) { .panel { padding: 10px 16px; } .panel h2 { display: none; } .panel button { min-height: 40px; } #pm-help { display: none; } }
+
+/* ---------- stealth meter, toast, banner, alert, fade, cinematic ---------- */
+#stealth { position: absolute; top: calc(var(--st) + 52px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px;
+  padding: 3px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+#stealth svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+#stealth .st-bar { width: 70px; height: 6px; background: rgba(0, 0, 0, .5); border-radius: 3px; overflow: hidden; }
+#stealth .st-bar i { display: block; height: 100%; transform-origin: left; transform: scaleX(0); background: var(--hp); }
+#stealth.lit { color: var(--brass); border-color: var(--brass); }
+#stealth.seen { color: #ff8f8a; border-color: var(--hp); }
+#toast { position: absolute; top: calc(var(--st) + 84px); left: 50%; transform: translateX(-50%); padding: 4px 12px; font-size: 12px;
+  background: rgba(4, 16, 24, .78); border-radius: 12px; opacity: 0; transition: opacity .4s; white-space: nowrap; }
+#toast.on { opacity: 1; }
+
+#banner { position: fixed; left: 0; right: 0; top: 30%; z-index: 4; pointer-events: none; text-align: center; padding: 14px 20px;
+  font-size: clamp(18px, 3.6vw, 30px); font-weight: 800; letter-spacing: .04em; text-shadow: 0 2px 8px rgba(0, 0, 0, .8);
+  background: linear-gradient(90deg, transparent, rgba(4, 16, 24, .82) 25%, rgba(4, 16, 24, .82) 75%, transparent);
+  border-top: 2px solid var(--brass); border-bottom: 2px solid var(--brass); opacity: 0; transition: opacity .6s; }
+#banner.on { opacity: 1; }
+#fade { position: fixed; inset: 0; z-index: 8; background: #000; opacity: 0; pointer-events: none; transition: opacity .4s linear; }
+#alert { z-index: 9; background: rgba(60, 8, 10, .55); }
+#alert-title { font-size: clamp(34px, 8vw, 72px); font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: #ffd9d6; }
+#alert-sub { margin-top: 6px; font-size: 14px; letter-spacing: .06em; }
+
+body.cine #hud { opacity: 0; }
+#hud { transition: opacity .3s; }
+body.cine::before, body.cine::after { content: ""; position: fixed; left: 0; right: 0; height: 11vh; background: #000; z-index: 5; }
+body.cine::before { top: 0; } body.cine::after { bottom: 0; }
+body.cine #radio { position: fixed; bottom: 13vh; top: auto; z-index: 6; }
+#mission-card.line #card-meta, #mission-card.line #card-skip { display: none; }
+#mission-card.line #card-name { font-size: clamp(18px, 3.6vw, 30px); font-weight: 600; letter-spacing: .06em; }
+#mission-card.line #card-name::after { display: none; }
+
+/* ---------- brass compass tutorial ---------- */
+#compass-ui { z-index: 12; background: rgba(4, 12, 18, .86); padding: 10px; gap: 8px; touch-action: none; }
+.cz-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--brass); }
+.cz-stage { position: relative; width: min(52vh, 70vw, 300px); aspect-ratio: 1; cursor: grab; touch-action: none; }
+.cz-stage:active { cursor: grabbing; }
+.cz-case, .cz-needle { position: absolute; inset: 9%; width: 82%; height: 82%; }
+.cz-needle { pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5)); }
+.cz-mark { position: absolute; inset: 0; pointer-events: none; opacity: .25; transition: opacity .4s; }
+.cz-mark i { position: absolute; left: 50%; top: 0; width: 0; height: 0; margin-left: -9px; border: 9px solid transparent; border-top: 14px solid var(--brass); }
+.cz-mark span { position: absolute; left: 50%; top: -17px; transform: translateX(-50%); font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--brass); opacity: 0; white-space: nowrap; }
+.cz-mark.hit { opacity: 1; }
+.cz-mark.named span { opacity: 1; }
+.cz-pips { display: flex; gap: 8px; }
+.cz-pips i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--brass); }
+.cz-pips i.on { background: var(--brass); }
+.cz-text { min-height: 2.4em; max-width: 440px; font-size: 15px; font-weight: 600; }
+.cz-hint { font-size: 12px; opacity: .7; }
+#cz-done, #lt-done { min-height: 46px; padding: 0 22px; background: var(--brass); color: #1b1203; border: 0; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+/* ---------- Dadaji's letter ---------- */
+#letter { z-index: 12; background: rgba(4, 12, 18, .86); padding: 10px; }
+.lt-paper { width: min(92vw, 430px); max-height: 96vh; overflow: auto; padding: 14px 20px; background: #efe2c2; color: #3a2a12; border-radius: 6px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .6); text-shadow: none; }
+.lt-title { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: #8f3a2e; font-weight: 700; }
+.lt-map { width: 46%; margin: 6px auto 0; display: block; }
+.lt-item { font-size: 12px; opacity: .75; }
+.lt-text { margin: 10px 0 2px; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: clamp(15px, 2.6vw, 19px); line-height: 1.45; }
+.lt-sign { font-family: Georgia, serif; font-style: italic; text-align: right; margin-bottom: 10px; }
+@media (max-height: 420px) { .cz-stage { width: min(46vh, 300px); } .cz-text { font-size: 13px; min-height: 1.3em; } .lt-map { width: 30%; } .lt-paper { padding: 8px 18px; } }
