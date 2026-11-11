@@ -8,3 +8,4 @@ out
 
 # cinematic laptop scene renders (large binaries, regenerate with scripts/01_prepare.py + scripts/02_render.py)
 /output/
+__pycache__/
