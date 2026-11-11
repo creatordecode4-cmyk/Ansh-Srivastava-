@@ -5,3 +5,6 @@ out
 .env*
 .DS_Store
 *.log
+
+# cinematic laptop scene renders (large binaries, regenerate with scripts/01_prepare.py + scripts/02_render.py)
+/output/
