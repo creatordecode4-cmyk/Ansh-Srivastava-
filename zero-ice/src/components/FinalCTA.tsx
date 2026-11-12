@@ -28,28 +28,28 @@ export function FinalCTA() {
   }
 
   return (
-    <PinSection id="cta" vh={sectionVh.cta} ref={ref}>
+    <PinSection id="cta" vh={sectionVh.cta} ref={ref} tone="gradient" glow="left-[-10%] top-[16%] hidden h-[64%] w-[60%] md:block">
       <div ref={reveal} className="absolute inset-0 mx-auto max-w-[1500px]">
         <div className="absolute inset-x-5 top-[11svh] text-center md:inset-x-auto md:left-[7%] md:top-1/2 md:w-[44%] md:-translate-y-1/2 md:text-left">
           <p className="eyebrow mb-3" data-cta="item" data-reveal>
-            08 · The Drop
+            The Drop
           </p>
           <h2 id="cta-title" className="display text-[12.5vw] md:text-[clamp(3.6rem,6vw,7.2rem)]" data-cta="item" data-reveal>
-            Get your first case <span className="text-ice">ice cold.</span>
+            Get your first case <span className="text-cyan">ice cold.</span>
           </h2>
-          <p className="mx-auto mt-3 max-w-md text-base text-silver md:mx-0 md:mt-5 md:text-lg" data-cta="item" data-reveal>
+          <p className="mx-auto mt-3 max-w-md text-base text-frost md:mx-0 md:mt-5 md:text-lg" data-cta="item" data-reveal>
             Be first in line when the next drop lands. No spam, just cold cola.
           </p>
           <div className="mt-4 min-h-[112px] md:mt-7" data-cta="item" data-reveal>
             {done ? (
               <div className="pop-in flex items-center justify-center gap-4 md:justify-start" role="status">
                 <svg width="52" height="52" viewBox="0 0 52 52" className="success-ring shrink-0" aria-hidden="true">
-                  <circle cx="26" cy="26" r="24" fill="#1E6BFF" />
-                  <path className="success-check" d="M15 27l8 8 14-17" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="26" cy="26" r="24" fill="#00D5E7" />
+                  <path className="success-check" d="M15 27l8 8 14-17" fill="none" stroke="#071522" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p className="text-left">
                   <span className="display block text-3xl md:text-4xl">You're in.</span>
-                  <span className="text-silver">Demo only: no email was sent or stored.</span>
+                  <span className="text-frost">Demo only: no email was sent or stored.</span>
                 </p>
               </div>
             ) : (
@@ -57,7 +57,7 @@ export function FinalCTA() {
                 <label htmlFor="drop-email" className="sr-only">
                   Email address
                 </label>
-                <div className={`flex rounded-full border bg-ink/70 p-1.5 backdrop-blur transition-colors ${error ? 'border-[#FF8A8A]' : 'border-white/25 focus-within:border-ice'}`}>
+                <div className={`flex rounded-full border bg-midnight/70 p-1.5 backdrop-blur transition-colors ${error ? 'border-[#FF8A8A]' : 'border-frost/25 focus-within:border-cyan'}`}>
                   <input
                     id="drop-email"
                     type="email"
@@ -68,7 +68,7 @@ export function FinalCTA() {
                     onChange={(e) => (setEmail(e.target.value), error && setError(''))}
                     aria-invalid={!!error}
                     aria-describedby={error ? 'drop-error' : undefined}
-                    className="min-w-0 flex-1 bg-transparent px-4 text-base text-white placeholder:text-silver/70 focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent px-4 text-base text-silver placeholder:text-frost/70 focus:outline-none"
                   />
                   <button type="submit" className="btn-primary !px-5">
                     Join the Drop
@@ -82,7 +82,7 @@ export function FinalCTA() {
             <a
               href="#faq"
               onClick={(e) => (e.preventDefault(), scrollToSection('faq'))}
-              className="mt-1 inline-flex min-h-[44px] items-center gap-2 font-display text-lg font-bold uppercase tracking-widest text-white underline decoration-ice decoration-2 underline-offset-4 hover:text-ice"
+              className="mt-1 inline-flex min-h-[44px] items-center gap-2 font-display text-lg font-bold uppercase tracking-widest text-silver underline decoration-cyan decoration-2 underline-offset-4 hover:text-cyan"
             >
               Find a store
               <span aria-hidden="true">→</span>

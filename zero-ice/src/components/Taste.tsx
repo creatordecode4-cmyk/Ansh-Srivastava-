@@ -23,29 +23,29 @@ export function Taste() {
   })
 
   return (
-    <PinSection id="taste" vh={sectionVh.taste} ref={ref}>
+    <PinSection id="taste" vh={sectionVh.taste} ref={ref} tone="gradient" glow="left-[-10%] top-[18%] hidden h-[60%] w-[58%] md:block">
       <div ref={reveal} className="absolute inset-0 mx-auto max-w-[1500px]">
         <div className="absolute inset-x-5 bottom-[5svh] md:inset-x-auto md:bottom-auto md:left-[7%] md:top-1/2 md:w-[40%] md:-translate-y-1/2">
           <div data-taste="head" data-reveal>
-            <p className="eyebrow mb-3">04 · Taste Profile</p>
+            <p className="eyebrow mb-3">Taste Profile</p>
             <h2 id="taste-title" className="display text-5xl md:text-[clamp(3.5rem,5.6vw,6.5rem)]">
-              Bold up front. <span className="text-ice">Clean finish.</span>
+              Bold up front. <span className="text-cyan">Clean finish.</span>
             </h2>
           </div>
           <ul className="mt-6 space-y-4 md:mt-10 md:space-y-6" aria-label="Taste profile, out of 100">
             {BARS.map((b, i) => (
               <li key={b.label} data-taste={`row-${i}`} data-reveal>
                 <div className="mb-2 flex items-baseline justify-between">
-                  <span className="font-display text-xl font-bold uppercase tracking-[0.2em] text-white md:text-2xl">{b.label}</span>
+                  <span className="font-display text-xl font-bold uppercase tracking-[0.2em] text-silver md:text-2xl">{b.label}</span>
                   <span className="display text-2xl md:text-3xl">
                     {b.value}
-                    <span className="ml-1 text-base text-silver">/100</span>
+                    <span className="ml-1 text-base text-frost">/100</span>
                   </span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+                <div className="h-2.5 overflow-hidden rounded-full bg-frost/10" aria-hidden="true">
                   <div
                     data-taste={`fill-${i}`}
-                    className="h-full origin-left rounded-full bg-gradient-to-r from-electric to-ice"
+                    className="h-full origin-left rounded-full bg-gradient-to-r from-cyan to-frost"
                     style={{ transform: `scaleX(${motion ? 0 : b.value / 100})` }}
                   />
                 </div>

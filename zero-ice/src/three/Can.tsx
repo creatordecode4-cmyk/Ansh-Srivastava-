@@ -73,7 +73,7 @@ export function createCanAssets(mobile: boolean): CanAssets {
   const bodyMats = { original: mk(labels.original), lime: mk(labels.lime), cherry: mk(labels.cherry) }
   const metal = new THREE.MeshStandardMaterial({ color: '#cfd5da', metalness: 1, roughness: 0.3 })
   const dropMat = new THREE.MeshPhysicalMaterial({
-    color: '#dcebff',
+    color: '#d5f6fb',
     roughness: 0.04,
     metalness: 1,
     transparent: true,

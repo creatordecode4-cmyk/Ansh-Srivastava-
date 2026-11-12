@@ -2,7 +2,7 @@
  * Shared scroll state. GSAP ScrollTrigger writes here (see lib/scroll.ts),
  * the 3D scene reads it inside useFrame. No React state on the hot path.
  */
-export const SECTION_IDS = ['hero', 'story', 'why', 'splash', 'taste', 'lineup', 'nutrition', 'fans', 'cta', 'faq'] as const
+export const SECTION_IDS = ['hero', 'trust', 'story', 'journey', 'why', 'numbers', 'splash', 'taste', 'lineup', 'nutrition', 'reviews', 'love', 'community', 'cta', 'faq'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
 
 export interface SectionProgress {

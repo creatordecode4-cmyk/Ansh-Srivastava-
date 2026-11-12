@@ -6,12 +6,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: colors.black,
-        navy: colors.navy,
-        ice: colors.ice,
-        electric: colors.electric,
+        midnight: colors.midnight,
+        deep: colors.deep,
+        cyan: colors.cyan,
+        frost: colors.frost,
         silver: colors.silver,
-        amber: colors.amber,
       },
       fontFamily: {
         display: fonts.display.split(',').map((s) => s.trim()),

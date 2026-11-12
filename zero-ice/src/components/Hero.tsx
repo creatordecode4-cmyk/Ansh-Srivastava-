@@ -139,9 +139,9 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
         )}
       </div>
       {/* scrims: keep the headline readable and melt the video into the page */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ink/50 via-transparent to-transparent" aria-hidden="true" />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink to-transparent md:h-1/4" aria-hidden="true" />
-      <div className="absolute inset-0 hidden bg-gradient-to-r from-transparent from-[52%] to-ink/80 md:block" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-b from-midnight/50 via-transparent to-transparent" aria-hidden="true" />
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-midnight to-transparent md:h-1/4" aria-hidden="true" />
+      <div className="absolute inset-0 hidden bg-gradient-to-r from-transparent from-[52%] to-midnight/80 md:block" aria-hidden="true" />
     </div>
   )
 
@@ -159,7 +159,7 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
           {HEADLINE.map((line, i) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] pr-[0.12em] md:-mr-[0.12em]" aria-hidden="true">
               {line.split(' ').map((w, j) => (
-                <span key={j} data-word className={`inline-block pr-[0.2em] ${i === 2 ? 'text-ice' : ''}`}>
+                <span key={j} data-word className={`inline-block pr-[0.2em] ${i === 2 ? 'text-cyan' : ''}`}>
                   {w}
                 </span>
               ))}
@@ -177,10 +177,10 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
             Watch the Drop
           </a>
         </div>
-        <dl className="mt-4 flex w-full max-w-md items-stretch justify-center divide-x divide-white/15 md:mt-9 md:justify-start" data-fade>
+        <dl className="mt-4 flex w-full max-w-md items-stretch justify-center divide-x divide-frost/15 md:mt-9 md:justify-start" data-fade>
           {STATS.map((s) => (
             <div key={s.label} className="flex flex-col-reverse px-5 first:pl-0 last:pr-0 md:px-7">
-              <dt className="mt-1 font-display text-xs font-bold uppercase tracking-[0.22em] text-silver md:text-sm">{s.label}</dt>
+              <dt className="mt-1 font-display text-xs font-bold uppercase tracking-[0.22em] text-frost md:text-sm">{s.label}</dt>
               <dd className="display text-3xl md:text-5xl">{s.value}</dd>
             </div>
           ))}
@@ -190,7 +190,7 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
         <button
           type="button"
           onClick={replay}
-          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-white/25 bg-ink/60 px-4 font-display text-sm font-bold uppercase tracking-widest text-white backdrop-blur transition-opacity duration-500 hover:border-ice hover:text-ice md:bottom-8 md:left-10 md:top-auto ${
+          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-frost/25 bg-midnight/60 px-4 font-display text-sm font-bold uppercase tracking-widest text-silver backdrop-blur transition-opacity duration-500 hover:border-cyan hover:text-cyan md:bottom-8 md:left-10 md:top-auto ${
             ended && atTop ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           tabIndex={ended && atTop ? 0 : -1}

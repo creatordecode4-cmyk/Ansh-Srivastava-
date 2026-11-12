@@ -11,18 +11,18 @@ const STOPS = [0.04, 0.5, 0.96]
 function VariantCard({ v, notified, onNotify }: { v: (typeof variants)[number]; notified: boolean; onNotify: () => void }) {
   return (
     <article className="glass p-5 text-center md:p-6">
-      <p className="font-display text-sm font-bold uppercase tracking-[0.25em]" style={{ color: v.accent }}>
+      <p className="font-display text-sm font-bold uppercase tracking-[0.25em] text-frost">
         {v.available ? 'Available now' : 'Coming soon'}
       </p>
       <h3 className="display mt-1.5 text-4xl md:text-5xl">{v.name}</h3>
-      <p className="mx-auto mt-2 max-w-md text-base text-silver">{v.blurb}</p>
+      <p className="mx-auto mt-2 max-w-md text-base text-frost">{v.blurb}</p>
       <div className="mt-4 flex min-h-[44px] items-center justify-center" aria-live="polite">
         {v.available ? (
           <a href="#cta" className="btn-primary" onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
             Buy Now
           </a>
         ) : notified ? (
-          <p className="pop-in font-display text-lg font-bold uppercase tracking-widest text-white">✓ You're on the list</p>
+          <p className="pop-in font-display text-lg font-bold uppercase tracking-widest text-silver">✓ You're on the list</p>
         ) : (
           <button type="button" className="btn-ghost" onClick={onNotify}>
             Notify me
@@ -60,13 +60,13 @@ export function Lineup() {
   const v = variants[active]
 
   return (
-    <PinSection id="lineup" vh={sectionVh.lineup} ref={ref}>
+    <PinSection id="lineup" vh={sectionVh.lineup} ref={ref} glow="left-[20%] top-[-6%] h-[42%] w-[60%]">
       <div ref={reveal} className={motion ? 'absolute inset-0' : 'mx-auto max-w-6xl px-5 py-24'}>
         <div className={motion ? 'absolute inset-x-5 top-[11svh] text-center md:top-[12svh]' : 'text-center'}>
           <div data-lineup="head" data-reveal>
-            <p className="eyebrow mb-2">05 · The Lineup</p>
+            <p className="eyebrow mb-2">The Lineup</p>
             <h2 id="lineup-title" className="display text-5xl md:text-7xl">
-              Pick Your <span className="text-ice">Chill.</span>
+              Pick Your <span className="text-cyan">Chill.</span>
             </h2>
           </div>
         </div>
@@ -85,7 +85,7 @@ export function Lineup() {
                   onClick={() => scrollToSection('lineup', STOPS[i])}
                   className="flex h-11 w-11 items-center justify-center"
                 >
-                  <span className={`block h-1.5 rounded-full transition-all duration-300 ${i === active ? 'w-8 bg-ice' : 'w-3 bg-white/35'}`} />
+                  <span className={`block h-1.5 rounded-full transition-all duration-300 ${i === active ? 'w-8 bg-cyan' : 'w-3 bg-frost/35'}`} />
                 </button>
               ))}
             </div>
