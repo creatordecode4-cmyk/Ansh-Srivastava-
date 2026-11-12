@@ -12,19 +12,18 @@ const ITEMS = [
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0)
   return (
-    <section id="faq" aria-labelledby="faq-title" className="relative z-20 bg-midnight px-5 py-24 md:py-32">
+    <section id="faq" aria-labelledby="faq-title" className="relative z-20 px-5 py-24 md:py-32">
       <div className="mx-auto max-w-3xl">
         <Reveal>
-          <p className="eyebrow mb-2">FAQ</p>
-          <h2 id="faq-title" className="display text-6xl md:text-8xl">
-            Cold, hard <span className="text-cyan">answers.</span>
+          <h2 id="faq-title" className="heading text-4xl md:text-6xl">
+            Cold, hard <span>answers.</span>
           </h2>
         </Reveal>
-        <ul className="mt-10 space-y-3">
+        <ul className="mt-10 border-t border-frost/15">
           {ITEMS.map((item, i) => {
             const isOpen = open === i
             return (
-              <Glass as="li" key={item.q} reveal="fade" delay={i * 0.08} className="px-5 md:px-7">
+              <Glass plain as="li" key={item.q} reveal="fade" delay={i * 0.08} className="border-b border-frost/15">
                 <h3>
                   <button
                     type="button"
@@ -32,12 +31,12 @@ export function FAQ() {
                     aria-expanded={isOpen}
                     aria-controls={`faq-a-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
-                    className="flex w-full items-center justify-between gap-6 py-5 text-left font-display text-2xl font-bold uppercase tracking-wide text-silver transition-colors hover:text-cyan md:text-3xl"
+                    className="flex w-full items-center justify-between gap-6 py-5 text-left font-sans text-2xl font-medium text-silver transition-colors hover:text-silver md:text-3xl"
                   >
                     {item.q}
                     <span aria-hidden="true" className={`relative block h-5 w-5 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-45' : ''}`}>
-                      <span className="absolute left-0 top-1/2 h-0.5 w-5 -translate-y-1/2 bg-cyan" />
-                      <span className="absolute left-1/2 top-0 h-5 w-0.5 -translate-x-1/2 bg-cyan" />
+                      <span className="absolute left-0 top-1/2 h-0.5 w-5 -translate-y-1/2 bg-silver/70" />
+                      <span className="absolute left-1/2 top-0 h-5 w-0.5 -translate-x-1/2 bg-silver/70" />
                     </span>
                   </button>
                 </h3>

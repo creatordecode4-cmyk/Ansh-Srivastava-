@@ -56,7 +56,7 @@ export function Navbar() {
         <ul className="hidden items-center gap-7 md:flex lg:gap-9">
           {NAV_LINKS.map((l) => (
             <li key={l.id}>
-              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="font-display text-lg font-bold uppercase tracking-widest text-silver/85 transition-colors hover:text-cyan">
+              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="font-sans text-lg font-medium text-silver/85 transition-colors hover:text-silver">
                 {l.label}
               </a>
             </li>
@@ -87,7 +87,7 @@ export function Navbar() {
         <ul className="flex flex-col px-5 pb-8 pt-2">
           {NAV_LINKS.map((l) => (
             <li key={l.id}>
-              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="display block border-b border-frost/15 py-4 text-4xl">
+              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="heading block border-b border-frost/15 py-4 text-2xl">
                 {l.label}
               </a>
             </li>

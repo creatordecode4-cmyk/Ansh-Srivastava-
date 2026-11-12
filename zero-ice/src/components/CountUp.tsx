@@ -32,7 +32,7 @@ export function CountUp({ stat, className = '', unitClass = '' }: { stat: Pick<S
     <>
       {fmt(v, stat.decimals)}
       {stat.suffix}
-      {stat.unit && <span className={`ml-[0.18em] text-[0.42em] not-italic text-frost ${unitClass}`}>{stat.unit}</span>}
+      {stat.unit && <span className={`ml-[0.18em] text-[0.42em] not-italic text-silver/70 ${unitClass}`}>{stat.unit}</span>}
     </>
   )
   return (

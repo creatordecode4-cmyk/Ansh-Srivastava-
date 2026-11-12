@@ -12,11 +12,12 @@ interface Common {
 }
 
 /** Section tone. Sits behind the fixed WebGL canvas (z-0 vs z-10). */
-function Tone({ tone }: { tone?: Common['tone'] }) {
-  return tone === 'gradient' ? <div className="tone-gradient pointer-events-none absolute inset-0 z-0" aria-hidden="true" /> : null
+/** Tones and heading glows were removed with the matte concrete theme; the props are kept so sections need no edits. */
+function Tone(_: { tone?: Common['tone'] }) {
+  return null
 }
-function Glow({ glow }: { glow?: string }) {
-  return glow ? <div className={`heading-glow pointer-events-none absolute ${glow}`} aria-hidden="true" /> : null
+function Glow(_: { glow?: string }) {
+  return null
 }
 
 interface PinProps extends Common {

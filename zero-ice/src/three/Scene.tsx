@@ -103,14 +103,14 @@ function Cans({ mobile, glbUrl }: { mobile: boolean; glbUrl: string | null }) {
   return (
     <>
       {glbUrl ? (
-        <Suspense fallback={<Can ref={main} assets={assets} variant="original" droplets={mobile ? 24 : 60} />}>
+        <Suspense fallback={<Can ref={main} assets={assets} variant="original" droplets={mobile ? 12 : 26} />}>
           <GlbCan ref={main} url={glbUrl} />
         </Suspense>
       ) : (
-        <Can ref={main} assets={assets} variant="original" droplets={mobile ? 24 : 60} />
+        <Can ref={main} assets={assets} variant="original" droplets={mobile ? 12 : 26} />
       )}
-      <Can ref={lime} assets={assets} variant="lime" droplets={mobile ? 0 : 30} seed={19} />
-      <Can ref={cherry} assets={assets} variant="cherry" droplets={mobile ? 0 : 30} seed={41} />
+      <Can ref={lime} assets={assets} variant="lime" droplets={mobile ? 0 : 12} seed={19} />
+      <Can ref={cherry} assets={assets} variant="cherry" droplets={mobile ? 0 : 12} seed={41} />
     </>
   )
 }
@@ -122,8 +122,8 @@ function Studio() {
       <color attach="background" args={['#02080e']} />
       <Lightformer form="rect" intensity={1.5} color="#ffffff" position={[0, 0.6, 7]} scale={[9, 5, 1]} />
       <Lightformer form="rect" intensity={4} color="#ffffff" position={[0, 6, 0.5]} rotation-x={Math.PI / 2} scale={[7, 2.4, 1]} />
-      <Lightformer form="rect" intensity={10} color={colors.cyan} position={[-6, 0.5, -2.5]} rotation-y={Math.PI / 2} scale={[2, 9, 1]} />
-      <Lightformer form="rect" intensity={10} color="#39b8ff" position={[6, 0.5, -2.5]} rotation-y={-Math.PI / 2} scale={[2, 9, 1]} />
+      <Lightformer form="rect" intensity={7} color={colors.cyan} position={[-6, 0.5, -2.5]} rotation-y={Math.PI / 2} scale={[2, 9, 1]} />
+      <Lightformer form="rect" intensity={5} color={colors.silver} position={[6, 0.5, -2.5]} rotation-y={-Math.PI / 2} scale={[2, 9, 1]} />
       <Lightformer form="rect" intensity={1.2} color={colors.frost} position={[0, -5, 2]} rotation-x={-Math.PI / 2} scale={[8, 4, 1]} />
     </Environment>
   )
@@ -141,7 +141,7 @@ function Effects() {
   })
   return (
     <EffectComposer multisampling={0}>
-      <Bloom mipmapBlur intensity={0.55} luminanceThreshold={0.92} luminanceSmoothing={0.2} radius={0.7} />
+      <Bloom mipmapBlur intensity={0.22} luminanceThreshold={1} luminanceSmoothing={0.2} radius={0.7} />
       <ChromaticAberration ref={ca as never} offset={offset} radialModulation modulationOffset={0.2} />
       <Vignette eskil={false} offset={0.2} darkness={0.75} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

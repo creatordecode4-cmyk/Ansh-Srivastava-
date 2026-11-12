@@ -4,8 +4,8 @@ export function Logo({ className = '', title = 'ZERO ICE' }: { className?: strin
     <svg viewBox="0 0 196 44" className={className} role="img" aria-label={title} xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="zi-band" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#B9F5FF" />
-          <stop offset="1" stopColor="#00D5E7" />
+          <stop offset="0" stopColor="#F4F9FC" />
+          <stop offset="1" stopColor="#C9D5DD" />
         </linearGradient>
       </defs>
       <text x="2" y="35" fontFamily='"Barlow Condensed","Arial Narrow",sans-serif' fontWeight="900" fontStyle="italic" fontSize="42" fill="#F4F9FC" letterSpacing="0.5">

@@ -18,9 +18,8 @@ export function Story() {
       <div className="absolute inset-0 mx-auto max-w-[1500px]">
         <div className="absolute inset-x-5 top-[12svh] text-center md:inset-x-auto md:left-[6%] md:top-1/2 md:w-[27%] md:-translate-y-1/2 md:text-left">
           <div data-story="head">
-            <p className="eyebrow mb-3">The Story</p>
-            <h2 id="story-title" className="display text-6xl md:text-[clamp(4rem,7vw,8.5rem)]">
-              Born <span className="text-cyan">Cold.</span>
+            <h2 id="story-title" className="heading text-4xl md:text-[clamp(2.75rem,4.4vw,4.5rem)]">
+              Born <span>Cold.</span>
             </h2>
           </div>
         </div>
@@ -30,9 +29,9 @@ export function Story() {
               We took the chill of crushed ice and the kick of cola, and removed everything else.
             </p>
             <div className="mx-auto mt-5 flex max-w-[16rem] items-center gap-3 md:mx-0" aria-hidden="true">
-              <span className="font-display text-sm font-bold uppercase tracking-[0.25em] text-frost">360°</span>
+              <span className="font-sans text-sm font-medium text-silver/70">360°</span>
               <span className="h-px flex-1 bg-frost/15">
-                <span data-story="meter" className="block h-px origin-left bg-cyan" />
+                <span data-story="meter" className="block h-px origin-left bg-silver/70" />
               </span>
             </div>
           </div>

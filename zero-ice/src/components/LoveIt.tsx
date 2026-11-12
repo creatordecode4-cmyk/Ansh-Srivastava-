@@ -14,24 +14,23 @@ export function LoveIt() {
     <FlowSection id="love" tone="gradient" glow="left-[18%] top-[2%] h-[50%] w-[64%]">
       <div>
         <Reveal className="max-w-[72%] md:mx-auto md:max-w-none md:text-center">
-          <p className="eyebrow mb-3">The Verdict</p>
-          <h2 id="love-title" className="display text-5xl md:text-7xl">
-            Why People <span className="text-cyan">Love It.</span>
+          <h2 id="love-title" className="heading text-[2rem] md:text-5xl">
+            Why People <span>Love It.</span>
           </h2>
           <DemoTag className="mt-4" delay={0.9} />
         </Reveal>
-        <ul className="mt-8 grid gap-3 md:mt-12 md:grid-cols-3 md:gap-6">
+        <ul className="mt-8 grid gap-8 md:mt-14 md:grid-cols-3 md:gap-12">
           {loveCards.map((c, i) => (
             <li key={c.title}>
-              <Glass as="article" reveal="pop" delay={i * 0.1} hover className="flex h-full items-start gap-4 p-5 md:block md:p-8">
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan/40 bg-midnight/50 shadow-[0_0_24px_-8px_rgba(0,213,231,0.7)]">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00D5E7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <Glass plain as="article" reveal="fade" delay={i * 0.1} className="flex h-full items-start gap-4 md:block">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-frost/25 bg-transparent">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F4F9FC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     {ICONS[c.icon]}
                   </svg>
                 </span>
                 <div>
-                  <h3 className="display text-3xl md:mt-5 md:text-4xl">{c.title}</h3>
-                  <p className="mt-1.5 text-base leading-snug text-frost md:mt-3 md:text-lg">{c.stat}</p>
+                  <h3 className="heading text-xl md:mt-5 md:text-2xl">{c.title}</h3>
+                  <p className="mt-1.5 text-base leading-snug text-silver/70 md:mt-3 md:text-lg">{c.stat}</p>
                 </div>
               </Glass>
             </li>

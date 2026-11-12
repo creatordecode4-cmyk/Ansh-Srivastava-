@@ -171,14 +171,16 @@ interface GlassProps {
   /** 'pop' or 'fade' animates the panel in on view; false leaves entry to the parent (e.g. a GSAP wrapper) */
   reveal?: RevealKind | false
   delay?: number
-  /** lift + cyan glow on hover, press on tap */
+  /** lift on hover, press on tap */
   hover?: boolean
+  /** no glass surface: same motion, plain text block (the page keeps real glass to four places) */
+  plain?: boolean
   className?: string
   children?: ReactNode
 }
 
-/** The one frosted-glass surface: cards, stat strip, FAQ items, forms, modals. Styles live in `.glass` (index.css). */
-export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass({ as = 'div', reveal = false, delay = 0, hover = false, className = '', children }, fwd) {
+/** The one frosted-glass surface. Real glass is limited to four places: navbar, lineup card, nutrition card, dialogs. Styles live in `.glass` (index.css). */
+export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass({ as = 'div', reveal = false, delay = 0, hover = false, plain = false, className = '', children }, fwd) {
   const own = useRef<HTMLDivElement>(null)
   const ref = (fwd as React.RefObject<HTMLDivElement>) ?? own
   const reduced = !!useReducedMotion()
@@ -188,7 +190,7 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass({ as 
   return (
     <T
       ref={ref}
-      className={`glass ${hover ? 'glass-hover' : ''} ${className}`}
+      className={`${plain ? 'relative' : `glass ${hover ? 'glass-hover' : ''}`} ${className}`}
       variants={variants}
       initial={reveal ? 'hidden' : false}
       animate={reveal ? state : undefined}

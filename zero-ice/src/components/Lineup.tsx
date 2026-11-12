@@ -12,16 +12,16 @@ const STOPS = [0.04, 0.5, 0.96]
 function VariantCard({ v, notified, onNotify, reveal = false }: { v: (typeof variants)[number]; notified: boolean; onNotify: () => void; reveal?: boolean }) {
   return (
     <Glass as="article" reveal={reveal ? 'pop' : false} hover className="p-5 text-center md:p-6">
-      <p className="font-display text-sm font-bold uppercase tracking-[0.25em] text-frost">{v.available ? 'Available now' : 'Coming soon'}</p>
-      <h3 className="display mt-1.5 text-4xl md:text-5xl">{v.name}</h3>
-      <p className="mx-auto mt-2 max-w-md text-base text-frost">{v.blurb}</p>
+      <p className="font-sans text-sm font-medium text-silver/70">{v.available ? 'Available now' : 'Coming soon'}</p>
+      <h3 className="heading mt-1.5 text-2xl md:text-3xl">{v.name}</h3>
+      <p className="mx-auto mt-2 max-w-md text-base text-silver/70">{v.blurb}</p>
       <div className="mt-4 flex min-h-[44px] items-center justify-center" aria-live="polite">
         {v.available ? (
           <PopButton href="#cta" reveal={false} onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
             Buy Now
           </PopButton>
         ) : notified ? (
-          <p className="pop-in font-display text-lg font-bold uppercase tracking-widest text-silver">✓ You're on the list</p>
+          <p className="pop-in font-sans text-lg font-medium text-silver">✓ You're on the list</p>
         ) : (
           <PopButton variant="ghost" reveal={false} onClick={onNotify}>
             Notify me
@@ -65,7 +65,7 @@ function NotifyDialog({ variant, onClose, onDone }: { variant: (typeof variants)
           onChange={(e) => (setEmail(e.target.value), error && setError(''))}
           aria-invalid={!!error}
           aria-describedby={error ? 'notify-error' : undefined}
-          className={`h-12 w-full rounded-full border bg-midnight/60 px-5 text-base text-silver placeholder:text-silver/60 focus:outline-none ${error ? 'border-[#FF8A8A]' : 'border-frost/30 focus:border-cyan'}`}
+          className={`h-12 w-full rounded-full border bg-midnight/60 px-5 text-base text-silver placeholder:text-silver/60 focus:outline-none ${error ? 'border-[#FF8A8A]' : 'border-frost/30 focus:border-silver'}`}
         />
         <p id="notify-error" role="alert" className="mt-2 min-h-[1.25rem] px-2 text-sm text-[#FF9C9C]">
           {error}
@@ -109,9 +109,8 @@ export function Lineup() {
       <div className={motion ? 'absolute inset-0' : 'mx-auto max-w-6xl px-5 py-24'}>
         <div className={motion ? 'absolute inset-x-5 top-[11svh] text-center md:top-[12svh]' : 'text-center'}>
           <div data-lineup="head">
-            <p className="eyebrow mb-2">The Lineup</p>
-            <h2 id="lineup-title" className="display text-5xl md:text-7xl">
-              Pick Your <span className="text-cyan">Chill.</span>
+            <h2 id="lineup-title" className="heading text-[2rem] md:text-5xl">
+              Pick Your <span>Chill.</span>
             </h2>
           </div>
         </div>
@@ -131,7 +130,7 @@ export function Lineup() {
                   onClick={() => scrollToSection('lineup', STOPS[i])}
                   className="flex h-11 w-11 items-center justify-center"
                 >
-                  <span className={`block h-1.5 rounded-full transition-all duration-300 ${i === active ? 'w-8 bg-cyan' : 'w-3 bg-frost/35'}`} />
+                  <span className={`block h-1.5 rounded-full transition-all duration-300 ${i === active ? 'w-8 bg-silver/70' : 'w-3 bg-frost/35'}`} />
                 </button>
               ))}
             </div>

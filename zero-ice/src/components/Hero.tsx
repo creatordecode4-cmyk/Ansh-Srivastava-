@@ -156,10 +156,10 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
           Diet Cola · Served Ice Cold
         </p>
         <h1 id="hero-title" className="display text-[13.5vw] md:text-[clamp(3.5rem,5.9vw,7rem)]" aria-label={HEADLINE.join(' ')}>
-          {HEADLINE.map((line, i) => (
+          {HEADLINE.map((line) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] pr-[0.12em] md:-mr-[0.12em]" aria-hidden="true">
               {line.split(' ').map((w, j) => (
-                <span key={j} data-word className={`inline-block pr-[0.2em] ${i === 2 ? 'text-cyan' : ''}`}>
+                <span key={j} data-word className={`inline-block pr-[0.2em] `}>
                   {w}
                 </span>
               ))}
@@ -180,8 +180,8 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
         <dl className="mt-4 flex w-full max-w-md items-stretch justify-center divide-x divide-frost/15 md:mt-9 md:justify-start" data-fade>
           {STATS.map((s) => (
             <div key={s.label} className="flex flex-col-reverse px-5 first:pl-0 last:pr-0 md:px-7">
-              <dt className="mt-1 font-display text-xs font-bold uppercase tracking-[0.22em] text-frost md:text-sm">{s.label}</dt>
-              <dd className="display text-3xl md:text-5xl">{s.value}</dd>
+              <dt className="mt-1 font-sans text-xs font-medium text-silver/70 md:text-sm">{s.label}</dt>
+              <dd className="heading text-2xl md:text-4xl">{s.value}</dd>
             </div>
           ))}
         </dl>
@@ -190,7 +190,7 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
         <button
           type="button"
           onClick={replay}
-          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-frost/25 bg-midnight/60 px-4 font-display text-sm font-bold uppercase tracking-widest text-silver backdrop-blur transition-opacity duration-500 hover:border-cyan hover:text-cyan md:bottom-8 md:left-10 md:top-auto ${
+          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-frost/25 bg-midnight/60 px-4 font-sans text-sm font-medium text-silver backdrop-blur transition-opacity duration-500 hover:border-silver hover:text-silver md:bottom-8 md:left-10 md:top-auto ${
             ended && atTop ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           tabIndex={ended && atTop ? 0 : -1}

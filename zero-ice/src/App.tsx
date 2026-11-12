@@ -82,6 +82,7 @@ export default function App() {
         </Suspense>
       )}
       {motion && <div className="vignette pointer-events-none fixed inset-0 z-[11]" aria-hidden="true" />}
+      <div className="grain pointer-events-none fixed inset-0 z-[80]" aria-hidden="true" />
       <ProgressBar />
       <Navbar />
       <main id="main">

@@ -26,25 +26,24 @@ export function Taste() {
       <div className="absolute inset-0 mx-auto max-w-[1500px]">
         <div className="absolute inset-x-5 bottom-[5svh] md:inset-x-auto md:bottom-auto md:left-[7%] md:top-1/2 md:w-[40%] md:-translate-y-1/2">
           <div data-taste="head">
-            <p className="eyebrow mb-3">Taste Profile</p>
-            <h2 id="taste-title" className="display text-5xl md:text-[clamp(3.5rem,5.6vw,6.5rem)]">
-              Bold up front. <span className="text-cyan">Clean finish.</span>
+            <h2 id="taste-title" className="heading text-[2rem] md:text-[clamp(2.4rem,3.6vw,3.75rem)]">
+              Bold up front. <span>Clean finish.</span>
             </h2>
           </div>
           <ul className="mt-6 space-y-4 md:mt-10 md:space-y-6" aria-label="Taste profile, out of 100">
             {BARS.map((b, i) => (
               <li key={b.label} data-taste={`row-${i}`}>
                 <div className="mb-2 flex items-baseline justify-between">
-                  <span className="font-display text-xl font-bold uppercase tracking-[0.2em] text-silver md:text-2xl">{b.label}</span>
-                  <span className="display text-2xl md:text-3xl">
+                  <span className="font-sans text-xl font-medium text-silver md:text-2xl">{b.label}</span>
+                  <span className="heading text-lg md:text-3xl">
                     {b.value}
-                    <span className="ml-1 text-base text-frost">/100</span>
+                    <span className="ml-1 text-base text-silver/70">/100</span>
                   </span>
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-frost/10" aria-hidden="true">
                   <div
                     data-taste={`fill-${i}`}
-                    className="h-full origin-left rounded-full bg-gradient-to-r from-cyan to-frost"
+                    className="h-full origin-left rounded-full bg-silver/80"
                     style={{ transform: `scaleX(${motion ? 0 : b.value / 100})` }}
                   />
                 </div>

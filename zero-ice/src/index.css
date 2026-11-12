@@ -23,12 +23,12 @@
     background: theme('colors.midnight');
   }
   :focus-visible {
-    outline: 2px solid theme('colors.cyan');
+    outline: 2px solid theme('colors.silver');
     outline-offset: 3px;
     border-radius: 4px;
   }
   ::selection {
-    background: theme('colors.cyan');
+    background: theme('colors.silver');
     color: theme('colors.midnight');
   }
 }
@@ -39,13 +39,16 @@
     line-height: 0.88;
     letter-spacing: -0.005em;
   }
-  .eyebrow {
-    @apply inline-flex items-center gap-3 font-display text-sm font-bold uppercase text-frost;
-    letter-spacing: 0.3em;
+  /* section headings: Inter, normal case (Barlow Condensed is kept for the logo and the hero headline) */
+  .heading {
+    @apply font-sans font-semibold text-silver;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
   }
-  .eyebrow::before {
-    content: '';
-    @apply h-0.5 w-6 shrink-0 rounded bg-cyan;
+  .eyebrow {
+    @apply font-sans text-xs font-medium uppercase text-silver/70;
+    letter-spacing: 0.16em;
   }
   /* one glass surface for the whole site: see <Glass> in lib/motion.tsx */
   .glass {
@@ -67,9 +70,9 @@
   .glass-hover:hover,
   .glass-hover:focus-within {
     box-shadow:
-      inset 0 0 0 1px rgba(0, 213, 231, 0.42),
-      0 30px 70px -28px rgba(0, 0, 0, 0.35),
-      0 0 48px -10px rgba(0, 213, 231, 0.42);
+      inset 0 0 0 1px rgba(244, 249, 252, 0.34),
+      0 30px 70px -28px rgba(0, 0, 0, 0.45),
+      0 12px 32px -16px rgba(0, 0, 0, 0.35);
   }
   /* AA on glass: body copy is Silver White, never Frost */
   .glass .text-frost {
@@ -88,61 +91,61 @@
     backdrop-filter: blur(10px);
   }
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 font-display text-lg font-extrabold uppercase italic tracking-wide;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap px-6 font-sans text-base font-semibold;
     border-radius: 999px;
+    letter-spacing: -0.01em;
     transition:
-      box-shadow 0.25s ease,
+      background-color 0.25s ease,
       border-color 0.25s ease,
       color 0.25s ease;
   }
+  /* Ice Cyan is reserved for the main CTAs and key numbers */
   .btn-primary {
     @apply btn bg-cyan text-midnight;
-    box-shadow: 0 8px 26px -12px rgba(0, 213, 231, 0.7);
   }
   .btn-primary:hover {
-    box-shadow:
-      0 0 0 1px rgba(185, 245, 255, 0.5),
-      0 0 34px -2px rgba(0, 213, 231, 0.75);
+    background-color: #3fe2f0;
   }
   .btn-ghost {
-    @apply btn border border-frost/60 bg-midnight/40 text-silver;
+    @apply btn border border-frost/50 bg-midnight/40 text-silver;
   }
   .btn-ghost:hover {
-    @apply border-cyan text-cyan;
-    box-shadow: 0 0 26px -8px rgba(0, 213, 231, 0.6);
+    @apply border-silver;
   }
   .demo-tag {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-frost/30 bg-midnight/50 px-2.5 py-1 font-display text-xs font-bold uppercase text-frost;
-    letter-spacing: 0.2em;
-  }
-  .demo-tag::before {
-    content: '';
-    @apply h-1.5 w-1.5 rounded-full bg-cyan;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-frost/25 bg-midnight/50 px-2.5 py-1 font-sans text-[0.7rem] font-medium uppercase text-silver/70;
+    letter-spacing: 0.1em;
   }
   .stat-num {
-    @apply font-display font-black italic text-cyan;
-    line-height: 0.9;
+    @apply font-sans font-bold text-cyan;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* section tones, painted behind the WebGL canvas */
-.tone-gradient {
-  background: linear-gradient(180deg, rgba(7, 21, 34, 0) 0%, rgba(22, 43, 64, 0.62) 50%, rgba(7, 21, 34, 0) 100%);
-}
-.heading-glow {
-  background: radial-gradient(closest-side, rgba(0, 213, 231, 0.1), transparent);
-}
-
-/* fixed atmosphere behind the WebGL canvas */
+/* matte dark concrete: Midnight Navy base, cloudy mottling, darker patches, pits and fine speckle (all generated noise) */
 .backdrop {
-  background:
-    radial-gradient(60% 55% at 72% 38%, rgba(0, 213, 231, 0.07), transparent 70%),
-    radial-gradient(50% 45% at 20% 75%, rgba(22, 43, 64, 0.8), transparent 70%),
-    #071522;
+  background-color: #071522;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.8  0 0 0 0 0.86  0 0 0 0 0.9  0.9 0 0 0 -0.47'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='420'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.35' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0.02  0 0 0 0 0.04  1.6 0 0 0 -0.9'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.007 0.005' numOctaves='4' seed='61' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.01  0 0 0 0 0.03  0 0 0 0 0.06  0 0.8 0 0 -0.24'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1100' height='1100'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.006' numOctaves='5' seed='23' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.58  0 0 0 0 0.64  0.3 0 0 0 -0.105'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size:
+    300px 300px,
+    420px 420px,
+    900px 900px,
+    1100px 1100px;
 }
 .vignette {
   background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(3, 10, 18, 0.7) 100%);
+}
+/* film grain over everything, about 3% */
+.grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  opacity: 0.03;
 }
 
 /* marquee */

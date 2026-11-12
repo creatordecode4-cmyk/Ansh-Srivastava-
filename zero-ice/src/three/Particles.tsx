@@ -10,8 +10,8 @@ const o = new THREE.Object3D()
 const tmp = new THREE.Vector3()
 
 export function Particles({ mobile }: { mobile: boolean }) {
-  const dropN = mobile ? 45 : 110
-  const burstN = mobile ? 30 : 64
+  const dropN = mobile ? 18 : 40
+  const burstN = mobile ? 20 : 36
   const mistN = mobile ? 4 : 7
 
   const drops = useMemo(() => {
@@ -50,7 +50,7 @@ export function Particles({ mobile }: { mobile: boolean }) {
 
   const sphere = useMemo(() => new THREE.SphereGeometry(1, 10, 8), [])
   const dropMat = useMemo(
-    () => new THREE.MeshPhysicalMaterial({ color: '#c9f3fb', emissive: '#0f5568', emissiveIntensity: 0.6, roughness: 0.05, metalness: 1, transparent: true, blending: THREE.AdditiveBlending, envMapIntensity: 2, depthWrite: false }),
+    () => new THREE.MeshPhysicalMaterial({ color: '#c9f3fb', emissive: '#0f5568', emissiveIntensity: 0.25, roughness: 0.05, metalness: 1, transparent: true, blending: THREE.AdditiveBlending, envMapIntensity: 2, depthWrite: false }),
     [],
   )
   const burstMat = useMemo(
@@ -59,7 +59,7 @@ export function Particles({ mobile }: { mobile: boolean }) {
   )
   const mistTex = useMemo(() => makeMistTexture(), [])
   const mistMat = useMemo(
-    () => new THREE.SpriteMaterial({ map: mistTex, color: '#4fa9c6', transparent: true, opacity: 0.03, depthWrite: false, fog: false }),
+    () => new THREE.SpriteMaterial({ map: mistTex, color: '#8fa0ad', transparent: true, opacity: 0.028, depthWrite: false, fog: false }),
     [mistTex],
   )
   useEffect(
@@ -73,6 +73,13 @@ export function Particles({ mobile }: { mobile: boolean }) {
     [sphere, dropMat, burstMat, mistTex, mistMat],
   )
 
+  // the one glow on the page: a soft cyan halo that stays behind the can
+  const glowMat = useMemo(
+    () => new THREE.SpriteMaterial({ map: mistTex, color: colors.cyan, transparent: true, opacity: 0.16, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }),
+    [mistTex],
+  )
+  useEffect(() => () => glowMat.dispose(), [glowMat])
+  const glowRef = useRef<THREE.Sprite>(null)
   const dropRef = useRef<THREE.InstancedMesh>(null)
   const burstRef = useRef<THREE.InstancedMesh>(null)
   const mistRef = useRef<THREE.Group>(null)
@@ -133,6 +140,11 @@ export function Particles({ mobile }: { mobile: boolean }) {
         bm.instanceMatrix.needsUpdate = true
       }
     }
+    const halo = glowRef.current
+    if (halo) {
+      halo.position.set(canPos.x, canPos.y, canPos.z - 1.2)
+      halo.scale.set(live.canScale * 2.1, live.canScale * 2.3, 1)
+    }
     // mist drift
     const g = mistRef.current
     if (g) {
@@ -148,12 +160,13 @@ export function Particles({ mobile }: { mobile: boolean }) {
     <>
       <instancedMesh ref={dropRef} args={[sphere, dropMat, dropN]} frustumCulled={false} />
       <instancedMesh ref={burstRef} args={[sphere, burstMat, burstN]} frustumCulled={false} />
+      <sprite ref={glowRef} material={glowMat} />
       <group ref={mistRef}>
         {mist.map((m, i) => (
           <sprite key={i} material={mistMat} scale={[m.scale, m.scale * 0.7, 1]} />
         ))}
       </group>
-      <Sparkles count={mobile ? 24 : 60} scale={[14, 8, 6]} size={mobile ? 1.6 : 2.2} speed={0.25} opacity={0.6} color={colors.frost} noise={1.2} />
+      <Sparkles count={mobile ? 8 : 18} scale={[14, 8, 6]} size={mobile ? 1.6 : 2.2} speed={0.25} opacity={0.6} color={colors.frost} noise={1.2} />
     </>
   )
 }

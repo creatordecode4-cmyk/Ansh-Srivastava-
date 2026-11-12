@@ -20,17 +20,16 @@ function Ring({ percent }: { percent: number }) {
           cy="60"
           r={R}
           fill="none"
-          stroke="#00D5E7"
+          stroke="#F4F9FC"
           strokeWidth="7"
           strokeLinecap="round"
           strokeDasharray={C}
           strokeDashoffset={on ? C * (1 - percent / 100) : C}
           className="transition-[stroke-dashoffset] duration-[1800ms] ease-out motion-reduce:transition-none"
-          style={{ filter: 'drop-shadow(0 0 6px rgba(0,213,231,0.7))' }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <CountUp stat={{ value: percent, suffix: '%' }} className="text-5xl md:text-7xl" />
+        <CountUp stat={{ value: percent, suffix: '%' }} className="text-3xl md:text-5xl" />
       </div>
     </div>
   )
@@ -43,8 +42,8 @@ function Stars({ rating }: { rating: number }) {
         <svg key={i} width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.900 3.300 1.300-6.600L2.500 9.500l6.600-.8L12 2.500Z"
-            fill={i <= rating ? '#00D5E7' : 'none'}
-            stroke="#00D5E7"
+            fill={i <= rating ? '#F4F9FC' : 'none'}
+            stroke="#F4F9FC"
             strokeWidth="1.5"
             strokeLinejoin="round"
           />
@@ -90,10 +89,10 @@ function Carousel() {
       <ul ref={rail} tabIndex={0} aria-label="Customer testimonials" className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0">
         {testimonials.map((t) => (
           <li key={t.name} className="w-[80vw] max-w-[360px] shrink-0 snap-start md:w-[calc((100%-2rem)/3)] md:max-w-none">
-            <Glass as="figure" reveal="pop" hover className="flex h-full flex-col p-5 md:p-7">
+            <Glass plain as="figure" reveal="fade" className="flex h-full flex-col border-l border-frost/25 pl-5 md:pl-7">
               <Stars rating={t.rating} />
               <blockquote className="mt-3 text-lg font-medium leading-snug text-silver md:text-xl">“{t.quote}”</blockquote>
-              <figcaption className="mt-auto pt-4 text-sm text-frost">
+              <figcaption className="mt-auto pt-4 text-sm text-silver/70">
                 <span className="font-semibold text-silver">{t.name}</span> · {t.city}
               </figcaption>
             </Glass>
@@ -107,7 +106,7 @@ function Carousel() {
             type="button"
             onClick={() => step(d)}
             aria-label={d < 0 ? 'Previous testimonials' : 'Next testimonials'}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/40 text-silver transition hover:border-cyan hover:text-cyan"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/40 text-silver transition hover:border-silver hover:text-silver"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d={d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
@@ -128,8 +127,7 @@ export function Recommendations() {
             <Ring percent={recommend.percent} />
           </Reveal>
           <Reveal delay={0.1} className="max-w-2xl">
-            <p className="eyebrow mb-3">Recommendations</p>
-            <h2 id="reviews-title" className="display text-[2.6rem] md:text-6xl">
+            <h2 id="reviews-title" className="heading text-[1.7rem] md:text-[2.75rem]">
               <span className="text-cyan">{recommend.percent}%</span> {recommend.text}
             </h2>
             <DemoTag className="mt-4" delay={0.9} />
@@ -142,13 +140,13 @@ export function Recommendations() {
 
         <div className="mt-8 border-t border-frost/15 pt-6 md:mt-10">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="font-display text-base font-bold uppercase tracking-[0.25em] text-frost">Recommended by</h3>
+            <h3 className="font-sans text-base font-medium text-silver/70">Recommended by</h3>
             <DemoTag delay={0.6} />
           </div>
           <ul className="mt-4 flex flex-wrap gap-2.5 md:gap-4">
             {badges.map((b, i) => (
-              <Reveal as="li" kind="pop" delay={i * 0.09} key={b} className="flex items-center gap-2 rounded-full border border-frost/25 bg-deep/60 px-4 py-2.5 font-display text-base font-bold uppercase tracking-wider text-silver md:text-lg">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D5E7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <Reveal as="li" kind="pop" delay={i * 0.09} key={b} className="flex items-center gap-2 rounded-full border border-frost/25 px-4 py-2.5 font-sans text-base font-medium text-silver md:text-lg">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F4F9FC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="12" cy="9" r="6" />
                   <path d="M8.500 14l-1.500 7 5-3 5 3-1.500-7" />
                 </svg>

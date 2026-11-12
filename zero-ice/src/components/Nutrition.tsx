@@ -23,20 +23,19 @@ export function Nutrition() {
         <div className="absolute inset-x-5 bottom-[5svh] md:inset-x-auto md:bottom-auto md:right-[8%] md:top-1/2 md:w-[min(38vw,480px)] md:-translate-y-1/2">
           <div data-nut="card">
             <Glass hover className="p-6 md:p-9">
-            <p className="eyebrow mb-2">The Facts</p>
-            <h2 id="nutrition-title" className="display text-5xl md:text-6xl">
+            <h2 id="nutrition-title" className="heading text-[2rem] md:text-[2.75rem]">
               Nutrition Facts
             </h2>
-            <p className="mt-1 text-sm text-frost">Per 330 ml can</p>
+            <p className="mt-1 text-sm text-silver/70">Per 330 ml can</p>
             <dl className="mt-5 border-t-4 border-silver">
               {FACTS.map((f) => (
                 <div key={f.label} data-nut="row" className="flex items-baseline justify-between border-b border-frost/20 py-3 md:py-4">
-                  <dt className="font-display text-xl font-bold uppercase tracking-[0.16em] text-silver md:text-2xl">{f.label}</dt>
-                  <dd className="display text-4xl md:text-5xl">{f.value}</dd>
+                  <dt className="font-sans text-xl font-medium text-silver md:text-2xl">{f.label}</dt>
+                  <dd className="heading text-2xl md:text-3xl">{f.value}</dd>
                 </div>
               ))}
             </dl>
-            <p className="mt-4 text-sm text-frost">Sample values for demo purposes.</p>
+            <p className="mt-4 text-sm text-silver/70">Sample values for demo purposes.</p>
             </Glass>
           </div>
         </div>

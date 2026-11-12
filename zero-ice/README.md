@@ -50,8 +50,14 @@ src/
 - Debug flags: `?no3d` forces the static fallback, `?q=high|low` forces quality,
   `?snap` removes pose smoothing.
 
+## Look
+- Background: matte concrete built from layered SVG noise in `.backdrop`, plus a 3% `.grain` overlay (`index.css`).
+- Ice Cyan is used only for primary buttons and key numbers (`.btn-primary`, `.stat-num`).
+- Barlow Condensed is kept for the logo, the can label and the hero headline; section headings use `.heading` (Inter).
+- Real glass is limited to four places: navbar, lineup card, nutrition card, dialogs. Everything else uses `<Glass plain>`.
+
 ## Motion and glass
-- Every surface is one `<Glass>` component styled by `.glass` in `index.css`.
+- Glass surfaces share one `<Glass>` component styled by `.glass` in `index.css`.
 - `<Reveal>` fades content in (rise + blur) when 25% is in view and lifts it out when it
   leaves upward. `kind="pop"` adds the spring. Stagger siblings with `delay` steps of 0.08-0.12.
 - Pinned sections keep their scroll-scrubbed GSAP timelines; the whole stage is wrapped in one `<Reveal>`.
