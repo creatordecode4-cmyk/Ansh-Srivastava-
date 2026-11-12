@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background: theme('colors.ink');
+    color: theme('colors.silver');
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  body {
+    @apply font-sans;
+    margin: 0;
+    overflow-x: hidden;
+    background: theme('colors.ink');
+  }
+  :focus-visible {
+    outline: 2px solid theme('colors.ice');
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: theme('colors.electric');
+    color: #fff;
+  }
+}
+
+@layer components {
+  .display {
+    @apply font-display font-black uppercase italic text-white;
+    line-height: 0.88;
+    letter-spacing: -0.005em;
+  }
+  .eyebrow {
+    @apply font-display text-sm font-bold uppercase text-ice;
+    letter-spacing: 0.3em;
+  }
+  .glass {
+    background: linear-gradient(145deg, rgba(20, 32, 64, 0.72), rgba(8, 13, 28, 0.78));
+    border: 1px solid rgba(201, 209, 217, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 24px 60px -20px rgba(0, 0, 0, 0.7);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    @apply rounded-2xl;
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 font-display text-lg font-extrabold uppercase italic tracking-wide transition duration-200;
+  }
+  .btn-primary {
+    @apply btn bg-electric text-white;
+    box-shadow: 0 0 0 1px rgba(79, 179, 255, 0.35), 0 10px 30px -8px rgba(30, 107, 255, 0.8);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    @apply btn border border-silver/40 bg-ink/40 text-white;
+  }
+  .btn-ghost:hover {
+    @apply border-ice text-ice;
+  }
+}
+
+/* fixed atmosphere behind the WebGL canvas */
+.backdrop {
+  background:
+    radial-gradient(60% 55% at 72% 38%, rgba(30, 107, 255, 0.2), transparent 70%),
+    radial-gradient(50% 45% at 20% 75%, rgba(79, 179, 255, 0.1), transparent 70%),
+    linear-gradient(180deg, #05070d 0%, #0a1226 50%, #05070d 100%);
+}
+.vignette {
+  background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(2, 3, 8, 0.75) 100%);
+}
+
+/* marquee */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee 26s linear infinite;
+}
+
+/* loader */
+@keyframes loader-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+.loader-bar {
+  animation: loader-bar 1.1s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+
+/* small entrance used when lineup / form content swaps */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.pop-in {
+  animation: pop-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ring-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.success-ring {
+  animation: ring-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.success-check {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: check-draw 0.4s 0.3s ease-out forwards;
+}
+
+/* static fallback fade-ins */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .loader-bar,
+  .pop-in,
+  .success-ring {
+    animation: none;
+  }
+  .success-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
