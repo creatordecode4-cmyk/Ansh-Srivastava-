@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from 'react'
-import { useMotion } from '../lib/motion'
+import { Reveal, useMotion } from '../lib/motion'
 
 interface Common {
   id: string
@@ -12,11 +12,12 @@ interface Common {
 }
 
 /** Section tone. Sits behind the fixed WebGL canvas (z-0 vs z-10). */
-function Tone({ tone }: { tone?: Common['tone'] }) {
-  return tone === 'gradient' ? <div className="tone-gradient pointer-events-none absolute inset-0 z-0" aria-hidden="true" /> : null
+/** Tones and heading glows were removed with the matte concrete theme; the props are kept so sections need no edits. */
+function Tone(_: { tone?: Common['tone'] }) {
+  return null
 }
-function Glow({ glow }: { glow?: string }) {
-  return glow ? <div className={`heading-glow pointer-events-none absolute ${glow}`} aria-hidden="true" /> : null
+function Glow(_: { glow?: string }) {
+  return null
 }
 
 interface PinProps extends Common {
@@ -38,7 +39,8 @@ export const PinSection = forwardRef<HTMLElement, PinProps>(function PinSection(
       {behind}
       <div className={`z-20 overflow-hidden ${motion ? 'sticky top-0 h-[100svh]' : 'relative min-h-[100svh]'} ${className}`}>
         <Glow glow={glow} />
-        {children}
+        {/* the whole stage fades in on entry and lifts out when it leaves upward */}
+        <Reveal className={motion ? 'absolute inset-0' : 'relative min-h-[100svh]'}>{children}</Reveal>
       </div>
     </section>
   )

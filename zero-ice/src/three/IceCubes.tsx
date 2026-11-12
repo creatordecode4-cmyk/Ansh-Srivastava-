@@ -16,13 +16,15 @@ interface Seed {
   phase: number
   swing: boolean
   axis: THREE.Vector3
+  /** uneven proportions so no two cubes match */
+  shape: THREE.Vector3
 }
 
 function makeSeeds(n: number, seed: number, rMin: number, rMax: number, sMin: number, sMax: number, clearFront = false): Seed[] {
   const rnd = seeded(seed)
-  return Array.from({ length: n }, (_, i) => ({
-    // clearFront keeps the big cubes out of the sector between the label and the camera
-    ang: clearFront ? 3.05 + (i / Math.max(n - 1, 1)) * 3.32 + (rnd() - 0.5) * 0.2 : (i / n) * Math.PI * 2 + rnd() * 0.5,
+  return Array.from({ length: n }, () => ({
+    // random placement (no even ring); clearFront keeps the big cubes out of the sector between the label and the camera
+    ang: clearFront ? 3.0 + rnd() * 3.42 : rnd() * Math.PI * 2,
     swing: clearFront,
     h: (rnd() - 0.5) * 1.25,
     r: rMin + rnd() * (rMax - rMin),
@@ -31,6 +33,7 @@ function makeSeeds(n: number, seed: number, rMin: number, rMax: number, sMin: nu
     k: 0.5 + rnd(),
     phase: rnd() * 6.28,
     axis: new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(),
+    shape: new THREE.Vector3(0.78 + rnd() * 0.5, 0.78 + rnd() * 0.5, 0.78 + rnd() * 0.5),
   }))
 }
 
@@ -51,7 +54,7 @@ function animateRing(mesh: THREE.InstancedMesh, seeds: Seed[]) {
       canPos.z + (Math.sin(a) * rad * 0.7 + ex * s.k * 1.2) * S,
     )
     o.quaternion.setFromAxisAngle(s.axis, s.phase + time * 0.25 * s.spd + ex * 3 * s.k)
-    o.scale.setScalar(Math.max(s.size * S * pose.ice * (1 - ex * 0.15), 1e-4))
+    o.scale.copy(s.shape).multiplyScalar(Math.max(s.size * S * pose.ice * (1 - ex * 0.15), 1e-4))
     o.updateMatrix()
     mesh.setMatrixAt(i, o.matrix)
   }
@@ -66,14 +69,14 @@ function useFakeGlass() {
     const mat = new THREE.MeshPhysicalMaterial({
       color: '#c9f3fb',
       emissive: '#0c3f52',
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 0.22,
       roughness: 0.08,
       metalness: 1,
       normalMap: frost,
       normalScale: new THREE.Vector2(0.55, 0.55),
       clearcoat: 1,
       clearcoatRoughness: 0.02,
-      envMapIntensity: 2.2,
+      envMapIntensity: 1.5,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -85,11 +88,11 @@ function useFakeGlass() {
 }
 
 export function IceCubes({ quality, mobile }: { quality: 'high' | 'low'; mobile: boolean }) {
-  const heroN = mobile ? 8 : 14
-  const smallN = mobile ? 16 : 40
-  const bedN = mobile ? 38 : 76
+  const heroN = mobile ? 4 : 7
+  const smallN = mobile ? 7 : 14
+  const bedN = mobile ? 24 : 42
 
-  const heroSeeds = useMemo(() => makeSeeds(heroN, 11, 0.58, 1.05, 0.1, 0.17, true), [heroN])
+  const heroSeeds = useMemo(() => makeSeeds(heroN, 11, 0.58, 1.15, 0.08, 0.18, true), [heroN])
   const smallSeeds = useMemo(() => makeSeeds(smallN, 29, 0.9, 2.3, 0.03, 0.075), [smallN])
   const bed = useMemo(() => {
     const rnd = seeded(53)
@@ -102,7 +105,7 @@ export function IceCubes({ quality, mobile }: { quality: 'high' | 'low'; mobile:
         x,
         z,
         y: -0.16 + rnd() * top - Math.abs(z) * 0.05,
-        size: 0.1 + rnd() * 0.1,
+        size: 0.09 + rnd() * 0.14,
         rot: new THREE.Euler(rnd() * 3, rnd() * 3, rnd() * 3),
         k: rnd(),
       }
@@ -117,8 +120,8 @@ export function IceCubes({ quality, mobile }: { quality: 'high' | 'low'; mobile:
   // the bed stacks many cubes, so it gets a calmer copy of the material
   const bedMat = useMemo(() => {
     const m = fake.clone()
-    m.envMapIntensity = 0.9
-    m.emissiveIntensity = 0.3
+    m.envMapIntensity = 0.6
+    m.emissiveIntensity = 0.12
     return m
   }, [fake])
   useEffect(() => () => bedMat.dispose(), [bedMat])

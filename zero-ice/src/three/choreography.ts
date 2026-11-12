@@ -179,6 +179,9 @@ export function bedAnchor(m: boolean) {
   return { x: rest.x, y: rest.y - rest.s * 0.36, s: rest.s }
 }
 
+/** sections that share the previous pose (or end at opacity 0): no fade dip on entry */
+const NO_DIP = new Set<SectionId>(['trust', 'love', 'community', 'faq'])
+
 /** Target pose for the current scroll position. */
 export function computePose(aspect: number, out: Pose): Pose {
   const m = scrollStore.isMobile
@@ -189,7 +192,10 @@ export function computePose(aspect: number, out: Pose): Pose {
   const cur = poses[id](sec.pin, m, aspect)
   if (idx > 0 && sec.enter < 1) {
     const prev = poses[SECTION_IDS[idx - 1]](1, m, aspect)
-    return mixPose(prev, cur, ss(0, 1, sec.enter), out)
+    mixPose(prev, cur, ss(0, 1, sec.enter), out)
+    // the scene fades out of the section it leaves and back in for the one it enters; the movement never stops
+    if (!NO_DIP.has(id)) out.o *= 1 - 0.62 * Math.sin(Math.PI * sec.enter) ** 2
+    return out
   }
   return Object.assign(out, cur)
 }

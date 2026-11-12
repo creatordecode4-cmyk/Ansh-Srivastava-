@@ -47,7 +47,7 @@ export function Splash() {
       .fromTo('[data-splash="b"]', { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: 0.16, ease: 'power2.out' }, 0.56)
   })
 
-  const giant = 'display text-[clamp(3.4rem,13.5vw,13rem)] drop-shadow-[0_6px_30px_rgba(0,0,0,0.9)]'
+  const giant = 'heading text-[clamp(2.3rem,9.6vw,9.5rem)] drop-shadow-[0_6px_30px_rgba(0,0,0,0.9)]'
 
   return (
     <PinSection
@@ -74,7 +74,7 @@ export function Splash() {
         <h2 id="splash-title" data-splash="a" className={`${giant} ${motion ? 'col-start-1 row-start-1' : ''}`}>
           Crack It Open.
         </h2>
-        <p data-splash="b" className={`${giant} !text-cyan ${motion ? 'col-start-1 row-start-1' : ''}`}>
+        <p data-splash="b" className={`${giant} !text-silver/80 ${motion ? 'col-start-1 row-start-1' : ''}`}>
           Feel The Chill.
         </p>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
-import { useMotion } from '../lib/motion'
+import { BLUR_IN, BLUR_OFF, PopButton, useMotion } from '../lib/motion'
 import { scrollToSection } from '../lib/scroll'
 import { sectionVh } from '../tokens'
 import { heroMatch } from '../three/choreography'
@@ -107,10 +107,10 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
     if (!motion || !text.current) return
     const ctx = gsap.context(() => {
       gsap.set('[data-word]', { yPercent: 115 })
-      gsap.set('[data-fade]', { opacity: 0, y: 16 })
+      gsap.set('[data-fade]', { opacity: 0, y: 24, filter: BLUR_IN })
       if (ready) {
         gsap.to('[data-word]', { yPercent: 0, duration: 0.9, ease: 'power4.out', stagger: 0.08, delay: 0.25 })
-        gsap.to('[data-fade]', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1, delay: 0.85 })
+        gsap.to('[data-fade]', { opacity: 1, y: 0, filter: BLUR_OFF, duration: 0.9, ease: 'expo.out', stagger: 0.1, delay: 0.85, clearProps: 'filter' })
       }
     }, text)
     return () => ctx.revert()
@@ -156,10 +156,10 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
           Diet Cola · Served Ice Cold
         </p>
         <h1 id="hero-title" className="display text-[13.5vw] md:text-[clamp(3.5rem,5.9vw,7rem)]" aria-label={HEADLINE.join(' ')}>
-          {HEADLINE.map((line, i) => (
+          {HEADLINE.map((line) => (
             <span key={line} className="block overflow-hidden pb-[0.06em] pr-[0.12em] md:-mr-[0.12em]" aria-hidden="true">
               {line.split(' ').map((w, j) => (
-                <span key={j} data-word className={`inline-block pr-[0.2em] ${i === 2 ? 'text-cyan' : ''}`}>
+                <span key={j} data-word className={`inline-block pr-[0.2em] `}>
                   {w}
                 </span>
               ))}
@@ -167,21 +167,21 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
           ))}
         </h1>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3 md:mt-7 md:justify-start" data-fade>
-          <a href="#cta" className="btn-primary" onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
+          <PopButton href="#cta" reveal={false} onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
             Buy Now
-          </a>
-          <a href="#splash" className="btn-ghost" onClick={(e) => (e.preventDefault(), scrollToSection('splash', 0.3))}>
+          </PopButton>
+          <PopButton href="#splash" variant="ghost" reveal={false} onClick={(e) => (e.preventDefault(), scrollToSection('splash', 0.3))}>
             <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true">
               <path d="M0 0 L12 7 L0 14Z" fill="currentColor" />
             </svg>
             Watch the Drop
-          </a>
+          </PopButton>
         </div>
         <dl className="mt-4 flex w-full max-w-md items-stretch justify-center divide-x divide-frost/15 md:mt-9 md:justify-start" data-fade>
           {STATS.map((s) => (
             <div key={s.label} className="flex flex-col-reverse px-5 first:pl-0 last:pr-0 md:px-7">
-              <dt className="mt-1 font-display text-xs font-bold uppercase tracking-[0.22em] text-frost md:text-sm">{s.label}</dt>
-              <dd className="display text-3xl md:text-5xl">{s.value}</dd>
+              <dt className="mt-1 font-sans text-xs font-medium text-silver/70 md:text-sm">{s.label}</dt>
+              <dd className="heading text-2xl md:text-4xl">{s.value}</dd>
             </div>
           ))}
         </dl>
@@ -190,7 +190,7 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
         <button
           type="button"
           onClick={replay}
-          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-frost/25 bg-midnight/60 px-4 font-display text-sm font-bold uppercase tracking-widest text-silver backdrop-blur transition-opacity duration-500 hover:border-cyan hover:text-cyan md:bottom-8 md:left-10 md:top-auto ${
+          className={`absolute left-4 top-[calc(58svh-3.25rem)] flex min-h-[44px] items-center gap-2 rounded-full border border-frost/25 bg-midnight/60 px-4 font-sans text-sm font-medium text-silver backdrop-blur transition-opacity duration-500 hover:border-silver hover:text-silver md:bottom-8 md:left-10 md:top-auto ${
             ended && atTop ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           tabIndex={ended && atTop ? 0 : -1}

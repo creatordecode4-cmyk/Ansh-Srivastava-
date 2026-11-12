@@ -145,7 +145,7 @@ export function makeDropletMaps(width = 1024) {
   const ctx = c.getContext('2d')!
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, W, H)
-  const count = Math.round(1100 * (W / 1024) ** 2)
+  const count = Math.round(480 * (W / 1024) ** 2)
   for (let i = 0; i < count; i++) {
     const big = Math.random() < 0.12
     const r = (big ? 4 + Math.random() * 5 : 1.2 + Math.random() * 2.6) * (W / 1024)

@@ -12,11 +12,11 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="relative z-20 border-t border-frost/10 bg-midnight px-5 pb-10 pt-16 md:px-10">
+    <footer className="relative z-20 border-t border-frost/10 px-5 pb-10 pt-16 md:px-10">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-10 md:flex-row md:items-start md:justify-between">
         <div>
           <Logo className="h-9 w-auto" />
-          <p className="mt-3 font-display text-lg font-bold uppercase tracking-[0.25em] text-frost">Bold taste. Zero guilt.</p>
+          <p className="mt-3 font-sans text-lg font-medium text-silver/70">Bold taste. Zero guilt.</p>
         </div>
         <nav aria-label="Footer">
           <ul className="flex flex-wrap gap-x-8 gap-y-2">
@@ -25,7 +25,7 @@ export function Footer() {
                 <a
                   href={`#${l.id}`}
                   onClick={(e) => (e.preventDefault(), scrollToSection(l.id, l.into))}
-                  className="inline-flex min-h-[44px] items-center font-display text-lg font-bold uppercase tracking-widest text-frost hover:text-silver"
+                  className="inline-flex min-h-[44px] items-center font-sans text-lg font-medium text-silver/70 hover:text-silver"
                 >
                   {l.label}
                 </a>
@@ -36,7 +36,7 @@ export function Footer() {
         <ul className="flex gap-3" aria-label="Social links (demo)">
           {SOCIALS.map((s) => (
             <li key={s.label}>
-              <a href="#hero" onClick={(e) => e.preventDefault()} aria-label={`${s.label} (demo link)`} className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/20 text-frost transition-colors hover:border-cyan hover:text-cyan">
+              <a href="#hero" onClick={(e) => e.preventDefault()} aria-label={`${s.label} (demo link)`} className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/20 text-silver/70 transition-colors hover:border-silver hover:text-silver">
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                   <path d={s.d} fill="currentColor" fillRule="evenodd" />
                 </svg>
@@ -45,7 +45,7 @@ export function Footer() {
           ))}
         </ul>
       </div>
-      <div className="mx-auto mt-12 flex max-w-[1400px] flex-col gap-2 border-t border-frost/10 pt-6 text-sm text-frost md:flex-row md:justify-between">
+      <div className="mx-auto mt-12 flex max-w-[1400px] flex-col gap-2 border-t border-frost/10 pt-6 text-sm text-silver/70 md:flex-row md:justify-between">
         <p className="max-w-3xl">ZERO ICE is a fictional brand created for a demo. Statistics, ratings and testimonials are placeholder demo data. Videos and images are AI-generated.</p>
         <p className="shrink-0">© 2026 ZERO ICE</p>
       </div>

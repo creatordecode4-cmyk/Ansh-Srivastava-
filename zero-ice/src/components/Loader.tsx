@@ -17,7 +17,7 @@ export function Loader({ done }: { done: boolean }) {
     >
       <Logo className="h-10 w-auto" />
       <div className="h-[2px] w-40 overflow-hidden rounded bg-frost/10">
-        <div className="loader-bar h-full w-2/5 rounded bg-gradient-to-r from-frost to-cyan" />
+        <div className="loader-bar h-full w-2/5 rounded bg-silver/80" />
       </div>
       <p className="eyebrow !text-xs">Chilling…</p>
     </div>
