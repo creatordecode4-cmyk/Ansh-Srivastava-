@@ -5,3 +5,4 @@ out/*.blend1
 out/*.log
 assets/*.glb
 out/frames_walk/
+__pycache__/
