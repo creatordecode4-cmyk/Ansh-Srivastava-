@@ -53,9 +53,9 @@ function serve() {
       await grab(i / shot.FPS, path.join(dir, `f_${String(i).padStart(4, '0')}.png`));
       if (i % 12 === 0) console.log(`frame ${i + 1}/${total}`);
     }
-    const mp4 = path.join(ROOT, 'out', 'cozy-desk.mp4');
+    const mp4 = path.join(ROOT, 'cozy-desk.mp4');
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(shot.FPS), '-i', path.join(dir, 'f_%04d.png'),
-      '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4], { stdio: 'inherit' });
+      '-c:v', 'libx264', '-preset', 'slow', '-crf', '19', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4], { stdio: 'inherit' });
     console.log('video ->', mp4);
   }
   await browser.close();
