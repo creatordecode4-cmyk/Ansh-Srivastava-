@@ -153,7 +153,9 @@ export default function Scene({ onReady }: { onReady: () => void }) {
   const mobile = scrollStore.isMobile
   const wrap = useRef<HTMLDivElement>(null)
   const root = useRef<RootState | null>(null)
-  const maxDpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.75)
+  // ?dpr=1 pins the canvas resolution (software renderers, recordings)
+  const forcedDpr = Number(new URLSearchParams(window.location.search).get('dpr')) || 0
+  const maxDpr = forcedDpr || Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.75)
   const [dpr, setDpr] = useState(mobile ? Math.min(maxDpr, 1.5) : maxDpr)
   const forced = new URLSearchParams(window.location.search).get('q') as Quality | null
   const [quality, setQuality] = useState<Quality>(forced ?? (mobile ? 'low' : 'high'))
@@ -208,7 +210,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
             if (!forced) setQuality('low')
             // the device is struggling: swap glass blur for solid Deep Blue
             document.documentElement.classList.add('lite-glass')
-            setDpr(1)
+            if (!forcedDpr) setDpr(1)
           }}
           onIncline={() => setDpr(maxDpr)}
         />

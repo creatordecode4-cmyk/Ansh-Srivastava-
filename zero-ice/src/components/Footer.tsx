@@ -31,6 +31,11 @@ export function Footer() {
                 </a>
               </li>
             ))}
+            <li>
+              <a href="/showcase" className="inline-flex min-h-[44px] items-center font-sans text-lg font-medium text-silver/70 hover:text-silver">
+                Showcase
+              </a>
+            </li>
           </ul>
         </nav>
         <ul className="flex gap-3" aria-label="Social links (demo)">
