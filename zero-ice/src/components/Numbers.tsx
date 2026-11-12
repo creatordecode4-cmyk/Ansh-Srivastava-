@@ -1,14 +1,14 @@
-import { useInView, useMotion, useReveal } from '../lib/motion'
+import { Glass, Reveal, useInView, useMotion } from '../lib/motion'
 import { bigStats, type Stat } from '../data/brandStats'
 import { CountUp, DemoTag } from './CountUp'
 import { FlowSection } from './PinSection'
 
-function StatCard({ stat }: { stat: Stat }) {
+function StatCard({ stat, delay }: { stat: Stat; delay: number }) {
   const motion = useMotion()
-  const [ref, seen] = useInView<HTMLElement>(0.4)
+  const [ref, seen] = useInView<HTMLDivElement>(0.4)
   const on = seen || !motion
   return (
-    <article ref={ref} data-reveal className="glass flex h-full flex-col p-5 md:p-8">
+    <Glass as="article" ref={ref} reveal="pop" delay={delay} hover className="flex h-full flex-col p-5 md:p-8">
       <CountUp stat={stat} className="text-[3.4rem] md:text-8xl" />
       <h3 className="mt-2 font-display text-base font-bold uppercase tracking-[0.18em] text-frost md:text-xl">{stat.label}</h3>
       <div className="mt-auto pt-5" aria-hidden="true">
@@ -19,26 +19,25 @@ function StatCard({ stat }: { stat: Stat }) {
           />
         </div>
       </div>
-    </article>
+    </Glass>
   )
 }
 
 export function Numbers() {
-  const reveal = useReveal<HTMLDivElement>()
   return (
     <FlowSection id="numbers" full glow="left-[-8%] top-[2%] h-[46%] w-[64%]">
-      <div ref={reveal}>
-        <div data-reveal className="max-w-[70%] md:max-w-none">
+      <div>
+        <Reveal className="max-w-[70%] md:max-w-none">
           <p className="eyebrow mb-3">By the Numbers</p>
           <h2 id="numbers-title" className="display text-5xl md:text-7xl">
             Numbers That <span className="text-cyan">Matter.</span>
           </h2>
-          <DemoTag className="mt-4" />
-        </div>
+          <DemoTag className="mt-4" delay={1.1} />
+        </Reveal>
         <ul className="mt-8 grid grid-cols-2 gap-3 md:mt-12 md:grid-cols-3 md:gap-6">
-          {bigStats.map((s) => (
+          {bigStats.map((s, i) => (
             <li key={s.label}>
-              <StatCard stat={s} />
+              <StatCard stat={s} delay={(i % 3) * 0.1} />
             </li>
           ))}
         </ul>

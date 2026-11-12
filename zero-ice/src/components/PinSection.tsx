@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from 'react'
-import { useMotion } from '../lib/motion'
+import { Reveal, useMotion } from '../lib/motion'
 
 interface Common {
   id: string
@@ -38,7 +38,8 @@ export const PinSection = forwardRef<HTMLElement, PinProps>(function PinSection(
       {behind}
       <div className={`z-20 overflow-hidden ${motion ? 'sticky top-0 h-[100svh]' : 'relative min-h-[100svh]'} ${className}`}>
         <Glow glow={glow} />
-        {children}
+        {/* the whole stage fades in on entry and lifts out when it leaves upward */}
+        <Reveal className={motion ? 'absolute inset-0' : 'relative min-h-[100svh]'}>{children}</Reveal>
       </div>
     </section>
   )

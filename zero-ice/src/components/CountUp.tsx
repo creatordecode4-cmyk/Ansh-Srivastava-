@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useInView, useMotion } from '../lib/motion'
+import { Reveal, useInView, useMotion } from '../lib/motion'
 import { DEMO_TAG, type Stat } from '../data/brandStats'
 
 const fmt = (v: number, decimals = 0) => v.toFixed(decimals)
@@ -52,6 +52,11 @@ export function CountUp({ stat, className = '', unitClass = '' }: { stat: Pick<S
 }
 
 /** Small tag that marks placeholder figures. */
-export function DemoTag({ label = DEMO_TAG, className = '' }: { label?: string; className?: string }) {
-  return <span className={`demo-tag ${className}`}>{label}</span>
+export function DemoTag({ label = DEMO_TAG, className = '', delay = 0.7 }: { label?: string; className?: string; delay?: number }) {
+  // fades in after the numbers it qualifies
+  return (
+    <Reveal as="span" delay={delay} className={`demo-tag ${className}`}>
+      {label}
+    </Reveal>
+  )
 }

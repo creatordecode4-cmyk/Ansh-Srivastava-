@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
-import { useMotion } from '../lib/motion'
+import { BLUR_IN, BLUR_OFF, PopButton, useMotion } from '../lib/motion'
 import { scrollToSection } from '../lib/scroll'
 import { sectionVh } from '../tokens'
 import { heroMatch } from '../three/choreography'
@@ -107,10 +107,10 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
     if (!motion || !text.current) return
     const ctx = gsap.context(() => {
       gsap.set('[data-word]', { yPercent: 115 })
-      gsap.set('[data-fade]', { opacity: 0, y: 16 })
+      gsap.set('[data-fade]', { opacity: 0, y: 24, filter: BLUR_IN })
       if (ready) {
         gsap.to('[data-word]', { yPercent: 0, duration: 0.9, ease: 'power4.out', stagger: 0.08, delay: 0.25 })
-        gsap.to('[data-fade]', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', stagger: 0.1, delay: 0.85 })
+        gsap.to('[data-fade]', { opacity: 1, y: 0, filter: BLUR_OFF, duration: 0.9, ease: 'expo.out', stagger: 0.1, delay: 0.85, clearProps: 'filter' })
       }
     }, text)
     return () => ctx.revert()
@@ -167,15 +167,15 @@ export function Hero({ ready, onPoster }: { ready: boolean; onPoster: () => void
           ))}
         </h1>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3 md:mt-7 md:justify-start" data-fade>
-          <a href="#cta" className="btn-primary" onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
+          <PopButton href="#cta" reveal={false} onClick={(e) => (e.preventDefault(), scrollToSection('cta', 0.9))}>
             Buy Now
-          </a>
-          <a href="#splash" className="btn-ghost" onClick={(e) => (e.preventDefault(), scrollToSection('splash', 0.3))}>
+          </PopButton>
+          <PopButton href="#splash" variant="ghost" reveal={false} onClick={(e) => (e.preventDefault(), scrollToSection('splash', 0.3))}>
             <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true">
               <path d="M0 0 L12 7 L0 14Z" fill="currentColor" />
             </svg>
             Watch the Drop
-          </a>
+          </PopButton>
         </div>
         <dl className="mt-4 flex w-full max-w-md items-stretch justify-center divide-x divide-frost/15 md:mt-9 md:justify-start" data-fade>
           {STATS.map((s) => (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useInView, useMotion, useReveal } from '../lib/motion'
+import { Glass, Reveal, useInView, useMotion } from '../lib/motion'
 import { badges, recommend, testimonials } from '../data/brandStats'
 import { CountUp, DemoTag } from './CountUp'
 import { FlowSection } from './PinSection'
@@ -90,13 +90,13 @@ function Carousel() {
       <ul ref={rail} tabIndex={0} aria-label="Customer testimonials" className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0">
         {testimonials.map((t) => (
           <li key={t.name} className="w-[80vw] max-w-[360px] shrink-0 snap-start md:w-[calc((100%-2rem)/3)] md:max-w-none">
-            <figure className="glass flex h-full flex-col p-5 md:p-7">
+            <Glass as="figure" reveal="pop" hover className="flex h-full flex-col p-5 md:p-7">
               <Stars rating={t.rating} />
               <blockquote className="mt-3 text-lg font-medium leading-snug text-silver md:text-xl">“{t.quote}”</blockquote>
               <figcaption className="mt-auto pt-4 text-sm text-frost">
                 <span className="font-semibold text-silver">{t.name}</span> · {t.city}
               </figcaption>
-            </figure>
+            </Glass>
           </li>
         ))}
       </ul>
@@ -120,39 +120,40 @@ function Carousel() {
 }
 
 export function Recommendations() {
-  const reveal = useReveal<HTMLDivElement>()
   return (
     <FlowSection id="reviews" full glow="left-[-6%] top-[2%] h-[44%] w-[66%]">
-      <div ref={reveal}>
-        <div data-reveal className="flex flex-col items-start gap-5 md:flex-row md:items-center md:gap-10">
-          <Ring percent={recommend.percent} />
-          <div className="max-w-2xl">
+      <div>
+        <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:gap-10">
+          <Reveal kind="pop">
+            <Ring percent={recommend.percent} />
+          </Reveal>
+          <Reveal delay={0.1} className="max-w-2xl">
             <p className="eyebrow mb-3">Recommendations</p>
             <h2 id="reviews-title" className="display text-[2.6rem] md:text-6xl">
               <span className="text-cyan">{recommend.percent}%</span> {recommend.text}
             </h2>
-            <DemoTag className="mt-4" />
-          </div>
+            <DemoTag className="mt-4" delay={0.9} />
+          </Reveal>
         </div>
 
-        <div data-reveal className="mt-8 md:mt-12">
+        <div className="mt-8 md:mt-12">
           <Carousel />
         </div>
 
-        <div data-reveal className="mt-8 border-t border-frost/15 pt-6 md:mt-10">
+        <div className="mt-8 border-t border-frost/15 pt-6 md:mt-10">
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="font-display text-base font-bold uppercase tracking-[0.25em] text-frost">Recommended by</h3>
-            <DemoTag />
+            <DemoTag delay={0.6} />
           </div>
           <ul className="mt-4 flex flex-wrap gap-2.5 md:gap-4">
-            {badges.map((b) => (
-              <li key={b} className="flex items-center gap-2 rounded-full border border-frost/25 bg-deep/60 px-4 py-2.5 font-display text-base font-bold uppercase tracking-wider text-silver md:text-lg">
+            {badges.map((b, i) => (
+              <Reveal as="li" kind="pop" delay={i * 0.09} key={b} className="flex items-center gap-2 rounded-full border border-frost/25 bg-deep/60 px-4 py-2.5 font-display text-base font-bold uppercase tracking-wider text-silver md:text-lg">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D5E7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="12" cy="9" r="6" />
                   <path d="M8.500 14l-1.500 7 5-3 5 3-1.500-7" />
                 </svg>
                 {b}
-              </li>
+              </Reveal>
             ))}
           </ul>
         </div>

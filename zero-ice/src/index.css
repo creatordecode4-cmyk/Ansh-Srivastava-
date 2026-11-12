@@ -47,35 +47,59 @@
     content: '';
     @apply h-0.5 w-6 shrink-0 rounded bg-cyan;
   }
+  /* one glass surface for the whole site: see <Glass> in lib/motion.tsx */
   .glass {
-    background: linear-gradient(145deg, rgba(22, 43, 64, 0.66), rgba(22, 43, 64, 0.54));
-    border: 1px solid rgba(185, 245, 255, 0.15);
+    position: relative;
+    border-radius: 24px;
+    /* top highlight + Deep Blue at 55% */
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 42%),
+      rgba(22, 43, 64, 0.55);
     box-shadow:
-      inset 0 1px 0 rgba(185, 245, 255, 0.07),
-      0 24px 60px -24px rgba(0, 0, 0, 0.7);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    transition:
-      border-color 0.3s ease,
-      box-shadow 0.3s ease;
-    @apply rounded-2xl;
+      inset 0 0 0 1px rgba(185, 245, 255, 0.18),
+      0 30px 70px -28px rgba(0, 0, 0, 0.35),
+      0 12px 32px -16px rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    transition: box-shadow 0.35s ease;
+    @apply text-silver;
   }
-  .glass:hover {
-    border-color: rgba(0, 213, 231, 0.4);
+  .glass-hover:hover,
+  .glass-hover:focus-within {
     box-shadow:
-      inset 0 1px 0 rgba(185, 245, 255, 0.1),
-      0 24px 60px -24px rgba(0, 0, 0, 0.7),
-      0 0 44px -12px rgba(0, 213, 231, 0.45);
+      inset 0 0 0 1px rgba(0, 213, 231, 0.42),
+      0 30px 70px -28px rgba(0, 0, 0, 0.35),
+      0 0 48px -10px rgba(0, 213, 231, 0.42);
+  }
+  /* AA on glass: body copy is Silver White, never Frost */
+  .glass .text-frost {
+    @apply text-silver;
+  }
+  /* full-width bar variant (navbar) */
+  .glass-bar {
+    border-radius: 0;
+    box-shadow:
+      inset 0 -1px 0 rgba(185, 245, 255, 0.18),
+      0 18px 40px -24px rgba(0, 0, 0, 0.35);
+  }
+  .modal-backdrop {
+    background: rgba(7, 21, 34, 0.7);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
   }
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 font-display text-lg font-extrabold uppercase italic tracking-wide transition duration-200;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 font-display text-lg font-extrabold uppercase italic tracking-wide;
+    border-radius: 999px;
+    transition:
+      box-shadow 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease;
   }
   .btn-primary {
     @apply btn bg-cyan text-midnight;
     box-shadow: 0 8px 26px -12px rgba(0, 213, 231, 0.7);
   }
   .btn-primary:hover {
-    transform: translateY(-1px);
     box-shadow:
       0 0 0 1px rgba(185, 245, 255, 0.5),
       0 0 34px -2px rgba(0, 213, 231, 0.75);
@@ -181,19 +205,6 @@
   animation: check-draw 0.4s 0.3s ease-out forwards;
 }
 
-/* static fallback fade-ins */
-.reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition:
-    opacity 0.7s ease,
-    transform 0.7s ease;
-}
-.reveal.is-in {
-  opacity: 1;
-  transform: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .marquee-track,
   .loader-bar,
@@ -212,4 +223,30 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* phones: lighter blur */
+@media (max-width: 767px) {
+  .glass {
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
+  }
+  .modal-backdrop {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
+/* struggling device (set by the 3D performance monitor) or no backdrop-filter support: solid Deep Blue */
+.lite-glass .glass,
+.lite-glass .modal-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lite-glass .glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 42%), #162b40;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 42%), #162b40;
+  }
 }

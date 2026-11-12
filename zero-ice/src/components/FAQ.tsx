@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Collapse, Glass, Reveal } from '../lib/motion'
 
 const ITEMS = [
   { q: 'What is ZERO ICE?', a: 'A diet cola with zero sugar and zero calories, made to be served ice cold. It is also a fictional brand, created for this demo.' },
@@ -13,15 +14,17 @@ export function FAQ() {
   return (
     <section id="faq" aria-labelledby="faq-title" className="relative z-20 bg-midnight px-5 py-24 md:py-32">
       <div className="mx-auto max-w-3xl">
-        <p className="eyebrow mb-2">FAQ</p>
-        <h2 id="faq-title" className="display text-6xl md:text-8xl">
-          Cold, hard <span className="text-cyan">answers.</span>
-        </h2>
-        <ul className="mt-10 border-t border-frost/15">
+        <Reveal>
+          <p className="eyebrow mb-2">FAQ</p>
+          <h2 id="faq-title" className="display text-6xl md:text-8xl">
+            Cold, hard <span className="text-cyan">answers.</span>
+          </h2>
+        </Reveal>
+        <ul className="mt-10 space-y-3">
           {ITEMS.map((item, i) => {
             const isOpen = open === i
             return (
-              <li key={item.q} className="border-b border-frost/15">
+              <Glass as="li" key={item.q} reveal="fade" delay={i * 0.08} className="px-5 md:px-7">
                 <h3>
                   <button
                     type="button"
@@ -29,7 +32,7 @@ export function FAQ() {
                     aria-expanded={isOpen}
                     aria-controls={`faq-a-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
-                    className="flex w-full items-center justify-between gap-6 py-5 text-left font-display text-2xl font-bold uppercase tracking-wide text-silver hover:text-cyan md:text-3xl"
+                    className="flex w-full items-center justify-between gap-6 py-5 text-left font-display text-2xl font-bold uppercase tracking-wide text-silver transition-colors hover:text-cyan md:text-3xl"
                   >
                     {item.q}
                     <span aria-hidden="true" className={`relative block h-5 w-5 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-45' : ''}`}>
@@ -38,17 +41,10 @@ export function FAQ() {
                     </span>
                   </button>
                 </h3>
-                <div
-                  id={`faq-a-${i}`}
-                  role="region"
-                  aria-labelledby={`faq-q-${i}`}
-                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0'}`}
-                >
-                  <div className="overflow-hidden">
-                    <p className="max-w-2xl pb-6 text-lg leading-relaxed text-frost">{item.a}</p>
-                  </div>
-                </div>
-              </li>
+                <Collapse open={isOpen} id={`faq-a-${i}`} labelledBy={`faq-q-${i}`}>
+                  <p className="max-w-2xl pb-6 text-lg leading-relaxed text-silver">{item.a}</p>
+                </Collapse>
+              </Glass>
             )
           })}
         </ul>

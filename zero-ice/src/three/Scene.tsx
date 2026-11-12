@@ -80,6 +80,10 @@ function Cans({ mobile, glbUrl }: { mobile: boolean; glbUrl: string | null }) {
     const R = (mobile ? 0.62 : 0.82) * live.canScale
     ptr.current.x = THREE.MathUtils.damp(ptr.current.x, scrollStore.pointer.x, 4, dt)
     ptr.current.y = THREE.MathUtils.damp(ptr.current.y, scrollStore.pointer.y, 4, dt)
+    // very subtle glow pulse on the can every 6 seconds
+    const ph = (live.time % 6) / 1.5
+    const glow = 1.2 + (ph < 1 ? Math.sin(ph * Math.PI) ** 2 : 0) * 0.2
+    assets.bodyMats.original.envMapIntensity = assets.bodyMats.lime.envMapIntensity = assets.bodyMats.cherry.envMapIntensity = glow
     const refs = [main.current, lime.current, cherry.current]
     for (let k = 0; k < 3; k++) {
       const g = refs[k]
@@ -202,6 +206,8 @@ export default function Scene({ onReady }: { onReady: () => void }) {
           flipflops={2}
           onDecline={() => {
             if (!forced) setQuality('low')
+            // the device is struggling: swap glass blur for solid Deep Blue
+            document.documentElement.classList.add('lite-glass')
             setDpr(1)
           }}
           onIncline={() => setDpr(maxDpr)}

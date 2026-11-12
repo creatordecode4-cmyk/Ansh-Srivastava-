@@ -24,7 +24,9 @@ src/
   tokens.ts              brand colours, fonts, section lengths, flavour variants
   App.tsx                loader, fallback switch, section order
   lib/scroll.ts          Lenis + ScrollTrigger -> scroll store, scrollToSection
-  lib/motion.tsx         motion/fallback detection, scrubbed timeline hook, reveal hook
+  lib/motion.tsx         motion presets (EASE, SPRING, revealVariants) and the shared
+                         <Glass>, <Reveal>, <PopButton>, <Collapse>, <Modal>; fallback detection;
+                         scrubbed GSAP timeline hook
   data/brandStats.ts     ALL demo figures, timeline, testimonials and badges (edit per client)
   components/            Navbar, Hero, Marquee, TrustStrip, Story, Journey, WhyZero, Numbers,
                          Splash, Taste, Lineup, Nutrition, Recommendations, LoveIt, Community,
@@ -47,6 +49,17 @@ src/
 - Section scroll length: `sectionVh` in `tokens.ts`.
 - Debug flags: `?no3d` forces the static fallback, `?q=high|low` forces quality,
   `?snap` removes pose smoothing.
+
+## Motion and glass
+- Every surface is one `<Glass>` component styled by `.glass` in `index.css`.
+- `<Reveal>` fades content in (rise + blur) when 25% is in view and lifts it out when it
+  leaves upward. `kind="pop"` adds the spring. Stagger siblings with `delay` steps of 0.08-0.12.
+- Pinned sections keep their scroll-scrubbed GSAP timelines; the whole stage is wrapped in one `<Reveal>`.
+- Phones skip the filter blur and use a 12px backdrop blur. If the 3D performance monitor reports
+  a struggling device, `html.lite-glass` swaps the blur for solid Deep Blue.
+- Test reduced motion: Chrome DevTools > Rendering > "Emulate CSS media feature
+  prefers-reduced-motion: reduce", then reload. You should see opacity-only fades, no rise, blur,
+  spring or scale, final numbers shown at once, and no 3D layer.
 
 ## Fallbacks
 No WebGL, a very low-end device, or `prefers-reduced-motion` skips the 3D layer and

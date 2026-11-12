@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Collapse, PopButton } from '../lib/motion'
 import { scrollToSection, setScrollLocked } from '../lib/scroll'
 import { Logo } from './Logo'
 
@@ -11,7 +12,6 @@ export const NAV_LINKS: { label: string; id: string; into: number }[] = [
   { label: 'Lineup', id: 'lineup', into: 0.05 },
   { label: 'FAQ', id: 'faq', into: 0 },
 ]
-const LINKS = NAV_LINKS
 
 export function Navbar() {
   const [solid, setSolid] = useState(false)
@@ -46,32 +46,30 @@ export function Navbar() {
   }
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300 ${
-        solid || open ? 'border-b border-frost/10 bg-midnight/70 backdrop-blur-xl' : 'border-b border-transparent bg-transparent'
-      }`}
-    >
-      <nav aria-label="Primary" className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-5 md:h-[72px] md:px-10">
+    <header className="fixed inset-x-0 top-0 z-50">
+      {/* transparent at the top; the glass bar fades in after 40px of scroll */}
+      <div className={`glass glass-bar pointer-events-none !absolute inset-0 transition-opacity duration-500 ${solid || open ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+      <nav aria-label="Primary" className="relative mx-auto flex h-16 max-w-[1400px] items-center justify-between px-5 md:h-[72px] md:px-10">
         <a href="#hero" onClick={go('hero', 0)} aria-label="ZERO ICE, back to top" className="shrink-0">
           <Logo className="h-7 w-auto md:h-8" />
         </a>
-        <ul className="hidden items-center gap-7 lg:gap-9 md:flex">
-          {LINKS.map((l) => (
+        <ul className="hidden items-center gap-7 md:flex lg:gap-9">
+          {NAV_LINKS.map((l) => (
             <li key={l.id}>
-              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="font-display text-lg font-bold uppercase tracking-widest text-frost transition-colors hover:text-silver">
+              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="font-display text-lg font-bold uppercase tracking-widest text-silver/85 transition-colors hover:text-cyan">
                 {l.label}
               </a>
             </li>
           ))}
         </ul>
         <div className="flex items-center gap-3">
-          <a href="#cta" onClick={go('cta', 0.9)} className="btn-primary !min-h-[40px] !px-5 !text-base">
+          <PopButton href="#cta" reveal={false} onClick={go('cta', 0.9)} className="!min-h-[40px] !px-5 !text-base">
             Buy Now
-          </a>
+          </PopButton>
           <button
             ref={toggle}
             type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/20 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-frost/30 md:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
             aria-controls="mobile-menu"
@@ -85,17 +83,17 @@ export function Navbar() {
           </button>
         </div>
       </nav>
-      <div id="mobile-menu" hidden={!open} className="border-t border-frost/10 bg-midnight/95 px-5 pb-8 pt-4 md:hidden">
-        <ul className="flex flex-col">
-          {LINKS.map((l) => (
+      <Collapse open={open} id="mobile-menu" className="relative md:hidden">
+        <ul className="flex flex-col px-5 pb-8 pt-2">
+          {NAV_LINKS.map((l) => (
             <li key={l.id}>
-              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="display block border-b border-frost/10 py-4 text-4xl">
+              <a href={`#${l.id}`} onClick={go(l.id, l.into)} className="display block border-b border-frost/15 py-4 text-4xl">
                 {l.label}
               </a>
             </li>
           ))}
         </ul>
-      </div>
+      </Collapse>
     </header>
   )
 }
