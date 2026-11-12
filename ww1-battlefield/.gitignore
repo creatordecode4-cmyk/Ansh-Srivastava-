@@ -1,0 +1,5 @@
+out/frames/
+out/test/
+out/*.blend
+out/*.blend1
+out/*.log
