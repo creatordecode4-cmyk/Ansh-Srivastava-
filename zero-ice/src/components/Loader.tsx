@@ -13,11 +13,11 @@ export function Loader({ done }: { done: boolean }) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-ink transition-opacity duration-700 ${done ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-midnight transition-opacity duration-700 ${done ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
     >
       <Logo className="h-10 w-auto" />
-      <div className="h-[2px] w-40 overflow-hidden rounded bg-white/10">
-        <div className="loader-bar h-full w-2/5 rounded bg-gradient-to-r from-ice to-electric" />
+      <div className="h-[2px] w-40 overflow-hidden rounded bg-frost/10">
+        <div className="loader-bar h-full w-2/5 rounded bg-gradient-to-r from-frost to-cyan" />
       </div>
       <p className="eyebrow !text-xs">Chilling…</p>
     </div>

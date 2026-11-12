@@ -35,13 +35,13 @@ export function WhyZero() {
   })
 
   return (
-    <PinSection id="why" vh={sectionVh.why} ref={ref}>
+    <PinSection id="why" vh={sectionVh.why} ref={ref} tone="gradient" glow="left-[20%] top-[-6%] h-[44%] w-[60%]">
       <div ref={reveal} className="absolute inset-0 mx-auto max-w-[1500px]">
         <div className="absolute inset-x-5 top-[11svh] text-center md:top-[13svh]">
           <div data-why="title" data-reveal>
-            <p className="eyebrow mb-2">02 · Why Zero</p>
+            <p className="eyebrow mb-2">Why Zero</p>
             <h2 id="why-title" className="display text-5xl md:text-7xl">
-              Nothing <span className="text-ice">Extra.</span>
+              Nothing <span className="text-cyan">Extra.</span>
             </h2>
           </div>
         </div>
@@ -50,12 +50,12 @@ export function WhyZero() {
             <li key={c.key} className={`${motion ? 'absolute inset-0' : 'relative'} md:absolute md:inset-auto md:w-[min(24vw,340px)] ${c.pos}`}>
               <div className={`origin-center ${c.depth}`}>
                 <article data-why={`card-${i}`} data-reveal className="glass flex items-center gap-5 p-5 md:block md:p-7">
-                  <p className="display w-[4.2rem] shrink-0 text-center text-5xl !normal-case !text-ice md:w-auto md:text-left md:text-7xl" aria-hidden="true">
+                  <p className="display w-[4.2rem] shrink-0 text-center text-5xl !normal-case !text-cyan md:w-auto md:text-left md:text-7xl" aria-hidden="true">
                     {c.big}
                   </p>
                   <div>
                     <h3 className="display text-3xl md:mt-3 md:text-4xl">{c.title}</h3>
-                    <p className="mt-1.5 text-base leading-snug text-silver md:mt-2">{c.body}</p>
+                    <p className="mt-1.5 text-base leading-snug text-frost md:mt-2">{c.body}</p>
                   </div>
                 </article>
               </div>
