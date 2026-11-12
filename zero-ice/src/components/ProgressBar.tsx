@@ -25,7 +25,7 @@ export function ProgressBar() {
   }, [])
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px]" aria-hidden="true">
-      <div ref={bar} className="h-full origin-left bg-gradient-to-r from-ice to-electric" style={{ transform: 'scaleX(0)' }} />
+      <div ref={bar} className="h-full origin-left bg-gradient-to-r from-frost to-cyan" style={{ transform: 'scaleX(0)' }} />
     </div>
   )
 }

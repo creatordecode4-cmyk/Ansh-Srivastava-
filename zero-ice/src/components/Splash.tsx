@@ -19,7 +19,7 @@ export function Splash() {
     let playing = false
     const tick = () => {
       const s = scrollStore.sections
-      if (!load && s.why.pin > 0.4) setLoad(true)
+      if (!load && s.numbers.enter > 0) setLoad(true)
       const o = Math.min(s.splash.enter, 1 - s.taste.enter)
       if (o === last) return
       last = o
@@ -58,7 +58,7 @@ export function Splash() {
         motion ? (
           <div ref={media} className="pointer-events-none fixed inset-0 z-[5]" style={{ opacity: 0, visibility: 'hidden' }} aria-hidden="true">
             <video ref={video} className="h-full w-full scale-110 object-cover blur-[3px]" src={load ? '/videos/splash.mp4' : undefined} poster="/images/splash-poster.jpg" muted loop playsInline preload="none" />
-            <div className="absolute inset-0 bg-gradient-to-b from-ink via-transparent to-ink" />
+            <div className="absolute inset-0 bg-gradient-to-b from-midnight via-transparent to-midnight" />
           </div>
         ) : undefined
       }
@@ -66,15 +66,15 @@ export function Splash() {
       {!motion && (
         <>
           <img src="/images/splash-poster.jpg" alt="ZERO ICE can surrounded by a cola splash and flying ice cubes" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink via-transparent to-ink" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-to-b from-midnight via-transparent to-midnight" aria-hidden="true" />
         </>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-ink via-ink/70 to-transparent" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-midnight via-midnight/70 to-transparent" aria-hidden="true" />
       <div className={`absolute inset-x-0 bottom-[8svh] px-4 text-center ${motion ? 'grid place-items-center' : 'flex flex-col gap-3'}`}>
         <h2 id="splash-title" data-splash="a" className={`${giant} ${motion ? 'col-start-1 row-start-1' : ''}`}>
           Crack It Open.
         </h2>
-        <p data-splash="b" className={`${giant} !text-ice ${motion ? 'col-start-1 row-start-1' : ''}`}>
+        <p data-splash="b" className={`${giant} !text-cyan ${motion ? 'col-start-1 row-start-1' : ''}`}>
           Feel The Chill.
         </p>
       </div>

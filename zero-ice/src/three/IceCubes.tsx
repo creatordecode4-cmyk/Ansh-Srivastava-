@@ -64,8 +64,8 @@ function useFakeGlass() {
   const [mat, frost] = useMemo(() => {
     const frost = makeFrostNormal(256)
     const mat = new THREE.MeshPhysicalMaterial({
-      color: '#bcdcff',
-      emissive: '#10305f',
+      color: '#c9f3fb',
+      emissive: '#0c3f52',
       emissiveIntensity: 0.55,
       roughness: 0.08,
       metalness: 1,
@@ -123,7 +123,7 @@ export function IceCubes({ quality, mobile }: { quality: 'high' | 'low'; mobile:
   }, [fake])
   useEffect(() => () => bedMat.dispose(), [bedMat])
   const frostScale = useMemo(() => new THREE.Vector2(0.35, 0.35), [])
-  const mtmBg = useMemo(() => new THREE.Color('#0f2350'), [])
+  const mtmBg = useMemo(() => new THREE.Color('#0f3246'), [])
 
   const heroRef = useRef<THREE.InstancedMesh>(null)
   const smallRef = useRef<THREE.InstancedMesh>(null)

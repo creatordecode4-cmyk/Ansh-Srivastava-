@@ -25,8 +25,10 @@ src/
   App.tsx                loader, fallback switch, section order
   lib/scroll.ts          Lenis + ScrollTrigger -> scroll store, scrollToSection
   lib/motion.tsx         motion/fallback detection, scrubbed timeline hook, reveal hook
-  components/            Navbar, Hero, Marquee, Story, WhyZero, Splash, Taste, Lineup,
-                         Nutrition, FanWall, FinalCTA, FAQ, Footer, Loader, Logo, PinSection
+  data/brandStats.ts     ALL demo figures, timeline, testimonials and badges (edit per client)
+  components/            Navbar, Hero, Marquee, TrustStrip, Story, Journey, WhyZero, Numbers,
+                         Splash, Taste, Lineup, Nutrition, Recommendations, LoveIt, Community,
+                         FinalCTA, FAQ, Footer, Loader, Logo, CountUp, PinSection
   three/
     scrollStore.ts       shared scroll state (written by GSAP, read in useFrame)
     choreography.ts      can + camera pose for every section, hero video match
@@ -38,6 +40,8 @@ src/
 ```
 
 ## Tuning
+- Theme: the five palette colours live in `tokens.ts` and flow into Tailwind and the 3D scene.
+- Demo figures: everything numeric is in `src/data/brandStats.ts`.
 - Move or resize the can in a section: edit its pose in `three/choreography.ts`
   (`x`/`y` are viewport fractions, `s` is can height as a fraction of the viewport).
 - Section scroll length: `sectionVh` in `tokens.ts`.
@@ -49,4 +53,5 @@ No WebGL, a very low-end device, or `prefers-reduced-motion` skips the 3D layer 
 smooth scrolling: the hero shows `hero-last.jpg` and sections render as normal blocks
 with simple fade-ins.
 
-ZERO ICE is a fictional brand created for a demo. Videos and images are AI-generated.
+ZERO ICE is a fictional brand created for a demo. Statistics, ratings and testimonials are
+placeholder demo data. Videos and images are AI-generated.

@@ -28,10 +28,12 @@ export interface Pose {
   bed: number
   /** final splash burst 0..1 */
   burst: number
+  /** idle bob multiplier */
+  bob: number
 }
 
 const TAU = Math.PI * 2
-const base: Pose = { x: 0, y: 0, s: 0.6, rx: 0, ry: 0, rz: 0, cam: 1, orbit: 0, o: 1, ice: 0, explode: 0, carousel: 0, bed: 0, burst: 0 }
+const base: Pose = { x: 0, y: 0, s: 0.6, rx: 0, ry: 0, rz: 0, cam: 1, orbit: 0, o: 1, ice: 0, explode: 0, carousel: 0, bed: 0, burst: 0, bob: 1 }
 const P = (p: Partial<Pose>): Pose => ({ ...base, ...p })
 const KEYS = Object.keys(base) as (keyof Pose)[]
 
@@ -74,15 +76,22 @@ type PoseFn = (p: number, m: boolean, aspect: number) => Pose
 
 const FLIP = TAU // the splash flip leaves rx one full turn ahead
 
+/** hero resting pose; the trust strip reuses it so the can simply stays put */
+const heroFloat = (m: boolean) => (m ? P({ y: 0.2, s: 0.46, ry: -0.1, ice: 0.6 }) : P({ x: -0.2, y: -0.03, s: 0.72, ry: -0.1, ice: 0.7 }))
+/** small can drifting behind Recommendations / Why People Love It / Community (short sections share one pose) */
+const bgFloat = (m: boolean) =>
+  P({ x: m ? 0.34 : 0.4, y: m ? 0.36 : 0.29, s: m ? 0.12 : 0.22, rx: FLIP, ry: 3 * TAU + 0.9, rz: 0.12, ice: 0.3, bob: 3.2 })
+
 const poses: Record<SectionId, PoseFn> = {
   hero: (p, m, aspect) => {
     const h = heroMatch(aspect, m)
     const match = P({ x: h.x, y: h.y, s: h.s * scrollStore.heroZoom, ry: 0.62, rz: -0.012 })
-    const float = m ? P({ y: 0.2, s: 0.46, ry: -0.1, ice: 0.6 }) : P({ x: -0.2, y: -0.03, s: 0.72, ry: -0.1, ice: 0.7 })
+    const float = heroFloat(m)
     const out = mixPose(match, float, ss(m ? 0.12 : 0.3, m ? 0.8 : 0.95, p))
     out.o = ss(0.02, 0.28, p)
     return out
   },
+  trust: (_p, m) => heroFloat(m),
   story: (p, m) =>
     P({
       y: m ? -0.03 : 0,
@@ -91,16 +100,27 @@ const poses: Record<SectionId, PoseFn> = {
       cam: lerp(1, 0.8, p),
       ice: 0.45,
     }),
+  journey: (p, m) =>
+    P({
+      x: m ? 0.3 : 0.33,
+      y: m ? 0.085 : 0.13,
+      s: m ? 0.17 : 0.44,
+      ry: TAU + p * 1.3,
+      rz: 0.06,
+      ice: 0.25,
+    }),
   why: (p, m) =>
     P({
       y: m ? 0.07 : -0.03,
       s: m ? 0.32 : 0.54,
       rx: 0.08,
-      ry: TAU + p * 0.9,
+      ry: TAU + 1.3 + p * 0.9,
       rz: 0.2 * ss(0, 0.35, p),
       orbit: lerp(-0.32, 0.32, p),
       ice: 1,
     }),
+  numbers: (_p, m) =>
+    P({ x: m ? 0.32 : 0.39, y: m ? 0.37 : 0.3, s: m ? 0.12 : 0.2, rx: 0.08, ry: TAU + 2.6, rz: 0.14, ice: 0.55, bob: 2 }),
   splash: (p, m) =>
     P({
       y: lerp(0.06, m ? 0.14 : 0.2, p),
@@ -130,16 +150,9 @@ const poses: Record<SectionId, PoseFn> = {
       ry: 3 * TAU + lerp(-0.5, 0.5, p),
       ice: 0.2,
     }),
-  fans: (p, m) =>
-    P({
-      x: m ? 0.3 : 0.37,
-      y: m ? 0.35 : 0.27,
-      s: m ? 0.14 : 0.24,
-      rx: FLIP,
-      ry: 3 * TAU + 0.5 + p * 1.6,
-      rz: 0.12,
-      ice: 0.3,
-    }),
+  reviews: (_p, m) => bgFloat(m),
+  love: (_p, m) => bgFloat(m),
+  community: (_p, m) => bgFloat(m),
   cta: (p, m) => {
     const rest = m ? -0.2 : -0.06
     const d = ss(0, 0.42, p)

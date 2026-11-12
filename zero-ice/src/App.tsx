@@ -14,7 +14,12 @@ import { Splash } from './components/Splash'
 import { Taste } from './components/Taste'
 import { Lineup } from './components/Lineup'
 import { Nutrition } from './components/Nutrition'
-import { FanWall } from './components/FanWall'
+import { TrustStrip } from './components/TrustStrip'
+import { Journey } from './components/Journey'
+import { Numbers } from './components/Numbers'
+import { Recommendations } from './components/Recommendations'
+import { LoveIt } from './components/LoveIt'
+import { Community } from './components/Community'
 import { FinalCTA } from './components/FinalCTA'
 import { FAQ } from './components/FAQ'
 import { Footer } from './components/Footer'
@@ -65,7 +70,7 @@ export default function App() {
 
   return (
     <MotionContext.Provider value={motion}>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded focus:bg-electric focus:px-4 focus:py-2 focus:text-white">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded focus:bg-cyan focus:px-4 focus:py-2 focus:text-silver">
         Skip to content
       </a>
       <Loader done={ready} />
@@ -82,13 +87,18 @@ export default function App() {
       <main id="main">
         <Hero ready={ready} onPoster={() => setPoster(true)} />
         <Marquee />
+        <TrustStrip />
         <Story />
+        <Journey />
         <WhyZero />
+        <Numbers />
         <Splash />
         <Taste />
         <Lineup />
         <Nutrition />
-        <FanWall />
+        <Recommendations />
+        <LoveIt />
+        <Community />
         <FinalCTA />
         <FAQ />
       </main>

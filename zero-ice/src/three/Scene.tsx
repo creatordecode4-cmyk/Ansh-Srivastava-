@@ -42,7 +42,7 @@ function Rig({ wrap, onReady }: { wrap: React.RefObject<HTMLDivElement>; onReady
     live.viewH = 2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * BASE_DIST
     live.viewW = live.viewH * aspect
     live.canScale = p.s * live.viewH
-    live.canPos.set(p.x * live.viewW, (p.y + Math.sin(live.time * 0.9) * 0.006 * Math.min(1, 0.8 / p.s)) * live.viewH, 0)
+    live.canPos.set(p.x * live.viewW, (p.y + Math.sin(live.time * 0.9) * 0.006 * p.bob * Math.min(1, 0.8 / p.s)) * live.viewH, 0)
 
     const bed = bedAnchor(scrollStore.isMobile)
     live.bedUnit = bed.s * live.viewH
@@ -111,17 +111,16 @@ function Cans({ mobile, glbUrl }: { mobile: boolean; glbUrl: string | null }) {
   )
 }
 
-/** Studio rig: blue rims left/right, soft white top strip, broad front fill, faint amber kicker. */
+/** Studio rig: blue rims left/right, soft white top strip, broad front fill, frost under-fill. */
 function Studio() {
   return (
     <Environment resolution={256} frames={1} background={false}>
-      <color attach="background" args={['#020308']} />
+      <color attach="background" args={['#02080e']} />
       <Lightformer form="rect" intensity={1.5} color="#ffffff" position={[0, 0.6, 7]} scale={[9, 5, 1]} />
       <Lightformer form="rect" intensity={4} color="#ffffff" position={[0, 6, 0.5]} rotation-x={Math.PI / 2} scale={[7, 2.4, 1]} />
-      <Lightformer form="rect" intensity={10} color={colors.ice} position={[-6, 0.5, -2.5]} rotation-y={Math.PI / 2} scale={[2, 9, 1]} />
-      <Lightformer form="rect" intensity={10} color={colors.electric} position={[6, 0.5, -2.5]} rotation-y={-Math.PI / 2} scale={[2, 9, 1]} />
-      <Lightformer form="rect" intensity={1.2} color="#9fc6ff" position={[0, -5, 2]} rotation-x={-Math.PI / 2} scale={[8, 4, 1]} />
-      <Lightformer form="circle" intensity={2.4} color={colors.amber} position={[3.5, -2.5, 3]} scale={1.6} />
+      <Lightformer form="rect" intensity={10} color={colors.cyan} position={[-6, 0.5, -2.5]} rotation-y={Math.PI / 2} scale={[2, 9, 1]} />
+      <Lightformer form="rect" intensity={10} color="#39b8ff" position={[6, 0.5, -2.5]} rotation-y={-Math.PI / 2} scale={[2, 9, 1]} />
+      <Lightformer form="rect" intensity={1.2} color={colors.frost} position={[0, -5, 2]} rotation-x={-Math.PI / 2} scale={[8, 4, 1]} />
     </Environment>
   )
 }
@@ -138,7 +137,7 @@ function Effects() {
   })
   return (
     <EffectComposer multisampling={0}>
-      <Bloom mipmapBlur intensity={0.55} luminanceThreshold={1} luminanceSmoothing={0.2} radius={0.7} />
+      <Bloom mipmapBlur intensity={0.55} luminanceThreshold={0.92} luminanceSmoothing={0.2} radius={0.7} />
       <ChromaticAberration ref={ca as never} offset={offset} radialModulation modulationOffset={0.2} />
       <Vignette eskil={false} offset={0.2} darkness={0.75} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
@@ -207,7 +206,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
           }}
           onIncline={() => setDpr(maxDpr)}
         />
-        <fog attach="fog" args={[colors.navy, 13, 30]} />
+        <fog attach="fog" args={[colors.midnight, 13, 30]} />
         <Studio />
         <Rig wrap={wrap} onReady={onReady} />
         <Cans mobile={mobile} glbUrl={glbUrl} />
