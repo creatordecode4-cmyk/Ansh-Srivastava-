@@ -336,7 +336,7 @@ def build_kit(seed=7):
         bm = bmesh.new()
         with Xf(bm, M((-1.55+.09, 0, .12))): jali(bm, L-.18, .68, .035, .085, .02)
         boxb(bm, -1.55, -1.55+L, -.07, .07, 0, .12); boxb(bm, -1.55, -1.55+L, -.09, .09, .8, .9)
-        for x in ((-1.55, 1.55) if L > 3 else (-1.55,)):
+        for x in (-1.55,):
             boxb(bm, x-.09, x+.09, -.09, .09, 0, 1.0); lathe(bm, cr([(.09, 0), (.12, .06), (.06, .14), (.02, .22)], 3), segs=10, loc=(x, 0, 1.0))
         reg(nm, [(finish('KIT_'+nm, bm, .005), 'marble')])
     # 8 slabs: plain, worn, chipped, cracked

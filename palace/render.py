@@ -15,8 +15,9 @@ c.caustics_reflective = False; c.caustics_refractive = False; c.sample_clamp_ind
 sc.render.resolution_x = W; sc.render.resolution_y = H; sc.render.resolution_percentage = 100
 sc.render.threads_mode = 'AUTO'; sc.render.use_persistent_data = True
 sc.view_settings.view_transform = 'AgX'; sc.view_settings.exposure = 0.3
-try: sc.view_settings.look = 'AgX - Medium High Contrast'
-except Exception as e: print('look', e)
+for lk in ('AgX - Medium High Contrast', 'Medium High Contrast'):
+    try: sc.view_settings.look = lk; print('LOOK', lk); break
+    except Exception as e: pass
 sc.render.image_settings.file_format = 'PNG'
 vl = sc.view_layers[0]
 if mode == 'clay':
@@ -46,6 +47,15 @@ elif mode == 'wire':
     sc.camera.data.dof.use_dof = False
 else:
     import mats; mats.apply(sc)
+E = os.environ
+if E.get('T_HIDE'):
+    for ob in sc.objects:
+        if ob.get('mat') in E['T_HIDE'].split(','): ob.hide_render = True
+if E.get('T_HIDEN'):
+    for ob in sc.objects:
+        if any(ob.name.startswith(p) for p in E['T_HIDEN'].split(',')): ob.hide_render = True
+if E.get('T_BOUNCE'): c.max_bounces = int(E['T_BOUNCE']); c.diffuse_bounces = min(c.diffuse_bounces, int(E['T_BOUNCE']))
+if E.get('T_THR'): c.adaptive_threshold = float(E['T_THR'])
 fl = []
 for part in frames.split(','):
     if '-' in part: a, b = part.split('-'); fl += list(range(int(a), int(b)+1))
