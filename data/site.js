@@ -176,6 +176,17 @@ export const site = {
       videoUrl: "/videos/3d-car-chase.mp4",
       thumbnail: "/posters/3d-car-chase.jpg",
     },
+    {
+      title: "Royal Palace Courtyard — 3D Cinematic",
+      category: "3D Animation",
+      orientation: "horizontal",
+      short: "Cinematic 3D flythrough of a Rajasthani-style palace courtyard in golden light.",
+      description:
+        "A 10-second cinematic 3D flythrough of a Rajasthani-style palace courtyard: domed pavilions, arches, carved balconies and hanging vines. Warm golden sunlight, soft haze and slow, smooth camera moves.",
+      credit: "Own 3D animation.",
+      videoUrl: "/videos/3d-palace.mp4",
+      thumbnail: "/posters/3d-palace.jpg",
+    },
   ],
 
   // ---------- WEB PROJECTS ----------
