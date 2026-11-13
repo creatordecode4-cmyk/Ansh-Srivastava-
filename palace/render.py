@@ -5,7 +5,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 mode, frames = sys.argv[1], sys.argv[2]
 W = int(sys.argv[3]) if len(sys.argv) > 3 else 960; H = int(sys.argv[4]) if len(sys.argv) > 4 else 540
 SPP = int(sys.argv[5]) if len(sys.argv) > 5 else 24
-bpy.ops.wm.open_mainfile(filepath=os.path.join(HERE, '_work', 'palace_wire.blend' if mode == 'wire' else 'palace.blend'))
+bpy.ops.wm.open_mainfile(filepath=os.path.join(HERE, '_work', 'palace_wire.blend' if mode == 'wire' else os.environ.get('PAL_BLEND', 'palace.blend')))
 sc = bpy.context.scene
 sc.render.engine = 'CYCLES'; c = sc.cycles; c.device = 'CPU'; c.samples = SPP
 c.use_adaptive_sampling = True; c.adaptive_threshold = .03
@@ -60,7 +60,7 @@ fl = []
 for part in frames.split(','):
     if '-' in part: a, b = part.split('-'); fl += list(range(int(a), int(b)+1))
     else: fl.append(int(part))
-out = os.path.join(HERE, '_work', mode); os.makedirs(out, exist_ok=True)
+out = os.path.join(HERE, '_work', os.environ.get('PAL_OUT', mode)); os.makedirs(out, exist_ok=True)
 import time
 for f in fl:
     fp = os.path.join(out, 'f%04d.png' % f)
