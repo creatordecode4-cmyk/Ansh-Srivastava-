@@ -187,6 +187,17 @@ export const site = {
       videoUrl: "/videos/3d-palace.mp4",
       thumbnail: "/posters/3d-palace.jpg",
     },
+    {
+      title: "Podcast Intro — Hinglish Motion Edit",
+      category: "Podcast",
+      orientation: "horizontal",
+      short: "Hinglish podcast intro with counters, a growth chart and gadget motion graphics.",
+      description:
+        "A 64-second Hinglish podcast intro built with motion graphics: animated number counters, a subscriber growth chart, gadget product shots and clean caption cards around clips of the speakers. Bright, minimal and fast-paced, with smooth transitions.",
+      credit: "Own edit. Practice podcast intro, not a client project.",
+      videoUrl: "/videos/podcast-intro.mp4",
+      thumbnail: "/posters/podcast-intro.jpg",
+    },
   ],
 
   // ---------- WEB PROJECTS ----------
