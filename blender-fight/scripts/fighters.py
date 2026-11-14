@@ -11,7 +11,7 @@ Each model arrives as one fused, un-rigged mesh in a T-pose. build_oni / build_r
 import bpy, bmesh, math, os, time
 import numpy as np
 from mathutils import Vector, Matrix
-import lib, charlib, joints
+import lib, charlib, joints, rigctl
 from lib import MB, flat, ASSETS
 from charlib import build_katana, bone_parent, orient
 
@@ -195,14 +195,19 @@ def split_off(ob, mask, name, C):
     return part
 
 
+def rest_katana(arm, side):
+    """World matrix of a katana gripped by this hand in the rest T-pose (blade forward, edge down)."""
+    hb = arm.data.bones['hand.' + side]
+    sx = 1 if side == 'L' else -1
+    grip = (hb.head_local + hb.tail_local) / 2 + Vector((sx * 0.02, 0, -0.035))
+    return Matrix.Translation(grip) @ orient((0, -1, 0), (0, 0, -1)) @ Matrix.Translation((0, 0, 0.11))
+
+
 def hand_katana(name, C, mats, arm, side):
     """Clean katana held in the fist: handle crosses the palm, blade leaves the thumb side."""
     ko, so = build_katana(name, C, mats)
     bpy.data.objects.remove(so)
-    hb = arm.data.bones['hand.' + side]
-    sx = 1 if side == 'L' else -1
-    grip = (hb.head_local + hb.tail_local) / 2 + Vector((sx * 0.02, 0, -0.035))
-    ko.matrix_world = Matrix.Translation(grip) @ orient((0, -1, 0), (0, 0, -1)) @ Matrix.Translation((0, 0, 0.11))
+    ko.matrix_world = rest_katana(arm, side)
     bpy.context.view_layer.update()
     bone_parent(ko, arm, 'hand.' + side)
     ko.hide_render = ko.hide_viewport = True
@@ -210,9 +215,10 @@ def hand_katana(name, C, mats, arm, side):
 
 
 # ---------------------------------------------------------------- the two fighters
-def build_oni(C):
-    ob = load_tripo(os.path.join(ASSETS, 'glb', 'oni_body.glb'), 'Oni_Body', joints.ONI_H, C)
+def build_oni(C, ratio=0.5):
+    ob = load_tripo(os.path.join(ASSETS, 'glb', 'oni_body.glb'), 'Oni_Body', joints.ONI_H, C, ratio)
     arm = charlib.make_armature('Oni_Rig', charlib.humanoid_bones(joints.J_ONI), C)
+    rigctl.add_controls(arm)
     hilt = lambda c: (c[:, 1] < -0.265) & (c[:, 2] > 1.17) & (c[:, 2] < 1.42) & (c[:, 0] > 0.02) & (c[:, 0] < 0.40)
     saya = lambda c: ((c[:, 1] > 0.235) & (c[:, 2] > 0.62) & (c[:, 2] < 1.12) & (c[:, 0] > 0.05)) | hilt(c)
     head = lambda c: (c[:, 2] > 1.80)
@@ -233,12 +239,13 @@ def build_oni(C):
     return out
 
 
-def build_ronin(C):
-    ob = load_tripo(os.path.join(ASSETS, 'glb', 'ronin_body.glb'), 'Ronin_Body', joints.RONIN_H, C)
+def build_ronin(C, ratio=0.5):
+    ob = load_tripo(os.path.join(ASSETS, 'glb', 'ronin_body.glb'), 'Ronin_Body', joints.RONIN_H, C, ratio)
     c0 = verts_np(ob)
     # the generator left a loose blade shard behind the right arm: cut it away
     delete_verts(ob, (c0[:, 2] > 1.40) & (c0[:, 2] < 1.72) & (((c0[:, 0] < -0.30) & (c0[:, 1] > 0.122)) | ((c0[:, 0] < -0.52) & (c0[:, 1] > 0.095))))
     arm = charlib.make_armature('Ronin_Rig', charlib.humanoid_bones(joints.J_RONIN), C)
+    rigctl.add_controls(arm)
     hat = lambda c: (c[:, 2] > 1.868) & (np.hypot(c[:, 0], c[:, 1] + 0.02) < 0.26)
     hilts = lambda c: (c[:, 2] > 1.72) & (np.abs(c[:, 0]) > 0.19) & (c[:, 1] > 0.150)
     swords = lambda c: ((c[:, 1] > 0.165) & (c[:, 2] > 0.80)) | hilts(c)
@@ -265,3 +272,16 @@ def draw_swords(ch, drawn=True):
             o.hide_render = o.hide_viewport = drawn
         if k.startswith('katana'):
             o.hide_render = o.hide_viewport = not drawn
+
+
+def collect(name):
+    """Rebuild the parts dict of a fighter from a saved .blend (name = 'Oni' or 'Ronin')."""
+    D = bpy.data.objects
+    arm = D[name + '_Rig']
+    out = {'rig': arm, 'body': D[name + '_Body']}
+    if name == 'Oni':
+        out.update(hilt=D['Oni_SheathedHilt'], katana=D['Oni_Katana'], krest_R=rest_katana(arm, 'R'), krest_off=rest_katana(arm, 'L'))
+    else:
+        out.update(hilt_L=D['Ronin_SheathedHilt_L'], hilt_R=D['Ronin_SheathedHilt_R'], hat=D['Ronin_Hat'],
+                   katana_L=D['Ronin_Katana_L'], katana_R=D['Ronin_Katana_R'], krest_L=rest_katana(arm, 'L'), krest_R=rest_katana(arm, 'R'))
+    return out
