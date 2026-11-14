@@ -219,6 +219,7 @@ def sun(name, travel, energy, color, angle_deg):
 k = sun('LGT_Key_MoonCold', (0.45, 0.62, -0.64), 2.0, (0.50, 0.66, 1.0), 4.0)      # cold key from camera-left, high
 r = sun('LGT_Rim_BloodMoon', -MOON_DIR, 1.1, (1.0, 0.11, 0.06), 2.0)               # red rim from the moon
 k.visible_volume_scatter = r.visible_volume_scatter = False                      # suns must not grey out the fog
+r.data.specular_factor = 0.15      # red rim without a red glare path across the whole wet floor
 for nm, loc, col, pw in (('LGT_Mist_L', (-12, 23, 2.4), (0.45, 0.32, 1.0), 6000), ('LGT_Mist_R', (7, 25, 2.4), (0.6, 0.3, 0.9), 4500),
                          ('LGT_Mist_Torii', (-2.2, 19, 1.5), (1.0, 0.2, 0.25), 3500)):
     l = bpy.data.lights.new(nm, 'POINT')
