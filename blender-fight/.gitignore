@@ -1,0 +1,5 @@
+assets/
+*.blend
+*.blend1
+render_tmp/
+__pycache__/
