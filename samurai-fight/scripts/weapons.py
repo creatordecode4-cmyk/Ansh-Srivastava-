@@ -24,15 +24,15 @@ def mat_blade(name, pattern):
     nt, b = h
     u, v, _ = nt.sep(nt.coords('UV'))
     comb = nt.new('ShaderNodeCombineXYZ')
-    nt.link(nt.math('MULTIPLY', u, 11.0), comb.inputs[0])
+    nt.link(nt.math('MULTIPLY', u, 7.0), comb.inputs[0])
     nt.link(nt.math('MULTIPLY', v, 0.9), comb.inputs[1])
     warp = nt.noise(comb.outputs[0], 1.6, 3, 0.5)
     comb2 = nt.new('ShaderNodeCombineXYZ')
-    nt.link(nt.math('ADD', nt.math('MULTIPLY', u, 11.0), nt.math('MULTIPLY', warp, 1.4)), comb2.inputs[0])
+    nt.link(nt.math('ADD', nt.math('MULTIPLY', u, 7.0), nt.math('MULTIPLY', warp, 1.6)), comb2.inputs[0])
     nt.link(nt.math('ADD', nt.math('MULTIPLY', v, 0.9), nt.math('MULTIPLY', warp, 0.9)), comb2.inputs[1])
-    n = nt.noise(comb2.outputs[0], 2.4, 3, 0.45)
+    n = nt.noise(comb2.outputs[0], 1.9, 2, 0.4)
     band = nt.maprange(nt.math('ABSOLUTE', nt.math('SUBTRACT', v, 0.0)), 0.95, 0.35)     # strongest mid-width
-    flame = nt.ramp(nt.math('MULTIPLY', n, nt.math('ADD', 0.55, nt.math('MULTIPLY', band, 0.45))), [(0.515, 0.0), (0.54, 1.0)], 'EASE')
+    flame = nt.ramp(nt.math('MULTIPLY', n, nt.math('ADD', 0.55, nt.math('MULTIPLY', band, 0.45))), [(0.50, 0.0), (0.52, 1.0)], 'EASE')
     flame = nt.math('MULTIPLY', flame, nt.maprange(u, 0.04, 0.10))                     # clean steel at the collar
     edge = nt.maprange(v, -0.70, -0.82)
     col = nt.mix(flame, (0.012, 0.012, 0.014), pattern)
@@ -42,7 +42,7 @@ def mat_blade(name, pattern):
     return m
 
 
-def mat_metal(name, color, rough=0.28):
+def mat_metal(name, color, rough=0.36):
     m, h = new_mat(name)
     if not h:
         return m
@@ -62,9 +62,9 @@ def mat_wrap(name='MAT_KatanaWrap'):
     x, y, z = nt.sep(nt.coords('Object'))
     ang = nt.math('ARCTAN2', x, y)                                  # around the grip
     u = nt.math('MULTIPLY', ang, 0.0165 / 1.0)                      # ~ arc length at grip radius
-    a = nt.math('ABSOLUTE', nt.math('SINE', nt.math('MULTIPLY', nt.math('ADD', z, u), math.pi / 0.021)))
-    c = nt.math('ABSOLUTE', nt.math('SINE', nt.math('MULTIPLY', nt.math('SUBTRACT', z, u), math.pi / 0.021)))
-    diamond = nt.math('MULTIPLY', nt.math('GREATER_THAN', a, 0.62), nt.math('GREATER_THAN', c, 0.62))
+    a = nt.math('ABSOLUTE', nt.math('SINE', nt.math('MULTIPLY', nt.math('ADD', z, u), math.pi / 0.030)))
+    c = nt.math('ABSOLUTE', nt.math('SINE', nt.math('MULTIPLY', nt.math('SUBTRACT', z, u), math.pi / 0.030)))
+    diamond = nt.math('MULTIPLY', nt.math('GREATER_THAN', a, 0.80), nt.math('GREATER_THAN', c, 0.80))   # small white windows in black braid
     braid = nt.math('SUBTRACT', 1.0, diamond)
     grain = nt.noise(nt.coords('Object'), 900.0, 3, 0.6)
     col = nt.mix(diamond, nt.mix(grain, (0.008, 0.008, 0.009), (0.03, 0.03, 0.033)), nt.mix(grain, (0.62, 0.60, 0.56), (0.85, 0.83, 0.78)))

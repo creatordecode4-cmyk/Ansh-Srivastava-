@@ -11,6 +11,7 @@ from mathutils import Vector, Matrix
 oni_glb, ronin_glb, out = sys.argv[1], sys.argv[2], sys.argv[3]
 TRIS = int(sys.argv[sys.argv.index('--tris') + 1]) if '--tris' in sys.argv else 400000
 HEIGHT = {'Oni': 1.98, 'Ronin': 2.00}        # bounding-box height in metres (horn tips / hat tip)
+METAL_SCALE = {'Ronin': 0.3}                 # painted white armour panels, as on the character sheet
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -63,6 +64,16 @@ def prep(path, name):
     ob.name = name + '_Body'
     for m in new.materials:
         m.name = 'MAT_' + name
+        if name in METAL_SCALE:              # Tripo marked the Ronin's white armour as bare metal: it rendered dark chrome
+            b = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
+            sock = b.inputs['Metallic']
+            if sock.is_linked:
+                src = sock.links[0].from_socket
+                mul = m.node_tree.nodes.new('ShaderNodeMath')
+                mul.operation = 'MULTIPLY'
+                mul.inputs[1].default_value = METAL_SCALE[name]
+                m.node_tree.links.new(src, mul.inputs[0])
+                m.node_tree.links.new(mul.outputs[0], sock)
     for im in bpy.data.images:
         if im.users and not im.name.startswith(('Oni_', 'Ronin_')) and any(k in im.name for k in ('basecolor', 'normal', '_rm')):
             kind = 'basecolor' if 'basecolor' in im.name else ('normal' if 'normal' in im.name else 'rm')
