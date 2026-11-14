@@ -20,15 +20,15 @@ for ch, sign in ((oni, 1), (ronin, -1)):
     charlib.pose(ch['rig'], [('upper_arm.L', 'Y', 66), ('upper_arm.R', 'Y', -66), ('forearm.L', 'Y', 14), ('forearm.R', 'Y', -14),
                              ('fingers1.L', 'Y', 30), ('fingers1.R', 'Y', -30), ('fingers2.L', 'Y', 35), ('fingers2.R', 'Y', -35),
                              ('thigh.L', 'Y', -5), ('thigh.R', 'Y', 5)])
-oni['rig'].location, oni['rig'].rotation_euler = (-2.7, 1.0, 0), (0, 0, R(72))
-ronin['rig'].location, ronin['rig'].rotation_euler = (2.7, 1.6, 0), (0, 0, R(-108))
+oni['rig'].location, oni['rig'].rotation_euler = (-1.75, 1.0, 0), (0, 0, R(68))
+ronin['rig'].location, ronin['rig'].rotation_euler = (1.75, 1.5, 0), (0, 0, R(-112))
 
 cd = bpy.data.cameras.new('CAM_Standoff'); cd.lens, cd.sensor_width = 35, 36
 cam = bpy.data.objects.new('CAM_Standoff', cd); bpy.data.collections['COL_Cameras'].objects.link(cam)
-cam.location = (0.25, -4.4, 0.85)
-tgt = Vector((0.0, 1.3, 1.75))
+cam.location = (0.2, -5.6, 0.8)
+tgt = Vector((0.0, 1.3, 1.9))
 cam.rotation_euler = (tgt - cam.location).to_track_quat('-Z', 'Y').to_euler()
-cd.dof.use_dof, cd.dof.focus_distance, cd.dof.aperture_fstop = True, 6.2, 2.8
+cd.dof.use_dof, cd.dof.focus_distance, cd.dof.aperture_fstop = True, 6.9, 2.8
 sc.camera = cam
 # character lights: cold key from camera-left, red kicker from behind
 def spot(name, loc, target, energy, color, size=1.2, blend=0.6, angle=50):

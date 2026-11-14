@@ -435,7 +435,7 @@ def build_ronin(C):
     for side, sx in (('L', 1), ('R', -1)):
         ko, so = build_katana(f'Ronin_Katana_{side}', C, kmats)
         ko.parent = so
-        place_obj(so, (-sx * 0.25, 0.185 + 0.012 * sx, 1.66), (sx * 0.52, 0.03, -0.85), (0, 1, 0))
+        place_obj(so, (-sx * 0.25, 0.185 + 0.014 * sx, 1.66), (sx * 0.52, 0.03, -0.85), (1, 0, 0.3))
         rg.attach(so, 'chest')
         out['katana_' + side], out['saya_' + side] = ko, so
     return out

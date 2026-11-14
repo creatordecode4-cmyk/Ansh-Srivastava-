@@ -206,10 +206,20 @@ def build_katana(name, collection, mats, length=0.72, sori=0.035, tassel=False):
     tube(k, [(0, 0.002, -0.010), (0, 0.003, -0.13), (0, 0.006, -0.255)],
          [(0.0125, 0.0185), (0.0115, 0.017), (0.0125, 0.0185)], 16, 2)
     k.cone(0.0125, 0.011, 0.014, (0, 0.006, -0.262), segs=16, mat=1, scale=(1, 1.45, 1))
-    if tassel:
-        tube(k, [(0, 0.006, -0.268), (0.012, 0.010, -0.30), (0.016, 0.012, -0.345)], 0.0035, 6, 5)
-        tube(k, [(0.016, 0.012, -0.345), (0.017, 0.013, -0.37), (0.018, 0.014, -0.44)], [0.006, 0.014, 0.019], 10, 5)
     ko = k.obj(name, mats, collection, smooth=True)
+    if tassel:
+        # separate object that always hangs straight down, whatever the sword is doing
+        t = MB()
+        tube(t, [(0, 0, 0), (0.004, 0.002, -0.04), (0.0, 0.0, -0.085)], 0.0035, 6, 5)
+        tube(t, [(0, 0, -0.085), (0, 0, -0.105), (0, 0, -0.19)], [0.007, 0.015, 0.021], 10, 5)
+        to = t.obj(name + '_Tassel', mats, collection, smooth=True)
+        to.parent, to.location = ko, (0, 0.006, -0.27)
+        up = bpy.data.objects.get('WORLD_Upright')
+        if not up:
+            up = bpy.data.objects.new('WORLD_Upright', None)
+            collection.objects.link(up)
+        con = to.constraints.new('COPY_ROTATION')
+        con.target = up
     s = MB()
     pts, rad = [], []
     for i in range(15):
