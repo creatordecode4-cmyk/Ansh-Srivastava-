@@ -30,7 +30,7 @@ SNOW_AMOUNT = 0.5      # "Snow Amount": 0 none, 0.5 thin patches on up-facing pa
 MOSS_AMOUNT = 0.6      # "Moss Amount": 0 none .. 1 heavy
 CRACK_AMOUNT = 0.65    # "Crack Amount": share of floor slabs broken into pieces
 SLAB_TILT = 0.03       # "Slab Tilt": random lean of each floor slab (normal xy units, 0.03 = about 1.7 deg at most)
-TILE_PATTERN = 1.0     # "Tile Pattern": strength of the painted roof-tile relief (0 if the roof mesh has modelled tiles)
+TILE_PATTERN = 0.0     # "Tile Pattern": painted roof-tile relief; 0 for roofs with modelled tiles (props_temple), 1 for plain roof planes
 PAINT_WEAR = 0.55      # "Paint Wear": chipped share of the red lacquer
 BLOSSOM_GLOW = 0.0     # "Glow": self-illumination of blossoms / petals (0 = lit by scene lights only)
 EMISSION = {           # "Emission Strength" per emissive material
@@ -706,14 +706,17 @@ def _roof_tile(m):
     m.put(vt.inputs["Vector"], nn)
 
     lum = m.lum(col_t)
+    island = m.geo.outputs["Random Per Island"]               # modelled tiles are separate islands: vary them one by one
+    stain = m.noise(m.obj, 3.3, detail=4.0, rough=0.65)
     v_col = m.mul(m.lerp(pattern, 0.035, m.remap(lum, 0.01, 0.16, 0.012, 0.075)), m.mad(m.big, 0.5, 0.75))
+    v_col = m.mul(v_col, m.mul(m.mad(island, 0.7, 0.65), m.mad(stain, 0.8, 0.6)))
     col = m.cscale((0.90, 0.95, 1.05), v_col)
     valley = m.mul(m.inv(m.remap(ao, 0.6, 0.95)), pattern)
     col = m.cscale(col, m.lerp(valley, 1.0, 0.45))
     col = m.cscale(col, m.lerp(wet, 1.3, 1.0))
-    rough = m.lerp(wet, 0.6, m.mad(m.mid, 0.2, 0.22))
+    rough = m.lerp(wet, 0.6, m.add(m.mad(m.mid, 0.2, 0.2), m.mul(island, 0.12)))
     rough = m.lerp(valley, rough, 0.6)
-    col, rough, h, cover = _weather(m, col, rough, crevice=valley, moss_gain=0.55, snow_gain=1.35, snow_bias=m.mad(valley, 0.25, -0.05))
+    col, rough, h, cover = _weather(m, col, rough, crevice=valley, moss_gain=0.55, snow_gain=1.1, snow_bias=m.mul(valley, 0.25))
     n = m.bump(h, vt.outputs[0])
     m.surface(color=col, rough=rough, normal=n, coat=m.mul(m.mul(wet, 0.6), m.inv(cover)), coat_rough=0.12, coat_ior=1.4)
 
@@ -828,7 +831,7 @@ def _window_glow(m):
     lamps = m.noise(m.obj, 0.7, detail=2.0, rough=0.5)                          # uneven lamps behind the paper
     fibre = m.noise(m.obj, 30.0, detail=3.0, rough=0.6)
     glow = m.mul(m.smooth(lamps, 0.3, 0.75, 0.22, 1.0), m.mad(fibre, 0.3, 0.85))
-    emit = m.mix(lamps, (1.0, 0.045, 0.02), (1.0, 0.14, 0.04))
+    emit = m.mix(lamps, (1.0, 0.035, 0.015), (1.0, 0.11, 0.03))
     m.surface(color=(0.30, 0.07, 0.04), rough=0.7, emission=emit, strength=m.mul(strength, glow))
 
 
