@@ -36,7 +36,7 @@ for ob in bpy.data.objects:
 if a.clay:
     bpy.context.view_layer.material_override = bpy.data.materials['MAT_Clay']
     for ob in bpy.data.objects:
-        if ob.name.startswith(('Fog_', 'BloodMoon', 'Floor_WaterFilm')):
+        if ob.name.startswith(('Fog_', 'BloodMoon', 'SkyClouds')):
             ob.hide_render = True
     sc.world.node_tree.nodes['Background'].inputs[1].default_value = 6.0
     sc.world.node_tree.nodes['Background'].inputs[0].default_value = (0.25, 0.27, 0.32, 1)

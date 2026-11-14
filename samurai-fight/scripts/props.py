@@ -4,8 +4,8 @@ import bpy, bmesh, math, random
 from mathutils import Vector, Matrix
 from sf_lib import *
 
-LANTERN_W = 1300.0     # stone lantern point light power
-PAPER_W = 95.0
+LANTERN_W = 650.0     # stone lantern point light power
+PAPER_W = 40.0
 
 
 def _pt_light(name, coll, loc, power, color=(1.0, 0.16, 0.05), radius=0.12):
@@ -109,7 +109,7 @@ def build_stone_lantern(coll, broken=False, seed=1, power=LANTERN_W):
     ob = mesh_obj('StoneLantern' + ('_Broken' if broken else ''), bm, coll, [mat_stone()], smooth=True, sharp_deg=50)
     bm = bmesh.new()
     add_cyl(bm, 0.29, 0.29, fb - 0.04, (0, 0, z0 + 0.02), 6)
-    mesh_obj('LanternFire', bm, coll, [mat_emit('MAT_LanternFire', (1.0, 0.10, 0.02), 5.0)])
+    mesh_obj('LanternFire', bm, coll, [mat_emit('MAT_LanternFire', (1.0, 0.045, 0.012), 3.0)])
     _pt_light('LGT_Lantern', coll, (0, 0, z0 + fb / 2), power, radius=0.2)
     if broken:
         ob.rotation_euler = (math.radians(4), math.radians(-3), 0)
@@ -285,7 +285,7 @@ def paper_lantern(coll, loc, power=PAPER_W, string=1.0):
 
 
 def build_temple(coll, W=18.0, D=11.0, ph=1.6, wh=4.2, ov=2.6, rH=5.2, vw=1.9, bays=7, stairs=True, porch=True,
-                 glow=0.3, lanterns=4, door_light=1500.0, tag='A'):
+                 glow=0.16, lanterns=4, door_light=230.0, tag='A'):
     stone, wood, red, win = mat_stone(), mat_wood_dark(), mat_lacquer(), mat_window('MAT_WindowGlow', glow)
     # --- stone platform + stairs
     bm = bmesh.new()
@@ -395,7 +395,8 @@ def build_temple(coll, W=18.0, D=11.0, ph=1.6, wh=4.2, ov=2.6, rH=5.2, vw=1.9, b
         paper_lantern(coll, (x, -(D / 2 + vw - 0.35), ph + 2.75))
     if door_light > 0:
         l = bpy.data.lights.new(f'LGT_Temple{tag}_Door', 'AREA')
-        l.shape, l.size, l.size_y, l.energy, l.color = 'RECTANGLE', 3.2, 2.6, door_light, (1.0, 0.13, 0.04)
+        l.shape, l.size, l.size_y, l.energy, l.color = 'RECTANGLE', 3.2, 2.6, door_light, (1.0, 0.10, 0.03)
+        l.spread = math.radians(110)
         ob = bpy.data.objects.new(l.name, l)
         ob.location = (0, -D / 2 - 0.25, ph + 1.7)
         ob.rotation_euler = (math.radians(-90), 0, 0)         # light travels toward -Y, out over the stairs

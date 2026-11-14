@@ -45,17 +45,17 @@ FIGHT_C = Vector((0.0, 1.0, 0.0))
 c_lan = get_coll('PROP_StoneLantern', LIB)
 P.build_stone_lantern(c_lan, False, 1)
 c_lanb = get_coll('PROP_StoneLanternBroken', LIB)
-P.build_stone_lantern(c_lanb, True, 2, power=800.0)
+P.build_stone_lantern(c_lanb, True, 2, power=420.0)
 c_torii = get_coll('PROP_Torii', LIB)
 P.build_torii(c_torii)
 c_temple = get_coll('PROP_TempleMain', LIB)
 P.build_temple(c_temple, TEMPLE_W, TEMPLE_D, tag='A')
 c_shrine = get_coll('PROP_ShrineBack', LIB)
-P.build_temple(c_shrine, 12.0, 7.5, ph=1.2, wh=3.6, ov=2.2, rH=4.2, bays=5, porch=False, lanterns=2, glow=0.25, door_light=700.0, tag='B')
+P.build_temple(c_shrine, 12.0, 7.5, ph=1.2, wh=3.6, ov=2.2, rH=4.2, bays=5, porch=False, lanterns=2, glow=0.14, door_light=160.0, tag='B')
 c_side = get_coll('PROP_HallSide', LIB)
-P.build_temple(c_side, 9.0, 6.5, ph=1.0, wh=3.4, ov=2.0, rH=3.6, bays=4, vw=1.4, porch=False, lanterns=2, glow=0.22, door_light=500.0, tag='C')
+P.build_temple(c_side, 9.0, 6.5, ph=1.0, wh=3.4, ov=2.0, rH=3.6, bays=4, vw=1.4, porch=False, lanterns=2, glow=0.12, door_light=120.0, tag='C')
 c_gate = get_coll('PROP_GateHouse', LIB)
-P.build_temple(c_gate, 9.0, 5.0, ph=0.5, wh=3.0, ov=1.6, rH=2.8, bays=4, vw=1.0, stairs=False, porch=False, lanterns=0, door_light=0.0, glow=0.12, tag='D')
+P.build_temple(c_gate, 9.0, 5.0, ph=0.5, wh=3.0, ov=1.6, rH=2.8, bays=4, vw=1.0, stairs=False, porch=False, lanterns=0, door_light=0.0, glow=0.07, tag='D')
 c_nob = [get_coll(f'PROP_Nobori{k}', LIB) for k in range(3)]
 for k, c in enumerate(c_nob):
     P.build_nobori(c, 4.4 + 0.3 * k, seed=k * 2.3)
@@ -181,7 +181,7 @@ z = nt.sep(co)[2]
 grad = nt.mix(nt.maprange(z, -0.05, 0.6), (0.030, 0.014, 0.024), (0.006, 0.009, 0.022))
 stars = nt.ramp(nt.noise(co, 420.0, 2, 0.5), [(0.735, 0.0), (0.78, 1.0)])
 nt.link(nt.mix(stars, grad, (0.5, 0.55, 0.7)), bg.inputs[0])
-bg.inputs[1].default_value = 1.0
+bg.inputs[1].default_value = 1.6
 
 
 def fog_box(name, lo, hi, density, aniso=0.55, color=(0.8, 0.82, 1.0)):
@@ -195,7 +195,7 @@ def fog_box(name, lo, hi, density, aniso=0.55, color=(0.8, 0.82, 1.0)):
     return ob
 
 
-fog_box('Fog_Haze', (-70, -45, -1), (70, 95, 34), 0.0045)
+fog_box('Fog_Haze', (-90, -60, -1), (90, 110, 40), 0.008)
 fog_box('Fog_GroundMist', (-32, 9, 0), (30, 46, 3.2), 0.022, 0.4)
 # night clouds on a card in front of the moon
 bm = bmesh.new()
@@ -216,8 +216,8 @@ def sun(name, travel, energy, color, angle_deg):
     return ob
 
 
-k = sun('LGT_Key_MoonCold', (0.45, 0.62, -0.64), 1.5, (0.50, 0.66, 1.0), 4.0)      # cold key from camera-left, high
-r = sun('LGT_Rim_BloodMoon', -MOON_DIR, 3.0, (1.0, 0.11, 0.06), 2.0)               # red rim from the moon
+k = sun('LGT_Key_MoonCold', (0.45, 0.62, -0.64), 2.0, (0.50, 0.66, 1.0), 4.0)      # cold key from camera-left, high
+r = sun('LGT_Rim_BloodMoon', -MOON_DIR, 1.1, (1.0, 0.11, 0.06), 2.0)               # red rim from the moon
 k.visible_volume_scatter = r.visible_volume_scatter = False                      # suns must not grey out the fog
 for nm, loc, col, pw in (('LGT_Mist_L', (-12, 23, 2.4), (0.45, 0.32, 1.0), 6000), ('LGT_Mist_R', (7, 25, 2.4), (0.6, 0.3, 0.9), 4500),
                          ('LGT_Mist_Torii', (-2.2, 19, 1.5), (1.0, 0.2, 0.25), 3500)):

@@ -297,7 +297,7 @@ def mat_ground(name='MAT_Ground'):
     n1, n2 = nt.noise(co, 0.6, 10, 0.7), nt.noise(co, 14, 6, 0.65)
     col = nt.mix(n1, (0.012, 0.012, 0.014), (0.045, 0.04, 0.04))
     rough = nt.mix(nt.ramp(n1, [(0.4, 0.0), (0.55, 1.0)]), (0.08,) * 3, (0.6,) * 3)
-    col, rough = _snow_moss(nt, col, rough, co, 0.5, 0.75)
+    col, rough = _snow_moss(nt, col, rough, co, 0.6, 0.3)
     pset(nt, b, color=col, rough=rough, normal=nt.bump(nt.math('ADD', n1, nt.math('MULTIPLY', n2, 0.5)), 0.6, 0.1))
     return m
 
@@ -358,7 +358,7 @@ def mat_roof(name='MAT_RoofTile'):
     col = nt.mix(n1, (0.018, 0.02, 0.026), (0.05, 0.055, 0.065))
     col = nt.mix(nt.math('MULTIPLY', nt.math('SUBTRACT', 1.0, rib), 0.7), col, (0.006, 0.006, 0.008))
     rough = nt.mix(n1, (0.2,) * 3, (0.45,) * 3)
-    col, rough = _snow_moss(nt, col, rough, co, 0.25, 0.8)
+    col, rough = _snow_moss(nt, col, rough, co, 0.25, 0.5)
     hgt = nt.math('ADD', rib, nt.math('MULTIPLY', course, 0.35))
     pset(nt, b, color=col, rough=rough, normal=nt.bump(hgt, 0.9, 0.06))
     return m
@@ -431,7 +431,7 @@ def mat_blossom(name='MAT_Blossom'):
     nt, b = h
     m.use_backface_culling = False
     g = nt.new('ShaderNodeNewGeometry')
-    col = nt.mix(g.outputs['Random Per Island'], (0.62, 0.30, 0.46), (0.95, 0.72, 0.82))
+    col = nt.mix(g.outputs['Random Per Island'], (0.70, 0.42, 0.55), (0.96, 0.84, 0.90))
     tr = nt.new('ShaderNodeBsdfTranslucent')
     nt.link(col, tr.inputs['Color'])
     pset(nt, b, color=col, rough=0.55, sheen=0.3)
@@ -461,7 +461,7 @@ def mat_simple(name, color, rough=0.6, metal=0.0, bump=0.0, bump_scale=20.0, sno
     return m
 
 
-def mat_moon(name='MAT_BloodMoon', strength=1.6):
+def mat_moon(name='MAT_BloodMoon', strength=2.7):
     m, h = new_mat(name)
     if not h:
         return m
@@ -469,8 +469,8 @@ def mat_moon(name='MAT_BloodMoon', strength=1.6):
     co = nt.coords('Object')
     n1 = nt.noise(co, 1.7, 10, 0.72)
     n2 = nt.noise(co, 7.0, 6, 0.6)
-    maria = nt.ramp(nt.math('ADD', nt.math('MULTIPLY', n1, 0.8), nt.math('MULTIPLY', n2, 0.2)), [(0.38, 0.0), (0.62, 1.0)])
-    col = nt.mix(maria, (0.30, 0.004, 0.003), (1.0, 0.045, 0.02))
+    maria = nt.ramp(nt.math('ADD', nt.math('MULTIPLY', n1, 0.75), nt.math('MULTIPLY', n2, 0.25)), [(0.42, 0.0), (0.56, 1.0)])
+    col = nt.mix(maria, (0.20, 0.003, 0.004), (1.0, 0.06, 0.035))
     lw = nt.new('ShaderNodeLayerWeight')
     lw.inputs['Blend'].default_value = 0.35
     limb = nt.math('POWER', nt.math('SUBTRACT', 1.0, lw.outputs['Facing']), 0.6)
