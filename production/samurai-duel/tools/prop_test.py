@@ -84,14 +84,18 @@ def main():
         temple.stair_section(lib)
     elif which == "rocks":
         from sd import nature
-        for i, r in enumerate(nature.rock_set(lib)):
-            r.location = ((i % 5) * 1.3 - 2.6, (i // 5) * 1.3 - 1.3, 0)
+        for i, r in enumerate(nature.rock_set(lib)):       # shown at the sizes used for rubble in the arena
+            k = (0.45 + 0.35 * ((i * 7) % 5) / 4) / max(0.05, r.get("size", 1.0))
+            r.scale = (k, k, k)
+            r.location = ((i % 6) * 1.0 - 2.5, (i // 6) * 1.0 - 1.5, 0)
     elif which == "cherry":
         from sd import nature
         nature.cherry_tree(lib, col, seed=int(arg("--seed", 1)), height=arg("--h", 6.0), crown=arg("--crown", 3.2))
     elif which == "temple":
-        from sd import temple
-        temple.hall(lib, col)
+        from sd import layout, temple
+        tp = layout.TEMPLE
+        temple.hall(lib, col, "Temple", tp["width"], tp["depth"], tp["platform"], tp["deck"], tp["stair_width"], tp["stair_steps"],
+                    wall_h=tp["wall_h"], roof_rise=tp["roof_rise"])
     elif which == "corridor":
         from sd import temple
         temple.corridor(lib, col, (0, -8), (0, 8))

@@ -1,7 +1,7 @@
 """Build the arena and render Stage 1 passes.
 
     python3 build_arena.py [--fast] [--save] [--pass beauty clay topdown] [--size W H] [--samples N]
-                           [--no-fog] [--no-particles] [--tag NAME] [--exposure EV]
+                           [--no-fog] [--no-particles] [--tag NAME] [--exposure EV] [--anim FRAMES] [--push METRES]
 
 --fast    lighter geometry for quick look-dev (low-res roofs, fewer blossoms)
 --save    write out/arena.blend
@@ -60,6 +60,24 @@ def main():
         out = os.path.join(core.OUT, "stage1", f"{p}{tag}.png")
         render.render_pass(sc, cams, p, out)
         print(f"RENDER {p} -> {out}: {time.time() - t0:.1f}s", flush=True)
+    n = arg("--anim", None, 1, int)
+    if n:   # short motion test: slow push-in on the hero camera, frames rendered in order so particles simulate
+        from mathutils import Vector
+        cam = cams["hero"]
+        sc.camera = cam
+        fwd = cam.matrix_world.to_quaternion() @ Vector((0, 0, -1))
+        cam.keyframe_insert("location", frame=1)
+        cam.location = cam.location + fwd * arg("--push", 0.8)
+        cam.keyframe_insert("location", frame=n)
+        sc.frame_start, sc.frame_end = 1, n
+        sc.render.use_motion_blur = True
+        sc.render.motion_blur_shutter = 0.5
+        d = os.path.join(core.OUT, "stage1", f"anim{tag}")
+        os.makedirs(d, exist_ok=True)
+        sc.render.filepath = os.path.join(d, "f_")
+        t0 = time.time()
+        bpy.ops.render.render(animation=True)
+        print(f"ANIM {n} frames -> {d}: {time.time() - t0:.1f}s ({(time.time() - t0) / n:.1f}s/frame)", flush=True)
 
 
 main()

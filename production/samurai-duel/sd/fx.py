@@ -42,7 +42,9 @@ def _emitter(name, col, volume):
     return ob
 
 
-def _system(ob, name, inst, count, volume, size, gravity, brownian, drag, seed, frames=720, fall_speed=0.6):
+def _system(ob, name, inst, count, volume, size, gravity, seed, frames=720, fall_speed=0.5, damping=0.05):
+    """Newtonian particles with unit mass: light gravity against velocity damping gives a steady
+    fall speed, wind and turbulence add drift and flutter. (Tiny masses made the forces explode.)"""
     mod = ob.modifiers.new(name, "PARTICLE_SYSTEM")
     psys = ob.particle_systems[-1]
     psys.seed = seed
@@ -57,11 +59,12 @@ def _system(ob, name, inst, count, volume, size, gravity, brownian, drag, seed, 
     ps.use_emit_random = True
     ps.normal_factor = 0.0
     ps.object_align_factor = (0.0, 0.0, -fall_speed)      # start already falling
-    ps.factor_random = 0.25
+    ps.factor_random = 0.15
     ps.physics_type = "NEWTON"
-    ps.mass = 0.01
-    ps.drag_factor = drag
-    ps.brownian_factor = brownian
+    ps.mass = 1.0
+    ps.damping = damping
+    ps.drag_factor = 0.0
+    ps.brownian_factor = 0.0
     ps.effector_weights.gravity = gravity
     ps.use_rotations = True
     ps.rotation_mode = "GLOB_Z"
@@ -74,7 +77,7 @@ def _system(ob, name, inst, count, volume, size, gravity, brownian, drag, seed, 
     ps.instance_object = inst
     ps.particle_size = size
     ps.size_random = 0.45
-    ps.use_die_on_collision = False
+    ps.use_die_on_collision = True                         # landing on the floor ends the particle
     return psys
 
 
@@ -86,27 +89,32 @@ def falling(lib, col, petals=5200, snow=9000, frames=720):
     core.link(flake, lib)
     core.set_mat(flake, _snow_mat())
     out = []
+    petal_v, snow_v = 0.47, 0.8
     for vol in (True, False):
         e = _emitter(f"FX_Petals_{'Fill' if vol else 'Rain'}", col, vol)
-        rate = int(petals * frames / (AIR["z1"] / 0.55 * 24))     # keep the same density in the air over time
-        out.append(_system(e, e.name, petal, petals if vol else rate, vol, 1.0, 0.0035, 0.5, 0.012, 11 + vol, frames, 0.55))
+        rate = int(petals * frames / (AIR["z1"] / petal_v * 24))     # same density in the air over the whole shot
+        out.append(_system(e, e.name, petal, petals if vol else rate, vol, 1.0, 0.067, 11 + vol, frames, petal_v))
         e2 = _emitter(f"FX_Snow_{'Fill' if vol else 'Rain'}", col, vol)
-        rate = int(snow * frames / (AIR["z1"] / 0.8 * 24))
-        out.append(_system(e2, e2.name, flake, snow if vol else rate, vol, 0.007, 0.0045, 0.35, 0.02, 21 + vol, frames, 0.8))
-    # gentle wind and turbulence so nothing falls in straight lines
+        rate = int(snow * frames / (AIR["z1"] / snow_v * 24))
+        out.append(_system(e2, e2.name, flake, snow if vol else rate, vol, 0.007, 0.105, 21 + vol, frames, snow_v))
+    # steady breeze plus turbulence so nothing falls in straight lines
     bpy.ops.object.effector_add(type="WIND", location=(0, 0, 6), rotation=(math.radians(90), 0, math.radians(-70)))
     wind = bpy.context.object
     wind.name = "FX_Wind"
     core.link(wind, col)
-    wind.field.strength = 0.012
-    wind.field.noise = 0.6
+    wind.field.strength, wind.field.noise, wind.field.flow = 0.24, 0.5, 0.0
     bpy.ops.object.effector_add(type="TURBULENCE", location=(0, 0, 5))
     turb = bpy.context.object
     turb.name = "FX_Turbulence"
     core.link(turb, col)
-    turb.field.strength = 0.02
-    turb.field.size = 2.5
-    turb.field.flow = 0.4
+    turb.field.strength, turb.field.size, turb.field.flow = 1.5, 2.5, 0.0
+    # invisible collider at floor level: particles that land are removed (fallen petals are a static scatter)
+    a = AIR
+    floor_c = core.mesh_obj("FX_GroundCollider", [(a["x0"] - 5, a["y0"] - 5, 0.02), (a["x1"] + 5, a["y0"] - 5, 0.02), (a["x1"] + 5, a["y1"] + 5, 0.02), (a["x0"] - 5, a["y1"] + 5, 0.02)], [(0, 1, 2, 3)], col)
+    floor_c.modifiers.new("collision", "COLLISION")
+    floor_c.collision.use_particle_kill = True
+    floor_c.hide_render = True
+    floor_c.display_type = "WIRE"
     return out
 
 
