@@ -79,7 +79,7 @@ RUBBLE = [
 ]
 
 # --- direction of the blood moon (azimuth from +Y toward +X, elevation), fixed for every shot
-MOON = dict(azimuth=math.radians(6.5), elevation=math.radians(28.5), angular_diameter=math.radians(10.0))
+MOON = dict(azimuth=math.radians(8.6), elevation=math.radians(27.2), angular_diameter=math.radians(10.0))
 
 # --- trees just south of the layout panel whose branches frame the hero shot (as in refs/arena.png)
 FRAMING_TREES = [(-4.9, -9.3, 5.4, 3.5), (2.9, -9.6, 5.4, 4.0)]

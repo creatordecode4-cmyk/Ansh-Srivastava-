@@ -17,6 +17,9 @@ from . import polyhaven as ph
 from .mats import NT
 
 PETAL_PINK = (0.86, 0.42, 0.55)
+# rounded sakura petal with the notch at the tip (x across, y along, z = cupping), unit length
+PETAL_OUTLINE = [(0.0, 0.0, 0.0), (-0.30, 0.22, 0.06), (-0.47, 0.50, 0.14), (-0.42, 0.78, 0.24), (-0.20, 0.97, 0.32), (0.0, 0.86, 0.28),
+                 (0.20, 0.97, 0.32), (0.42, 0.78, 0.24), (0.47, 0.50, 0.14), (0.30, 0.22, 0.06)]
 
 
 # ----------------------------------------------------------------------------- rocks
@@ -109,9 +112,10 @@ def _petal_mat():
 
 def petal_mesh(name, lib, length=0.03, width=0.022):
     """One cupped petal with a notched tip."""
-    l, w = length, width
-    verts = [(0, 0, 0), (-w * 0.55, l * 0.45, l * 0.12), (-w * 0.3, l * 0.95, l * 0.3), (0, l * 0.82, l * 0.22), (w * 0.3, l * 0.95, l * 0.3), (w * 0.55, l * 0.45, l * 0.12)]
-    ob = core.mesh_obj(name, verts, [(0, 5, 4, 3), (0, 3, 2, 1)], lib)
+    k = width / (0.94 * length)
+    verts = [(x * length * k, y * length, z * length) for x, y, z in PETAL_OUTLINE]
+    ob = core.mesh_obj(name, verts, [(0, i + 1, i) for i in range(1, len(verts) - 1)], lib)
+    core.smooth(ob, 180)
     core.set_mat(ob, _petal_mat())
     return ob
 
@@ -132,14 +136,15 @@ def blossom_cluster(lib, name="PROP_BlossomCluster", flowers=16, radius=0.2, see
         for k in range(5):
             a = k * 2 * math.pi / 5 + r.uniform(-0.15, 0.15)
             rot = q @ Matrix.Rotation(a, 3, "Z")
-            pts = [(0, 0, 0), (-fr * 0.42, fr * 0.5, fr * 0.16), (0, fr, fr * 0.36), (fr * 0.42, fr * 0.5, fr * 0.16)]
-            vs = [bm.verts.new(c + rot @ Vector(p)) for p in pts]
-            bm.faces.new(vs)
+            vs = [bm.verts.new(c + rot @ Vector((x * fr, y * fr, z * fr))) for x, y, z in PETAL_OUTLINE]
+            for i in range(1, len(vs) - 1):
+                bm.faces.new((vs[0], vs[i + 1], vs[i]))
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
     ob = bpy.data.objects.new(name, me)
     lib.objects.link(ob)
+    core.smooth(ob, 180)
     core.set_mat(ob, _petal_mat())
     return ob
 

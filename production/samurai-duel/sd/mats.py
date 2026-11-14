@@ -171,7 +171,7 @@ def get(name, builder, *a, **kw):
 
 
 # Global look knobs (0..1) so the weathering stays consistent across props.
-LOOK = {"wet": 0.85, "snow": 0.36, "moss": 0.55}
+LOOK = {"wet": 0.85, "snow": 0.3, "moss": 0.55}
 
 
 def surface(
@@ -277,7 +277,7 @@ def stone_slab():
 
 def stone_lantern():
     return get("MAT_Stone_Lantern", surface, "lichen_rock", size=1.3, tint=(0.8, 0.84, 0.9), value=0.6, sat=0.3,
-               rough=1.0, rough_min=0.3, bump=1.0, bump_dist=0.03, moss=0.95, snow=0.58, rand_offset=3.0)
+               rough=1.0, rough_min=0.3, bump=1.0, bump_dist=0.03, moss=0.95, snow=0.42, rand_offset=3.0)
 
 
 def stone_block():
@@ -338,7 +338,7 @@ def bark():
 
 
 def roof_tile():
-    return get("MAT_Roof_Tile", surface, None, base=(0.022, 0.026, 0.032), rough=1.0, rough_min=0.22, wet=0.9, snow=0.5, moss=0.55)
+    return get("MAT_Roof_Tile", surface, None, base=(0.022, 0.026, 0.032), rough=1.0, rough_min=0.22, wet=0.9, snow=0.36, moss=0.55)
 
 
 def rope():
