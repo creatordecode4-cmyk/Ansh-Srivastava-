@@ -89,6 +89,14 @@ def load_tripo(path, name, height, C, ratio=0.5):
     return ob
 
 
+def delete_verts(ob, mask):
+    """Remove stray geometry (generation artefacts) from a mesh."""
+    bm = bmesh.new(); bm.from_mesh(ob.data); bm.verts.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.verts[i] for i in np.nonzero(mask)[0]], context='VERTS')
+    bm.to_mesh(ob.data); bm.free()
+    print(f'  {ob.name}: removed {int(mask.sum())} stray vertices')
+
+
 def verts_np(ob):
     n = len(ob.data.vertices)
     co = np.empty(n * 3, np.float32); ob.data.vertices.foreach_get('co', co)
@@ -227,6 +235,9 @@ def build_oni(C):
 
 def build_ronin(C):
     ob = load_tripo(os.path.join(ASSETS, 'glb', 'ronin_body.glb'), 'Ronin_Body', joints.RONIN_H, C)
+    c0 = verts_np(ob)
+    # the generator left a loose blade shard behind the right arm: cut it away
+    delete_verts(ob, (c0[:, 2] > 1.40) & (c0[:, 2] < 1.72) & (((c0[:, 0] < -0.30) & (c0[:, 1] > 0.122)) | ((c0[:, 0] < -0.52) & (c0[:, 1] > 0.095))))
     arm = charlib.make_armature('Ronin_Rig', charlib.humanoid_bones(joints.J_RONIN), C)
     hat = lambda c: (c[:, 2] > 1.868) & (np.hypot(c[:, 0], c[:, 1] + 0.02) < 0.26)
     hilts = lambda c: (c[:, 2] > 1.72) & (np.abs(c[:, 0]) > 0.19) & (c[:, 1] > 0.150)

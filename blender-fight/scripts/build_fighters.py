@@ -72,8 +72,8 @@ if not a.norender:
             oc.hide_render = other != name
         for v in a.views.split(','):
             ang = R(ANG[v])
-            tgt = Vector((0, 0, 1.80 if a.close else 1.05))
-            dist = 2.6 if a.close else 5.6
+            tgt = Vector((0, 0, (1.88 if name == 'oni' else 1.78) if a.close else 1.05))
+            dist = 1.9 if a.close else 5.6
             cam.location = tgt + Vector((math.sin(ang) * dist, -math.cos(ang) * dist, 0.10 if a.close else 0.25))
             cam.rotation_euler = (tgt - cam.location).to_track_quat('-Z', 'Y').to_euler()
             pivot.rotation_euler = (0, 0, ang)
