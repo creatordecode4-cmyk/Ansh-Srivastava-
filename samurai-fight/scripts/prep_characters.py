@@ -5,6 +5,7 @@ Each GLB is one fused watertight shell (hat, cape, swords and body are a single 
 about 1 unit tall, with 1024 px base-colour / normal / roughness-metallic textures.
 """
 import bpy, bmesh, sys, time, math
+import numpy as np
 from mathutils import Vector, Matrix
 
 oni_glb, ronin_glb, out = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -29,15 +30,14 @@ def prep(path, name):
     bm.transform(ob.matrix_world)
     n0 = len(bm.verts)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
-    zs = [v.co.z for v in bm.verts]
-    xs = [v.co.x for v in bm.verts]
-    ys = [v.co.y for v in bm.verts]
-    s = HEIGHT[name] / (max(zs) - min(zs))
+    co = np.array([v.co[:] for v in bm.verts], dtype=np.float64)
+    zlo, zhi = co[:, 2].min(), co[:, 2].max()
+    s = HEIGHT[name] / (zhi - zlo)
     # stand on the ground, centred between the feet (lowest 3 % of the mesh)
-    zlo = min(zs)
-    foot = [v.co for v in bm.verts if v.co.z < zlo + 0.03 * (max(zs) - zlo)]
-    cx = (min(p.x for p in foot) + max(p.x for p in foot)) / 2
-    cy = (min(p.y for p in foot) + max(p.y for p in foot)) / 2
+    foot = co[co[:, 2] < zlo + 0.03 * (zhi - zlo)]
+    cx = (foot[:, 0].min() + foot[:, 0].max()) / 2
+    cy = (foot[:, 1].min() + foot[:, 1].max()) / 2
+    print(f'PREP {name}: welded in {time.time() - t0:.0f}s', flush=True)
     bm.transform(Matrix.Scale(s, 4) @ Matrix.Translation((-cx, -cy, -zlo)))
     bm.to_mesh(me)
     n1, f1 = len(bm.verts), len(bm.faces)
@@ -50,6 +50,7 @@ def prep(path, name):
     tris = sum(len(p.vertices) - 2 for p in me.polygons)
     mod = ob.modifiers.new('dec', 'DECIMATE')
     mod.ratio = min(1.0, TRIS / tris)
+    print(f'PREP {name}: decimating {tris} tris to {TRIS} ...', flush=True)
     dg = bpy.context.evaluated_depsgraph_get()
     new = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
     ob.modifiers.remove(mod)
@@ -71,11 +72,12 @@ def prep(path, name):
     for c in list(ob.users_collection):
         c.objects.unlink(ob)
     coll.objects.link(ob)
-    lo = Vector(map(min, *[v.co for v in new.vertices])) if False else None
-    co = [v.co for v in new.vertices]
-    bb = [min(c[i] for c in co) for i in range(3)], [max(c[i] for c in co) for i in range(3)]
+    c2 = np.empty(len(new.vertices) * 3, dtype=np.float32)
+    new.vertices.foreach_get('co', c2)
+    c2 = c2.reshape(-1, 3)
+    bb = c2.min(0), c2.max(0)
     print(f'PREP {name}: verts {n0}->{n1} welded, faces {f1} -> {len(new.polygons)} tris, scale x{s:.3f}, '
-          f'bbox {[round(v, 2) for v in bb[0]]} .. {[round(v, 2) for v in bb[1]]}, {time.time() - t0:.0f}s', flush=True)
+          f'bbox {np.round(bb[0], 2)} .. {np.round(bb[1], 2)}, {time.time() - t0:.0f}s', flush=True)
     return ob
 
 
