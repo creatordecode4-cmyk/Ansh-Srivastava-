@@ -8,7 +8,7 @@ Built entirely from Python scripts with headless Blender (`pip install bpy`), so
 | Stage | What | State |
 |---|---|---|
 | 1 | Arena (layout, props, lighting, fog, petals, snow) | Preview ready, procedural props; GLB props optional |
-| 2 | Characters | Not started |
+| 2 | Characters (Oni Samurai, Cyber Ronin) | Preview ready, fully procedural on a shared skeleton |
 | 3 | Rigging and animation | Not started |
 | 4 | Timeline, cameras, final render | Not started |
 
@@ -23,6 +23,18 @@ python3 scripts/render_arena.py --cam CAM_Hero --clay --out previews/clay.png
 ```
 
 Cameras: `CAM_Hero`, `CAM_TopDown`, `CAM_Temple`, `CAM_Torii`.
+
+## Build the characters
+
+```bash
+python3 scripts/build_characters.py --views front,34,side,back --res 480x860 --spp 48   # writes characters.blend + turnaround stills
+python3 scripts/render_standoff.py --res 1280x720 --spp 64 --out previews/standoff.png  # both fighters in the arena, writes fight_scene.blend
+```
+
+Both fighters are modelled in code (`scripts/characters.py`) on one humanoid skeleton (`scripts/charlib.py`):
+hard-surface parts are rigid meshes parented to bones, the Oni torso and arms are a skinned mesh with formula weights.
+Separate objects: `Oni_Katana`, `Oni_Saya`, `Oni_Mask`, `Oni_Hair`, `Oni_Hakama`, `Ronin_Katana_L/R`, `Ronin_Saya_L/R`,
+`Ronin_Cape`, `Ronin_WaistCloth`, `Ronin_Hat_L`, `Ronin_Hat_R` (the hat is two halves so it can split in the last shot).
 
 ## Swapping in image-to-3D props
 
@@ -42,7 +54,7 @@ name exists in `assets/glb/`:
 
 - `refs/` – the seven reference sheets
 - `prop_images/` – each arena prop cropped out for image-to-3D
-- `scripts/` – `lib.py` (mesh + material helpers), `build_arena.py`, `render_arena.py`, `fetch_assets.py`, `crop_props.py`
+- `scripts/` – `lib.py` (mesh + material helpers), `build_arena.py`, `render_arena.py`, `fetch_assets.py`, `crop_props.py`, `charlib.py`, `characters.py`, `build_characters.py`, `render_standoff.py`
 - `previews/` – stage preview renders
 - `assets/`, `*.blend` – generated, not committed
 
