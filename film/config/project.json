@@ -1,0 +1,16 @@
+{
+  "title": "Oni Samurai vs Cyber Ronin",
+  "fps": 24,
+  "frame_start": 1001,
+  "frame_end": 1720,
+  "preroll_start": 951,
+  "final_resolution": [1920, 1080],
+  "view_transform": "AgX",
+  "look": "AgX - Medium High Contrast",
+  "render_presets": {
+    "draft":  {"resolution": [640, 360],   "samples": 12, "max_bounces": 4, "volume_bounces": 0},
+    "look":   {"resolution": [960, 540],   "samples": 32, "max_bounces": 6, "volume_bounces": 0},
+    "final":  {"resolution": [1280, 720],  "samples": 24, "max_bounces": 6, "volume_bounces": 0},
+    "hero":   {"resolution": [1920, 1080], "samples": 64, "max_bounces": 8, "volume_bounces": 0}
+  }
+}
