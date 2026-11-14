@@ -60,7 +60,7 @@ def _lattice(bb, x0, x1, z0, z1, y, pitch=0.115, bar=0.03, rails=3):
 
 
 def hall(lib, col, name="Temple", width=12.5, depth=9.0, platform=1.9, deck=2.3, stair_width=3.4, stair_steps=11,
-         wall_h=4.3, roof_rise=4.4, overhang=1.9, detail=True, loc=(0, 0, 0), yaw=0.0, seed=0, glow_strength=0.3):
+         wall_h=4.3, roof_rise=4.4, overhang=1.9, detail=True, loc=(0, 0, 0), yaw=0.0, seed=0, glow_strength=0.2):
     """Temple hall. Facade along X at y=0 facing -Y; returns (root empty, anchor dict in local coords)."""
     r = core.rng(seed)
     objs = []

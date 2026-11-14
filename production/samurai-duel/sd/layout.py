@@ -81,8 +81,9 @@ RUBBLE = [
 # --- direction of the blood moon (azimuth from +Y toward +X, elevation), fixed for every shot
 MOON = dict(azimuth=math.radians(8.6), elevation=math.radians(27.2), angular_diameter=math.radians(10.0))
 
-# --- trees just south of the layout panel whose branches frame the hero shot (as in refs/arena.png)
-FRAMING_TREES = [(-4.9, -9.3, 5.4, 3.5), (2.9, -9.6, 5.4, 4.0)]
+# --- trees just south of the layout panel whose branch tips frame the hero shot (as in refs/arena.png):
+#     (x, y, height, crown radius, blossom density). Trunks stay outside the hero frame.
+FRAMING_TREES = [(-5.6, -8.6, 6.2, 3.6, 0.6), (3.6, -8.6, 6.2, 3.6, 0.6)]
 
 # --- hero still camera (matches the framing of refs/arena.png): low, south end, left lantern close
 HERO_CAM = dict(pos=(-1.5, -10.5, 0.55), target=(-0.9, 6.0, 4.6), lens=19.0, focus=14.0, fstop=1.4)

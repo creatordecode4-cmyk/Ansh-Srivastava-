@@ -163,8 +163,9 @@ def build(detail=True, particles=True, verbose=True):
 
     for i, (x, y, h, cr) in enumerate(layout.CHERRY):
         nature.cherry_tree(lib, C["TREES"], seed=i + 1, height=h, crown=cr, loc=(x, y, ground_z(x, y)), yaw=i * 1.3, density=1.0 if detail else 0.4)
-    for i, (x, y, h, cr) in enumerate(layout.FRAMING_TREES):
-        nature.cherry_tree(lib, C["TREES"], seed=40 + i, height=h, crown=cr, name=f"Cherry_Frame_{i + 1}", loc=(x, y, 0), yaw=i * 2.1, density=1.2 if detail else 0.6)
+    for i, (x, y, h, cr, dens) in enumerate(layout.FRAMING_TREES):
+        nature.cherry_tree(lib, C["TREES"], seed=40 + i, height=h, crown=cr, name=f"Cherry_Frame_{i + 1}", loc=(x, y, 0), yaw=i * 2.1,
+                           density=dens if detail else dens * 0.6)
     pines = [nature.pine_tree(lib, seed=s, height=h) for s, h in ((1, 13.0), (2, 16.0), (3, 11.0), (4, 14.5))]
     r = core.rng(31)
     placed = 0

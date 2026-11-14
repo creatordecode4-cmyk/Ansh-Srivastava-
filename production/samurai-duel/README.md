@@ -12,11 +12,15 @@ textures, rock scans and the night HDRI are downloaded on first use into `assets
 
 ## Build and render
 ```bash
-python3 build_arena.py --save --pass beauty topdown clay --size 1920 1080 --samples 160 --tag _final
+python3 build_arena.py --save --pass beauty topdown clay --size 1920 1080 --samples 128 --tag _final
 python3 tools/stage1_sheet.py _final        # preview sheets -> previews/
-python3 build_arena.py --fast --pass beauty --size 960 540 --samples 48 --tag _test   # quick look-dev
+python3 build_arena.py --pass beauty --size 960 540 --samples 48 --tag _test          # look-dev test, about 3 min
+python3 build_arena.py --no-fog --no-particles --no-bloom --pass beauty --size 640 360 --samples 16 --tag _comp   # framing test, 45 s
+python3 build_arena.py --fast --size 640 360 --samples 28 --anim 36 --push 1.0 --tag _motion   # particle motion test
 python3 tools/prop_test.py lantern --neutral   # one prop on a neutral stage
+python3 tools/props_sheet.py                   # all props -> previews/stage1_props.jpg
 ```
+Measured on 4 CPU cores: 1080p beauty at 128 samples takes 20 to 25 minutes, top-down about 10, clay about 3.
 `--save` writes `out/arena.blend`. No GPU is needed (Cycles on CPU, compositor on CPU).
 
 ## Folders
@@ -39,3 +43,9 @@ python3 tools/prop_test.py lantern --neutral   # one prop on a neutral stage
   boundary wall with a gate, so reverse angles have a backdrop.
 - Every prop is its own object; lanterns, tiles, rocks, banners, paper lanterns, blossoms and
   petals are instanced from one master each.
+- Look: version A (commit eeda84a) was a brighter, pinker night. Version B, the current one, is
+  closer to `refs/arena.png`: pale blossoms with dark centres, grey-violet sky, cool mist lit by
+  the moonlight key, deep-red lantern light, a cratered blood moon. The framing trees stand 4.5
+  to 5.5 m from the hero camera so only their branch tips enter the top corners.
+- Falling petals and snow are particle systems (unit mass, velocity damping, light gravity);
+  `previews/stage1_motion_test_A.mp4` is the 36-frame check, rendered with the version A look.

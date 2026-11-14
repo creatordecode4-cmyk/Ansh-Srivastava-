@@ -13,7 +13,7 @@ from mathutils import Vector
 
 from . import core, mats
 
-GLOW = (1.0, 0.11, 0.035)
+GLOW = (1.0, 0.075, 0.022)
 
 
 def _rough(ob, strength=0.035, scale=0.2, levels=2):
@@ -148,7 +148,7 @@ def stone_lantern(lib, broken=False, name=None, seed=1, height=2.6, power=300.0)
 
     # glow core + actual light (the mesh gives the visible ember, the lamp lights the scene)
     core_ob = core.box(name + "_glow", (fb * 0.62, fb * 0.62, fh * 0.6), (top.x, top.y, box_z + fh * 0.45), master, bevel=0.03)
-    core.set_mat(core_ob, mats.emission("MAT_Lantern_Glow" + ("_Dim" if broken else ""), GLOW, 9.0 if not broken else 5.0))
+    core.set_mat(core_ob, mats.emission("MAT_Lantern_Glow" + ("_Dim" if broken else ""), GLOW, 6.0 if not broken else 3.6))
     core_ob.visible_shadow = False
     ld = bpy.data.lights.new(name + "_light", "POINT")
     ld.color, ld.energy, ld.shadow_soft_size = GLOW, power * (0.55 if broken else 1.0), 0.09

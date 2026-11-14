@@ -36,10 +36,10 @@ def world(sc, hdri="kloppenheim_07_puresky", strength=0.2, rotation=math.radians
     dot = nt.new("ShaderNodeVectorMath", operation="DOT_PRODUCT")
     nt.link(tc.outputs["Generated"], dot.inputs[0])
     dot.inputs[1].default_value = moon_dir()
-    near = nt.map_range(dot.outputs["Value"], 0.93, 0.999, 0.0, 1.0)
-    cool = nt.mix(1.0, env.outputs[0], (0.42, 0.55, 1.0, 1), "MULTIPLY")
+    near = nt.map_range(dot.outputs["Value"], 0.945, 0.999, 0.0, 1.0)
+    cool = nt.mix(1.0, env.outputs[0], (0.50, 0.56, 0.88, 1), "MULTIPLY")     # grey-violet night, not saturated blue
     warm = nt.mix(1.0, env.outputs[0], (1.0, 0.14, 0.09, 1), "MULTIPLY")
-    col = nt.mix(nt.math("POWER", near, 1.8), cool, nt.mix(1.0, warm, (1.7, 1.7, 1.7, 1), "MULTIPLY"))
+    col = nt.mix(nt.math("POWER", near, 2.2), cool, nt.mix(1.0, warm, (1.45, 1.45, 1.45, 1), "MULTIPLY"))
     bg = nt.new("ShaderNodeBackground")
     nt.link(col, bg.inputs[0])
     bg.inputs[1].default_value = strength
@@ -47,7 +47,7 @@ def world(sc, hdri="kloppenheim_07_puresky", strength=0.2, rotation=math.radians
     return w
 
 
-def moon(col, distance=900.0, strength=1.5):
+def moon(col, distance=900.0, strength=1.3):
     """Blood moon: a far emissive sphere with dark maria, so it parallaxes like the real thing."""
     d = moon_dir()
     radius = distance * math.tan(layout.MOON["angular_diameter"] / 2)
@@ -63,16 +63,20 @@ def moon(col, distance=900.0, strength=1.5):
         nt = NT(m.node_tree, clear=True)
         out = nt.new("ShaderNodeOutputMaterial")
         vec = nt.coords("Object", 1.0 / radius)
-        maria = nt.noise(vec, 1.35, 6.0, 0.62, distortion=0.35)
-        craters = nt.voronoi(vec, 9.0, "F1")
-        rays = nt.noise(vec, 7.0, 5.0, 0.7)
-        v = nt.map_range(maria, 0.38, 0.62, 0.22, 1.0)
-        v = nt.math("MULTIPLY", v, nt.map_range(craters, 0.0, 0.25, 0.72, 1.0))
-        v = nt.math("MULTIPLY", v, nt.map_range(rays, 0.3, 0.75, 0.82, 1.08))
+        # dark seas with sharp, ragged shores over brighter highlands
+        maria = nt.noise(vec, 1.55, 9.0, 0.56, distortion=0.18)
+        v = nt.map_range(maria, 0.40, 0.50, 0.30, 1.0)
+        v = nt.math("MULTIPLY", v, nt.map_range(nt.noise(vec, 6.5, 6.0, 0.7), 0.3, 0.72, 0.78, 1.1))
+        # impact craters at three sizes: darker floor, bright rim, only in some cells
+        for scale, depth, share in ((3.4, 0.5, 0.42), (8.5, 0.42, 0.42), (21.0, 0.3, 0.45)):
+            dist = nt.voronoi(vec, scale, "F1")
+            bowl = nt.ramp(dist, [(0.0, 1.0 - depth), (0.15, 1.0 - 0.55 * depth), (0.22, 1.0 + 0.7 * depth), (0.32, 1.0), (1.0, 1.0)])
+            pick = nt.math("GREATER_THAN", nt.voronoi(vec, scale, "F1", out=1), share)
+            v = nt.math("MULTIPLY", v, nt.mix(pick, 1.0, bowl))
         lw = nt.new("ShaderNodeLayerWeight")           # gentle limb darkening
         lw.inputs["Blend"].default_value = 0.35
         v = nt.math("MULTIPLY", v, nt.map_range(lw.outputs["Facing"], 0.0, 1.0, 1.0, 0.45))
-        colr = nt.ramp(v, [(0.0, (0.10, 0.002, 0.002)), (0.5, (0.62, 0.02, 0.008)), (1.0, (1.0, 0.13, 0.03))])
+        colr = nt.ramp(v, [(0.0, (0.07, 0.001, 0.002)), (0.45, (0.50, 0.012, 0.010)), (1.0, (1.0, 0.07, 0.036))])
         em = nt.new("ShaderNodeEmission")
         nt.link(colr, em.inputs[0])
         em.inputs[1].default_value = strength
@@ -86,12 +90,12 @@ def moon(col, distance=900.0, strength=1.5):
     return ob
 
 
-def lights(col, key=1.3, rim=0.28, fill=1.7):
+def lights(col, key=1.3, rim=0.28, fill=1.25):
     out = {}
     # cold moonlight key from the east-north-east, raking across the courtyard
     kd = bpy.data.lights.new("LGT_Key_Moonlight", "SUN")
     kd.color, kd.energy, kd.angle = (0.5, 0.68, 1.0), key, math.radians(2.5)
-    kd.volume_factor = 1.0
+    kd.volume_factor = 2.5           # the mist is lit by the cold moonlight, so it reads grey-violet against the red glow
     ko = bpy.data.objects.new("LGT_Key_Moonlight", kd)
     az, el = math.radians(78), math.radians(38)
     src = Vector((math.sin(az) * math.cos(el), math.cos(az) * math.cos(el), math.sin(el)))
@@ -139,7 +143,7 @@ def fog(col, haze=0.002, mist=0.2, mist_height=1.15):
         dens = nt.math("ADD", haze, nt.math("MULTIPLY", nt.math("MULTIPLY", fall, puff), nt.math("MULTIPLY", north, mist)))
         vs = nt.new("ShaderNodeVolumeScatter")
         vs.inputs["Color"].default_value = (0.82, 0.86, 1.0, 1)
-        vs.inputs["Anisotropy"].default_value = 0.45
+        vs.inputs["Anisotropy"].default_value = 0.25
         nt.link(dens, vs.inputs["Density"])
         nt.link(vs.outputs[0], out.inputs["Volume"])
         return m

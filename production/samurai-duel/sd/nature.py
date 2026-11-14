@@ -16,7 +16,10 @@ from . import core, mats
 from . import polyhaven as ph
 from .mats import NT
 
-PETAL_PINK = (0.86, 0.42, 0.55)
+PETAL_TIP_A = (0.90, 0.66, 0.74, 1)     # pale pink petal blade (two tones, picked per cluster)
+PETAL_TIP_B = (0.80, 0.50, 0.62, 1)
+PETAL_HEART = (0.52, 0.10, 0.22, 1)     # deep magenta at the flower centre
+PETAL_GLOW = 0.035
 # rounded sakura petal with the notch at the tip (x across, y along, z = cupping), unit length
 PETAL_OUTLINE = [(0.0, 0.0, 0.0), (-0.30, 0.22, 0.06), (-0.47, 0.50, 0.14), (-0.42, 0.78, 0.24), (-0.20, 0.97, 0.32), (0.0, 0.86, 0.28),
                  (0.20, 0.97, 0.32), (0.42, 0.78, 0.24), (0.47, 0.50, 0.14), (0.30, 0.22, 0.06)]
@@ -90,24 +93,34 @@ def rock_set(lib):
 
 # ----------------------------------------------------------------------------- cherry trees
 def _petal_mat():
+    """Sakura petal: pale, slightly bluish pink that deepens to magenta at the flower centre
+    (the UV map runs 0 at the petal base to 1 at the notched tip)."""
     def build(name):
         m = bpy.data.materials.new(name)
         m.use_nodes = True
         nt = NT(m.node_tree)
         b = m.node_tree.nodes["Principled BSDF"]
         oi = nt.new("ShaderNodeObjectInfo")
-        col = nt.mix(oi.outputs["Random"], (0.95, 0.42, 0.62, 1), (0.78, 0.22, 0.42, 1))
+        uv = nt.new("ShaderNodeUVMap")
+        sep = nt.new("ShaderNodeSeparateXYZ")
+        nt.link(uv.outputs[0], sep.inputs[0])
+        tip = nt.mix(oi.outputs["Random"], PETAL_TIP_A, PETAL_TIP_B)
+        col = nt.mix(nt.map_range(sep.outputs[1], 0.02, 0.6), PETAL_HEART, tip)
         nt.put(b.inputs["Base Color"], col)
-        b.inputs["Roughness"].default_value = 0.55
-        b.inputs["Subsurface Weight"].default_value = 0.6     # thin petals let light through
+        b.inputs["Roughness"].default_value = 0.6
+        b.inputs["Subsurface Weight"].default_value = 0.5     # thin petals let light through
         b.inputs["Subsurface Radius"].default_value = (0.02, 0.008, 0.01)
         b.inputs["Subsurface Scale"].default_value = 1.0
         b.inputs["Sheen Weight"].default_value = 0.2
-        nt.put(b.inputs["Emission Color"], col)          # a touch of self-light keeps blossoms pink in moonlight
-        b.inputs["Emission Strength"].default_value = 0.14
+        nt.put(b.inputs["Emission Color"], col)          # a whisper of self-light so shaded blossoms do not go black
+        b.inputs["Emission Strength"].default_value = PETAL_GLOW
         return m
 
     return mats.get("MAT_Petal_Sakura", build)
+
+
+def _petal_uv(x, y):
+    return (x + 0.5, y)
 
 
 def petal_mesh(name, lib, length=0.03, width=0.022):
@@ -115,6 +128,10 @@ def petal_mesh(name, lib, length=0.03, width=0.022):
     k = width / (0.94 * length)
     verts = [(x * length * k, y * length, z * length) for x, y, z in PETAL_OUTLINE]
     ob = core.mesh_obj(name, verts, [(0, i + 1, i) for i in range(1, len(verts) - 1)], lib)
+    uvl = ob.data.uv_layers.new(name="UVMap")
+    for lp in ob.data.loops:
+        x, y, _ = PETAL_OUTLINE[lp.vertex_index]
+        uvl.data[lp.index].uv = _petal_uv(x, y)
     core.smooth(ob, 180)
     core.set_mat(ob, _petal_mat())
     return ob
@@ -127,6 +144,7 @@ def blossom_cluster(lib, name="PROP_BlossomCluster", flowers=16, radius=0.2, see
         return ob
     r = core.rng(seed)
     bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new("UVMap")
     for _ in range(flowers):
         c = Vector((r.gauss(0, 1), r.gauss(0, 1), r.gauss(0, 1)))
         c = c.normalized() * radius * r.random() ** 0.5
@@ -138,7 +156,9 @@ def blossom_cluster(lib, name="PROP_BlossomCluster", flowers=16, radius=0.2, see
             rot = q @ Matrix.Rotation(a, 3, "Z")
             vs = [bm.verts.new(c + rot @ Vector((x * fr, y * fr, z * fr))) for x, y, z in PETAL_OUTLINE]
             for i in range(1, len(vs) - 1):
-                bm.faces.new((vs[0], vs[i + 1], vs[i]))
+                f = bm.faces.new((vs[0], vs[i + 1], vs[i]))
+                for lp, j in zip(f.loops, (0, i + 1, i)):
+                    lp[uvl].uv = _petal_uv(*PETAL_OUTLINE[j][:2])
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
