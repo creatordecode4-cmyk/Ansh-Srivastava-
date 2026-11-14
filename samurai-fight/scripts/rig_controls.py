@@ -26,6 +26,8 @@ SWORDS = {
     'Ronin': [('Ronin_Katana_R', 'Ronin', {'Right': 0.08}), ('Ronin_Katana_L', 'Ronin', {'Left': 0.08})],
 }
 GRIP_CURL = (58, 72, 55)          # finger-block curl in degrees for a closed grip
+# fused sheathed-sword handles: (segment start at the pommel, segment end, radius, length to hide) in rest space
+HANDLES = {'Oni': [((0.115, -0.47, 1.30), (0.38, 0.52, 0.67), 0.062, 0.31)]}
 
 
 def empty(name, coll, parent, matrix_world, size=0.08, kind='PLAIN_AXES'):
@@ -90,13 +92,24 @@ for name in ('Oni', 'Ronin'):
         cr = rig.pose.bones[side + 'Foot'].constraints.new('COPY_ROTATION')
         cr.target = foot
         report.append((side + 'Leg',) + calibrate_pole(rig, side + 'Leg', side + 'UpLeg'))
-        # ---- arms: pole below/behind the elbow
-        fore_b = rig.data.bones[side + 'ForeArm']
-        empty(f'{name}_ELBOW_{s}', coll, root, Matrix.Translation(RW @ fore_b.head_local + Vector((0, 0.5, -0.45))), 0.06, 'SPHERE')
-    # ---- swords and grips
+        # ---- arms: every hand has its own free target; a keyable constraint snaps it onto a sword grip
+        fore_b, hand_b = rig.data.bones[side + 'ForeArm'], rig.data.bones[side + 'Hand']
+        elbow = empty(f'{name}_ELBOW_{s}', coll, root, Matrix.Translation(RW @ fore_b.head_local + Vector((0, 0.5, -0.45))), 0.06, 'SPHERE')
+        hand = empty(f'{name}_HAND_{s}', coll, root, RW @ hand_b.matrix_local, 0.07, 'CUBE')
+        hand.rotation_mode = 'QUATERNION'
+        pb = rig.pose.bones[side + 'ForeArm']
+        c = pb.constraints.new('IK')
+        c.target, c.chain_count, c.pole_target, c.use_stretch = hand, 2, elbow, False
+        cr = rig.pose.bones[side + 'Hand'].constraints.new('COPY_ROTATION')
+        cr.target = hand
+        vl.update()
+        report.append((side + 'ForeArm',) + calibrate_pole(rig, side + 'ForeArm', side + 'Arm'))
+        for k in range(3):
+            rig.pose.bones[f'{side}HandFingers{k + 1}'].rotation_mode = 'XYZ'
+    # ---- swords: the katana is the master, GRIP_* ride on it, HAND_* copy them while "Grip" influence is 1
     for sname, style, hands in SWORDS[name]:
         kat = W.build_katana(coll, sname, style)
-        kat.rotation_mode = 'XYZ'
+        kat.rotation_mode = 'QUATERNION'
         kat.parent = root
         first = True
         for side, d in hands.items():
@@ -110,29 +123,50 @@ for name in ('Oni', 'Ronin'):
             grip = empty(f'{name}_GRIP_{s}', coll, kat, Matrix.Identity(4), 0.05, 'CUBE')
             grip.matrix_parent_inverse = Matrix.Identity(4)
             grip.matrix_local = S_rest.inverted() @ hand_rest
-            pb = rig.pose.bones[side + 'ForeArm']
-            c = pb.constraints.new('IK')
-            c.target, c.chain_count, c.use_stretch = grip, 2, False
-            c.pole_target = bpy.data.objects[f'{name}_ELBOW_{s}']
-            cr = rig.pose.bones[side + 'Hand'].constraints.new('COPY_ROTATION')
-            cr.target = grip
-            vl.update()
-            report.append((side + 'ForeArm',) + calibrate_pole(rig, side + 'ForeArm', side + 'Arm'))
-            sign = -1 if side == 'Left' else 1
-            for k, deg in enumerate(GRIP_CURL):
-                fb = rig.pose.bones[f'{side}HandFingers{k + 1}']
-                fb.rotation_mode = 'XYZ'
-                fb.rotation_euler = (0, 0, sign * math.radians(deg))
-    # a hand whose grip sits on a sword parked in the OTHER hand cannot be calibrated in the T-pose: mirror the good side
-    ang = {b: (e, a_) for b, e, a_ in report}
-    for side, other in (('Left', 'Right'), ('Right', 'Left')):
-        k, ko = side + 'ForeArm', other + 'ForeArm'
-        if k in ang and ko in ang and ang[k][0] > 0.5 and ang[ko][0] < 0.5:
-            rig.pose.bones[k].constraints['IK'].pole_angle = math.radians(-180 - ang[ko][1])
-            report.append((k + ' (mirrored)', 0.0, -180 - ang[ko][1]))
-    for pb in rig.pose.bones:
-        if pb.rotation_mode == 'QUATERNION':
-            pb.rotation_mode = 'XYZ'
+            ct = bpy.data.objects[f'{name}_HAND_{s}'].constraints.new('COPY_TRANSFORMS')
+            ct.name, ct.target, ct.influence = 'Grip', grip, 1.0
+    # ---- handle of the sheathed (fused) sword: hidden by a mask once the real katana is drawn
+    for seg_a, seg_b, radius, length in HANDLES.get(name, []):
+        import numpy as np
+        me = bpy.data.objects[name + '_Body'].data
+        co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+        me.vertices.foreach_get('co', co)
+        co = co.reshape(-1, 3)
+        A_, B_ = np.array(seg_a), np.array(seg_b)
+        ab = B_ - A_
+        L_ = float(np.linalg.norm(ab))
+        t = ((co - A_) @ ab) / (L_ * L_)
+        dist = np.linalg.norm(co - (A_ + np.clip(t, 0, 1)[:, None] * ab), axis=1)
+        sel = np.nonzero((dist < radius) & (t * L_ < length) & (t > -0.05))[0]
+        vg = bpy.data.objects[name + '_Body'].vertex_groups.get('SheathHandle') or bpy.data.objects[name + '_Body'].vertex_groups.new(name='SheathHandle')
+        vg.add(sel.tolist(), 1.0, 'REPLACE')
+        mk = bpy.data.objects[name + '_Body'].modifiers.new('HandleMask', 'MASK')
+        mk.vertex_group, mk.invert_vertex_group = 'SheathHandle', True
+        mk.show_render = mk.show_viewport = False
+        print(f'CTRL {name}: sheath-handle group {len(sel)} verts', flush=True)
+    # ---- light copy of the body for fast animatic renders (same vertex groups, same armature)
+    body = bpy.data.objects[name + '_Body']
+    lo = body.copy()
+    lo.data = body.data.copy()
+    lo.name = name + '_BodyLo'
+    coll.objects.link(lo)
+    lo.modifiers.clear()
+    dm = lo.modifiers.new('dec', 'DECIMATE')
+    dm.ratio = 45000 / len(lo.data.polygons)
+    lm = bpy.data.meshes.new_from_object(lo.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    lo.modifiers.clear()
+    old = lo.data
+    lo.data = lm
+    bpy.data.meshes.remove(old)
+    lm.name = name + '_BodyLo'
+    if 'SheathHandle' in lo.vertex_groups:
+        mk = lo.modifiers.new('HandleMask', 'MASK')
+        mk.vertex_group, mk.invert_vertex_group = 'SheathHandle', True
+        mk.show_render = mk.show_viewport = False
+    am = lo.modifiers.new('Armature', 'ARMATURE')
+    am.object = rig
+    lo.hide_render = True
+    lo.hide_viewport = True
     vl.update()
     print(f'CTRL {name}: pole calibration (bone, residual rad, angle deg):', [(b, round(e, 3), a) for b, e, a in report], flush=True)
 

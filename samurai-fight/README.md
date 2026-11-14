@@ -65,9 +65,34 @@ python3 scripts/build_standoff.py                                               
   source package on PyPI (`pip download --no-deps --no-binary :all: pybullet`, folder
   `examples/pybullet/gym/pybullet_data/data/motions/`). Sword work is to be hand-keyed through the IK controls.
 
+## Animation (Stage 3b)
+
+```
+python3 scripts/build_animatic.py                                    # arena + fighters + choreography + shot cameras
+python3 scripts/render_frames.py build/animatic.blend build/animatic_frames 1 720   # resumable, ~5 s/frame at 512x288
+bash scripts/encode.sh build/animatic_frames previews/stage3b_animatic.mp4 960 "BLOCKING"
+python3 scripts/qa_animatic.py build/animatic.blend                 # foot-slide and blade-contact numbers
+python3 scripts/choreo_strip.py <prefix> 270,308,392 [--oni|--ron] [--q34]   # fast pose checks without the arena
+```
+
+- `anim_lib.py` is the keyframing toolkit. Everything is keyed in world space with the character roots at the
+  origin: feet are world plants (`plant`, `step`, `travel`, `slide`), the katana is the master and hands follow
+  it through `GRIP_*` (switchable per hand with the `Grip` constraint influence), and `Actor.key()` solves hips,
+  spine, head and IK poles from the feet and swords while respecting leg and arm reach.
+  Facing is an angle: 0 = +X (east), 90 = +Y (north). Local pose coordinates are (left, forward, up).
+- `choreo.py` holds the blocking for all beats. The duel runs north-south near x = -2.3: Oni stands at
+  (-2.6, 0.2) facing north, Ronin at (-2.0, 10.3) under the torii facing south. Blade contacts use the
+  `('thru', point, blade_dir, edge_dir, dist)` sword spec so both blades pass through the same world point.
+- `build_animatic.py` adds one camera per shot bound to timeline markers, keys `FX_Clock` for the two
+  slow-motion beats, hides the Oni's fused sheath handle at the draw frame and fades out at the end.
+  The animatic renders the light `*_BodyLo` meshes; set `hide_render` the other way for final quality.
+- Not in yet (Stage 4): sparks, splash, flame trail, cape tear, hat split, mask crack, cloth simulation,
+  per-shot lighting, the Ronin's fused back-sword handles (still visible after the draw), thumb bones.
+- The free DeepMimic motion capture was not used in this pass: walking and running are keyed step cycles.
+
 ## Stage status
 
 1. Arena - procedural build + look pass done, review sheets posted; optional GLB props can still replace stand-ins.
-2. Characters - meshes prepared, katanas built, previews posted and accepted ("Ok").
-3. Rigging and animation - rig + IK controls + guard stances done (3a); animation not started.
-4. Timeline - not started.
+2. Characters - meshes prepared, katanas built, accepted.
+3. Rigging and animation - rig + IK controls done; blocking animatic of all beats rendered for review.
+4. Timeline - shot cameras blocked; effects, cloth, lighting and final render not started.
