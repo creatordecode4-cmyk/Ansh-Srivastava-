@@ -600,8 +600,8 @@ def _verge(b, R, st, d_lo, board=0.48):
         path = [R.P("F", a, d) for d in ds] + [R.P("B", a, d) for d in reversed(ds[:-1])]
         lat = (float(sx), 0.0, 0.0)
         b.sweep(path, roll, TILE, lateral=lat)
-        dl = max(0.0, d_lo - 0.3)
-        ds2 = [dl] + ds if dl < d_lo else ds
+        # boards start inside the roof (irimoya) or run a hand past the eave line (plain gable)
+        ds2 = [d_lo - 0.3 if d_lo > 0.3 else -0.05] + ds
         path2 = [R.P("F", a, d) for d in ds2] + [R.P("B", a, d) for d in reversed(ds2[:-1])]
         b.sweep(path2, plank, RED, lateral=lat)
         b.sweep(path2, trim, DARK, lateral=lat)
@@ -1130,7 +1130,7 @@ def _hall(name, seed, width, depth, plinth, steps_w, big):
     else:
         sc = math.sqrt(width * depth / 56.0)
         ver, col_r, hc, ov = 1.0 * sc, 0.17 * sc ** 0.5, 3.0 * sc ** 0.6, 1.75 * sc
-        k, rise_k, lift, lift_r, vo = 0.72 * sc ** 0.5, 0.69, 0.6 * sc, 3.9 * sc, 0.35 * sc
+        k, rise_k, lift, lift_r, vo = 0.72 * sc ** 0.5, 0.63, 0.6 * sc, 3.9 * sc, 0.35 * sc
         stepped, rs, rail_h, sag, cheek = False, 0.72 * sc ** 0.5, 0.78, 0.07, 0.3
         roof_opt = dict(rib_dx=0.40, rib_r=0.078, course=0.36, dx=0.3, raf_dx=0.34)
     bx, by = hx - ver, hy - ver
@@ -1438,7 +1438,7 @@ def build_pagoda(tiers=3, name="PROP_Pagoda", seed=0):
             for side in "FBLR":
                 fr = _Frame(b, side, bn + 0.12)
                 dz = 0.004 if side in "LR" else 0.0
-                fr.box(-bn - 0.25, bn + 0.25, -0.14, 0.14, ztop - 0.12, ztop + 0.12 + dz, TILE, 0.03)
+                fr.box(-bn - 0.25, bn + 0.25, -0.14, 0.14, ztop - 0.12, ztop + 0.07 + dz, TILE, 0.03)
             z = ztop + 0.1
         else:
             # finial: dew basin, inverted bowl, nine rings, flame and jewel
@@ -1494,7 +1494,7 @@ def build_perimeter_wall(length=10.0, height=2.4, name="PROP_Wall", seed=0):
     # timber sill, head rail and posts on both faces
     n = max(1, int(round(length / 2.5)))
     for sy in (-1, 1):
-        y0, y1 = sorted((sy * (wall_t * 0.5 - 0.02), sy * (wall_t * 0.5 + 0.035)))
+        y0, y1 = sorted((sy * wall_t * 0.5, sy * (wall_t * 0.5 + 0.035)))
         b.box2((-hx, y0, base_h - 0.01), (hx, y1, base_h + 0.13), DARK)
         b.box2((-hx, y0, z_head - 0.17), (hx, y1, z_head), DARK)
         for i in range(n):
