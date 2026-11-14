@@ -518,7 +518,7 @@ def mat_cloud(name='MAT_Cloud', moon_uv=(0.08, 0.11)):
     d = nt.math('SQRT', nt.math('ADD', nt.math('MULTIPLY', dx, dx), nt.math('MULTIPLY', dy, dy)))
     glow = nt.ramp(d, [(0.0, 1.0), (0.22, 0.0)])
     thin = nt.ramp(n, [(0.5, 1.0), (0.8, 0.0)])
-    col = nt.mix(nt.math('MULTIPLY', glow, thin), (0.004, 0.004, 0.009), (0.5, 0.035, 0.02))
+    col = nt.mix(nt.math('MULTIPLY', glow, thin), (0.004, 0.004, 0.009), (0.14, 0.010, 0.007))
     em = nt.new('ShaderNodeEmission')
     nt.link(col, em.inputs['Color'])
     tr = nt.new('ShaderNodeBsdfTransparent')

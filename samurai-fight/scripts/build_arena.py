@@ -221,7 +221,7 @@ r = sun('LGT_Rim_BloodMoon', -MOON_DIR, 1.1, (1.0, 0.11, 0.06), 2.0)            
 k.visible_volume_scatter = r.visible_volume_scatter = False                      # suns must not grey out the fog
 r.data.specular_factor = 0.15      # red rim without a red glare path across the whole wet floor
 for nm, loc, col, pw in (('LGT_Mist_L', (-12, 23, 2.4), (0.45, 0.32, 1.0), 6000), ('LGT_Mist_R', (7, 25, 2.4), (0.6, 0.3, 0.9), 4500),
-                         ('LGT_Mist_Torii', (-2.2, 19, 1.5), (1.0, 0.2, 0.25), 3500)):
+                         ('LGT_Mist_Torii', (-2.2, 19, 1.5), (1.0, 0.2, 0.25), 1100)):
     l = bpy.data.lights.new(nm, 'POINT')
     l.energy, l.color, l.shadow_soft_size = pw, col, 2.5
     ob = bpy.data.objects.new(nm, l)
