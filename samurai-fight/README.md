@@ -43,9 +43,31 @@ python3 scripts/render.py build/arena.blend out.png --cam CAM_Hero --res 960x540
 - Drawn katanas are procedural (`scripts/weapons.py`): +Z along the blade, edge toward -Y, origin at the guard.
 - The glTF importer leaves objects in quaternion rotation mode; set `rotation_mode = 'XYZ'` before using Euler angles.
 
+## Rig (Stage 3a)
+
+```
+python3 scripts/rig_characters.py build/characters.blend build/characters_rigged.blend   # skeleton + skin weights
+python3 scripts/rig_controls.py build/characters_rigged.blend build/characters_ctrl.blend  # IK controls + katanas
+python3 scripts/build_standoff.py                                                         # both in the arena
+```
+
+- Skeleton uses Mixamo bone names (Hips, Spine, LeftArm, ...) so Mixamo clips can be retargeted later.
+  Joint positions were measured on each T-pose mesh (`scripts/measure_char.py`) and live in `rig_characters.py`.
+- Skin weights: Blender bone-heat on a 30k proxy of the watertight shell, copied to the 400k mesh by nearest
+  vertex (scipy cKDTree). The Oni's sheathed sword is made rigid to the Hips bone.
+- Fingers are one three-bone "mitten" block per hand (no thumb bone yet).
+- Controls (children of `<Name>_Root`): `FOOT_L/R` + `KNEE_L/R` (leg IK, planted feet cannot slide),
+  katana objects as the masters with `GRIP_L/R` children (arm IK and hand rotation follow the sword, so
+  blade contact is set directly), `ELBOW_L/R` poles. Hips, spine, neck, head are FK.
+- `scripts/stances.py` holds stances in character-local space (character faces -Y, its left is +X).
+- Animation source: Mixamo is unreachable from the cloud workspace and needs the owner's login. Free
+  DeepMimic motion capture (walk, run, kick, spin kick, spin, jump, roll) is available inside the `pybullet`
+  source package on PyPI (`pip download --no-deps --no-binary :all: pybullet`, folder
+  `examples/pybullet/gym/pybullet_data/data/motions/`). Sword work is to be hand-keyed through the IK controls.
+
 ## Stage status
 
-1. Arena - procedural build + look pass done and reviewed sheets posted; optional GLB props can still replace stand-ins.
-2. Characters - meshes prepared, katanas built, previews posted; waiting for review.
-3. Rigging and animation - not started.
+1. Arena - procedural build + look pass done, review sheets posted; optional GLB props can still replace stand-ins.
+2. Characters - meshes prepared, katanas built, previews posted and accepted ("Ok").
+3. Rigging and animation - rig + IK controls + guard stances done (3a); animation not started.
 4. Timeline - not started.
