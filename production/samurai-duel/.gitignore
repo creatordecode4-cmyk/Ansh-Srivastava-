@@ -1,0 +1,6 @@
+assets/
+out/
+cache/
+*.blend
+*.blend1
+__pycache__/
