@@ -8,7 +8,7 @@ Built entirely from Python scripts with headless Blender (`pip install bpy`), so
 | Stage | What | State |
 |---|---|---|
 | 1 | Arena (layout, props, lighting, fog, petals, snow) | Preview ready, procedural props; GLB props optional |
-| 2 | Characters (Oni Samurai, Cyber Ronin) | Preview ready, fully procedural on a shared skeleton |
+| 2 | Characters (Oni Samurai, Cyber Ronin) | Tripo AI models, rigged and skinned on a shared skeleton |
 | 3 | Rigging and animation | Not started |
 | 4 | Timeline, cameras, final render | Not started |
 
@@ -26,15 +26,25 @@ Cameras: `CAM_Hero`, `CAM_TopDown`, `CAM_Temple`, `CAM_Torii`.
 
 ## Build the characters
 
+The fighters are the user's Tripo AI models. Put the two files in `assets/glb/` (not committed, about 59 MB each):
+`oni_body.glb` and `ronin_body.glb`.
+
 ```bash
-python3 scripts/build_characters.py --views front,34,side,back --res 480x860 --spp 48   # writes characters.blend + turnaround stills
-python3 scripts/render_standoff.py --res 1280x720 --spp 64 --out previews/standoff.png  # both fighters in the arena, writes fight_scene.blend
+pip install scipy
+python3 scripts/build_fighters.py --pose a --views front,34,side,back --res 480x860 --spp 48   # writes characters.blend + stills
+python3 scripts/build_fighters.py --pose guard --views 34l                                    # skinning test, swords drawn
+python3 scripts/render_standoff.py --res 1280x720 --spp 64 --out previews/stage2_standoff.png  # both in the arena, writes fight_scene.blend
 ```
 
-Both fighters are modelled in code (`scripts/characters.py`) on one humanoid skeleton (`scripts/charlib.py`):
-hard-surface parts are rigid meshes parented to bones, the Oni torso and arms are a skinned mesh with formula weights.
-Separate objects: `Oni_Katana`, `Oni_Saya`, `Oni_Mask`, `Oni_Hair`, `Oni_Hakama`, `Ronin_Katana_L/R`, `Ronin_Saya_L/R`,
-`Ronin_Cape`, `Ronin_WaistCloth`, `Ronin_Hat_L`, `Ronin_Hat_R` (the hat is two halves so it can split in the last shot).
+What `scripts/fighters.py` does to each fused, un-rigged T-pose mesh:
+1. scales it to real height (Oni 2.05 m to the horn tips, Ronin 1.95 m to the hat top) and halves the 2M triangles
+2. fits the shared humanoid skeleton from `scripts/joints.py` (joints picked on gridded views, `scripts/landmark_glb.py`)
+3. skins it: bone-heat weights solved on a clean voxel copy, transferred to the full mesh, with the hat and
+   sheathed swords locked rigidly to one bone
+4. cuts the sword hilts and the Ronin's hat into their own objects (`Oni_SheathedHilt`, `Ronin_SheathedHilt_L/R`, `Ronin_Hat`)
+5. adds clean hand katanas (`Oni_Katana`, `Ronin_Katana_L/R`), hidden until drawn; `fighters.draw_swords()` swaps the two states
+
+Still fused into the body mesh (no cloth simulation possible on them): the Ronin's cape and waist cloth, the Oni's hakama and hair.
 
 ## Swapping in image-to-3D props
 
@@ -54,7 +64,7 @@ name exists in `assets/glb/`:
 
 - `refs/` – the seven reference sheets
 - `prop_images/` – each arena prop cropped out for image-to-3D
-- `scripts/` – `lib.py` (mesh + material helpers), `build_arena.py`, `render_arena.py`, `fetch_assets.py`, `crop_props.py`, `charlib.py`, `characters.py`, `build_characters.py`, `render_standoff.py`
+- `scripts/` – `lib.py` (mesh + material helpers), `build_arena.py`, `render_arena.py`, `fetch_assets.py`, `crop_props.py`, `charlib.py` (skeleton, katana), `joints.py`, `fighters.py`, `build_fighters.py`, `landmark_glb.py`, `inspect_glb.py`, `render_standoff.py`
 - `previews/` – stage preview renders
 - `assets/`, `*.blend` – generated, not committed
 

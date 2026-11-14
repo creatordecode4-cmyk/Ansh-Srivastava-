@@ -93,29 +93,44 @@ def orient(z_dir, y_hint=(0, 0, 1)):
 
 # ---------------------------------------------------------------- skeleton
 def humanoid_bones(J):
-    """J: joint heights / offsets in metres (T-pose, facing -Y, left = +X)."""
+    """J: joint positions in metres (T-pose, facing -Y, left = +X). Optional keys let the legs stand
+    apart and the arms droop: knee_x, ankle_x, *_y offsets, elbow_z / wrist_z / hand_z / tip_z."""
+    g = J.get
     B = {}
     def add(n, h, t, p=None, c=False):
         B[n] = (Vector(h), Vector(t), p, c)
+    sy = g('spine_y', 0.0)
     add('root', (0, 0, 0), (0, 0.25, 0))
-    add('hips', (0, 0, J['hip']), (0, 0, J['spine']), 'root')
-    add('spine', (0, 0, J['spine']), (0, 0, J['chest']), 'hips', True)
-    add('chest', (0, 0, J['chest']), (0, 0, J['neck']), 'spine', True)
-    add('neck', (0, 0, J['neck']), (0, 0, J['head']), 'chest', True)
-    add('head', (0, 0, J['head']), (0, 0, J['top']), 'neck', True)
+    add('hips', (0, sy, J['hip']), (0, sy, J['spine']), 'root')
+    add('spine', (0, sy, J['spine']), (0, sy, J['chest']), 'hips', True)
+    add('chest', (0, sy, J['chest']), (0, sy, J['neck']), 'spine', True)
+    add('neck', (0, sy, J['neck']), (0, g('head_y', sy), J['head']), 'chest', True)
+    add('head', (0, g('head_y', sy), J['head']), (0, g('head_y', sy), J['top']), 'neck', True)
+    z = J['sh_z']
     for s, sx in (('L', 1), ('R', -1)):
-        z = J['sh_z']
-        add('clavicle.' + s, (sx * 0.03, 0, z - 0.02), (sx * J['sh_x'], 0, z), 'chest')
-        add('upper_arm.' + s, (sx * J['sh_x'], 0, z), (sx * J['elbow'], 0.02, z), 'clavicle.' + s, True)
-        add('forearm.' + s, (sx * J['elbow'], 0.02, z), (sx * J['wrist'], 0, z), 'upper_arm.' + s, True)
-        add('hand.' + s, (sx * J['wrist'], 0, z), (sx * J['knuckle'], 0, z), 'forearm.' + s, True)
-        add('fingers1.' + s, (sx * J['knuckle'], 0, z), (sx * (J['knuckle'] + J['tip']) / 2, 0, z), 'hand.' + s, True)
-        add('fingers2.' + s, (sx * (J['knuckle'] + J['tip']) / 2, 0, z), (sx * J['tip'], 0, z), 'fingers1.' + s, True)
-        add('thumb.' + s, (sx * (J['wrist'] + 0.03), -0.03, z - 0.01), (sx * (J['wrist'] + 0.08), -0.075, z - 0.02), 'hand.' + s)
-        add('thigh.' + s, (sx * J['hip_x'], 0, J['hip']), (sx * J['hip_x'], -0.02, J['knee']), 'hips')
-        add('shin.' + s, (sx * J['hip_x'], -0.02, J['knee']), (sx * J['hip_x'], 0.02, J['ankle']), 'thigh.' + s, True)
-        add('foot.' + s, (sx * J['hip_x'], 0.02, J['ankle']), (sx * J['hip_x'], -0.13, 0.02), 'shin.' + s, True)
-        add('toe.' + s, (sx * J['hip_x'], -0.13, 0.02), (sx * J['hip_x'], -0.21, 0.02), 'foot.' + s, True)
+        S = (sx * J['sh_x'], g('sh_y', sy), z)
+        E = (sx * J['elbow'], g('elbow_y', sy + 0.02), g('elbow_z', z))
+        W = (sx * J['wrist'], g('wrist_y', sy), g('wrist_z', z))
+        K = (sx * J['knuckle'], g('hand_y', sy), g('hand_z', z))
+        T = (sx * J['tip'], g('tip_y', g('hand_y', sy)), g('tip_z', g('hand_z', z)))
+        M = tuple((a + b) / 2 for a, b in zip(K, T))
+        add('clavicle.' + s, (sx * 0.03, S[1], z - 0.03), S, 'chest')
+        add('upper_arm.' + s, S, E, 'clavicle.' + s, True)
+        add('forearm.' + s, E, W, 'upper_arm.' + s, True)
+        add('hand.' + s, W, K, 'forearm.' + s, True)
+        add('fingers1.' + s, K, M, 'hand.' + s, True)
+        add('fingers2.' + s, M, T, 'fingers1.' + s, True)
+        add('thumb.' + s, (W[0] + sx * 0.03, W[1] - 0.03, W[2] - 0.01), (W[0] + sx * 0.09, W[1] - 0.085, W[2] - 0.02), 'hand.' + s)
+        hx, kx, ax = J['hip_x'], g('knee_x', J['hip_x']), g('ankle_x', g('knee_x', J['hip_x']))
+        Hp = (sx * hx, sy, J['hip'])
+        Kn = (sx * kx, g('knee_y', sy - 0.02), J['knee'])
+        An = (sx * ax, g('ankle_y', sy + 0.02), J['ankle'])
+        Bl = (sx * (ax + g('toe_out', 0.0) * 0.6), g('ball_y', -0.13), 0.03)
+        Te = (sx * (ax + g('toe_out', 0.0)), g('toe_y', -0.21), 0.03)
+        add('thigh.' + s, Hp, Kn, 'hips')
+        add('shin.' + s, Kn, An, 'thigh.' + s, True)
+        add('foot.' + s, An, Bl, 'shin.' + s, True)
+        add('toe.' + s, Bl, Te, 'foot.' + s, True)
     return B
 
 

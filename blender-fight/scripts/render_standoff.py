@@ -1,9 +1,9 @@
-"""STAGE 2 check - both fighters standing in the arena (saves fight_scene.blend and renders a still).
+"""STAGE 2 check - both Tripo fighters standing in the arena (saves fight_scene.blend and renders a still).
   python3 scripts/render_standoff.py --res 1280x720 --spp 64 --out previews/stage2_standoff.png
 """
 import bpy, os, sys, math, argparse, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import lib, charlib, characters
+import lib, charlib, fighters
 from lib import col, ROOT
 from mathutils import Vector
 R = math.radians
@@ -14,12 +14,12 @@ a = ap.parse_args()
 
 bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, 'arena.blend'))
 sc = bpy.context.scene
-oni = characters.build_oni(col('COL_Oni'))
-ronin = characters.build_ronin(col('COL_Ronin'))
-for ch, sign in ((oni, 1), (ronin, -1)):
-    charlib.pose(ch['rig'], [('upper_arm.L', 'Y', 66), ('upper_arm.R', 'Y', -66), ('forearm.L', 'Y', 14), ('forearm.R', 'Y', -14),
-                             ('fingers1.L', 'Y', 30), ('fingers1.R', 'Y', -30), ('fingers2.L', 'Y', 35), ('fingers2.R', 'Y', -35),
-                             ('thigh.L', 'Y', -5), ('thigh.R', 'Y', 5)])
+oni = fighters.build_oni(col('COL_Oni'))
+ronin = fighters.build_ronin(col('COL_Ronin'))
+for ch in (oni, ronin):
+    charlib.pose(ch['rig'], [('upper_arm.L', 'Y', 64), ('upper_arm.R', 'Y', -64), ('forearm.L', 'Y', 12), ('forearm.R', 'Y', -12),
+                             ('fingers1.L', 'Y', 25), ('fingers1.R', 'Y', -25), ('fingers2.L', 'Y', 30), ('fingers2.R', 'Y', -30)])
+    fighters.draw_swords(ch, False)
 oni['rig'].location, oni['rig'].rotation_euler = (-1.75, 1.0, 0), (0, 0, R(68))
 ronin['rig'].location, ronin['rig'].rotation_euler = (1.75, 1.5, 0), (0, 0, R(-112))
 
