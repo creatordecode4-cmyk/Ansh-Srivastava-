@@ -23,17 +23,18 @@ PAVED = dict(x0=-9.6, x1=11.4, y0=-14.4, y1=8.4)
 FIGHT_AREA = dict(x0=-6.0, x1=9.0, y0=-7.0, y1=6.5)
 
 # --- torii and the stairs behind it (north end)
-TORII = dict(pos=(0.0, 9.3), yaw=0.0, pillar_spacing=4.2, beam=7.5, height=6.4)
+# built at reference size (6.4 m tall) then scaled: the hero image shows a monumental gate towering over the halls
+TORII = dict(pos=(0.0, 9.3), yaw=0.0, pillar_spacing=4.2, beam=7.5, height=6.4, scale=1.5)
 FRONT_STEPS = dict(y_bottom=8.05, steps=2, rise=0.17, run=0.42, half_width=5.2)  # low terrace the torii stands on
 TERRACE1_Z = 0.34
 BACK_STAIRS = dict(y_bottom=10.9, steps=15, rise=0.17, run=0.32, half_width=2.3)
 TERRACE2_Z = TERRACE1_Z + 15 * 0.17
-REAR_HALL = dict(pos=(0.5, 27.0), yaw=math.radians(-90.0))  # faces south, toward the torii
+REAR_HALL = dict(pos=(0.5, 27.0), yaw=0.0)  # hall fronts face local -Y, so yaw 0 looks south toward the torii
 
 # --- main temple hall (west): facade faces east-south-east, stairs run down along the facade normal
 TEMPLE_YAW = math.radians(-28.0)  # direction the facade faces, measured from +X
-TEMPLE = dict(facade_mid=(-12.35, 7.35), yaw=TEMPLE_YAW, width=12.5, depth=9.0, platform=1.9, deck=2.3,
-              stair_width=3.4, stair_steps=11)
+TEMPLE = dict(facade_mid=(-12.35, 7.35), yaw=TEMPLE_YAW, width=13.5, depth=9.5, platform=1.9, deck=2.3,
+              stair_width=3.6, stair_steps=11, wall_h=5.0, roof_rise=5.2)
 
 # --- stone lanterns: (x, y, yaw, broken)
 LANTERNS = [
@@ -78,4 +79,13 @@ RUBBLE = [
 ]
 
 # --- direction of the blood moon (azimuth from +Y toward +X, elevation), fixed for every shot
-MOON = dict(azimuth=math.radians(-2.0), elevation=math.radians(24.0), angular_diameter=math.radians(10.0))
+MOON = dict(azimuth=math.radians(6.5), elevation=math.radians(28.5), angular_diameter=math.radians(10.0))
+
+# --- trees just south of the layout panel whose branches frame the hero shot (as in refs/arena.png)
+FRAMING_TREES = [(-4.9, -9.3, 5.4, 3.5), (2.9, -9.6, 5.4, 4.0)]
+
+# --- hero still camera (matches the framing of refs/arena.png): low, south end, left lantern close
+HERO_CAM = dict(pos=(-1.5, -10.5, 0.55), target=(-0.9, 6.0, 4.6), lens=19.0, focus=14.0, fstop=1.4)
+
+# --- south end (outside the reference panel): boundary wall with a gate, so shots that look south have a backdrop
+SOUTH_WALL = dict(y=-15.6, x0=-13.0, x1=15.0, gate_x=0.9, gate_w=4.4, height=2.5)

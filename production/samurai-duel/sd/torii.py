@@ -143,4 +143,9 @@ def build(lib, name="PROP_Torii"):
         parts.append(core.apply_transform(core.smooth(tas, 60)))
 
     ob = core.join(parts, name)
+    k = T.get("scale", 1.0)
+    if k != 1.0:
+        ob.data.transform(__import__("mathutils").Matrix.Scale(k, 4))
+    ob["nuki_z"] = (z_nuki - 0.17) * k        # underside of the tie beam: hanging banners attach here
+    ob["nuki_half"] = beam * 0.92 / 2 * k
     return ob

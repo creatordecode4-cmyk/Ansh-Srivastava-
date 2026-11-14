@@ -59,8 +59,9 @@ def mesh_obj(name, verts, faces, col=None, edges=()):
     return ob
 
 
-def grid_obj(name, P, col=None, close_u=False, close_v=False):
-    """Mesh from an (nu, nv, 3) array of points (quads between neighbours)."""
+def grid_obj(name, P, col=None, close_u=False, close_v=False, uv=False):
+    """Mesh from an (nu, nv, 3) array of points (quads between neighbours).
+    uv=True adds a UV map with u along the first axis and v along the second (0..1)."""
     P = np.asarray(P, dtype=np.float64)
     nu, nv = P.shape[:2]
     idx = np.arange(nu * nv).reshape(nu, nv)
@@ -80,7 +81,15 @@ def grid_obj(name, P, col=None, close_u=False, close_v=False):
     me.polygons.foreach_set("loop_start", np.arange(0, len(faces) * 4, 4))
     me.polygons.foreach_set("loop_total", np.full(len(faces), 4))
     me.update(calc_edges=True)
-    me.validate()
+    if uv:
+        du, dv = 1.0 / (nu if close_u else nu - 1), 1.0 / (nv if close_v else nv - 1)
+        U, V = np.meshgrid(iu, iv, indexing="ij")
+        quad = np.stack([np.stack([U, V], -1), np.stack([U + 1, V], -1), np.stack([U + 1, V + 1], -1), np.stack([U, V + 1], -1)], axis=2)
+        quad = quad.reshape(-1, 2).astype(np.float64) * (du, dv)
+        layer = me.uv_layers.new(name="UVMap")
+        layer.data.foreach_set("uv", quad.reshape(-1))
+    else:
+        me.validate()
     ob = bpy.data.objects.new(name, me)
     if col is not None:
         col.objects.link(ob)
@@ -123,15 +132,15 @@ def prism(name, n, r_bot, r_top, h, loc=(0, 0, 0), col=None, bevel=0.0, rot_z=0.
     return ob
 
 
-def lathe(name, profile, segments=32, col=None, loc=(0, 0, 0), cap=True):
-    """Surface of revolution around Z from a list of (radius, z) points."""
+def lathe(name, profile, segments=32, col=None, loc=(0, 0, 0), cap=True, uv=False):
+    """Surface of revolution around Z from a list of (radius, z) points (u = angle, v = along profile)."""
     prof = np.asarray(profile, dtype=np.float64)
     ang = np.linspace(0, 2 * math.pi, segments, endpoint=False)
     P = np.zeros((segments, len(prof), 3))
     P[:, :, 0] = np.cos(ang)[:, None] * prof[None, :, 0]
     P[:, :, 1] = np.sin(ang)[:, None] * prof[None, :, 0]
     P[:, :, 2] = prof[None, :, 1]
-    ob = grid_obj(name, P, col, close_u=True)
+    ob = grid_obj(name, P, col, close_u=True, uv=uv)
     if cap:
         bm = bmesh.new()
         bm.from_mesh(ob.data)
@@ -418,3 +427,56 @@ def fbm2(x, y, octaves=4, seed=0):
         tot += amp
         amp *= 0.5
     return out / tot
+
+
+class BoxBatch:
+    """Accumulate many boxes (bars, rails, planks, rafters) into a single mesh object."""
+
+    def __init__(self):
+        self.bm = bmesh.new()
+
+    def add(self, size, loc, rot=(0, 0, 0), bevel=0.0):
+        geom = bmesh.ops.create_cube(self.bm, size=1.0)["verts"]
+        m = Matrix.Translation(Vector(loc)) @ Euler(rot).to_matrix().to_4x4() @ Matrix.Diagonal((*size, 1.0))
+        bmesh.ops.transform(self.bm, matrix=m, verts=geom)
+        if bevel > 0:
+            edges = list({e for v in geom for e in v.link_edges})
+            bmesh.ops.bevel(self.bm, geom=edges, offset=bevel, segments=2, profile=0.5, affect="EDGES")
+        return self
+
+    def beam(self, p0, p1, width, height, bevel=0.0):
+        """Box running from p0 to p1 (any direction), cross-section width x height."""
+        p0, p1 = Vector(p0), Vector(p1)
+        d = p1 - p0
+        geom = bmesh.ops.create_cube(self.bm, size=1.0)["verts"]
+        q = Vector((1, 0, 0)).rotation_difference(d.normalized()).to_matrix().to_4x4()
+        # keep the section upright: rotate about the beam axis so local Z stays closest to world Z
+        m = Matrix.Translation((p0 + p1) / 2) @ q @ Matrix.Diagonal((d.length, width, height, 1.0))
+        bmesh.ops.transform(self.bm, matrix=m, verts=geom)
+        if bevel > 0:
+            edges = list({e for v in geom for e in v.link_edges})
+            bmesh.ops.bevel(self.bm, geom=edges, offset=bevel, segments=2, profile=0.5, affect="EDGES")
+        return self
+
+    def to_object(self, name, col, mat=None):
+        me = bpy.data.meshes.new(name)
+        self.bm.to_mesh(me)
+        self.bm.free()
+        ob = bpy.data.objects.new(name, me)
+        col.objects.link(ob)
+        if mat is not None:
+            me.materials.append(mat)
+        return ob
+
+
+def group(name, col, objs, loc=(0, 0, 0), yaw=0.0):
+    """Parent objects under one empty so a whole structure can be placed and rotated together."""
+    root = bpy.data.objects.new(name, None)
+    root.empty_display_size = 0.5
+    col.objects.link(root)
+    for o in objs:
+        if o is not None:
+            o.parent = root
+    root.location = loc
+    root.rotation_euler = (0, 0, yaw)
+    return root

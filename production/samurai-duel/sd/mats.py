@@ -171,7 +171,7 @@ def get(name, builder, *a, **kw):
 
 
 # Global look knobs (0..1) so the weathering stays consistent across props.
-LOOK = {"wet": 0.85, "snow": 0.55, "moss": 0.5}
+LOOK = {"wet": 0.85, "snow": 0.36, "moss": 0.55}
 
 
 def surface(
@@ -247,18 +247,19 @@ def surface(
 
     normal = nt.bump(hgt, bump, bump_dist) if hgt is not None else None
 
-    # snow settles on up-facing faces, broken up so it reads as a light dusting
+    # snow: a light dusting on flat tops only, in thin broken patches (not a blanket)
     if snow > 0:
-        thr = 0.92 - 0.5 * snow
-        smask = nt.map_range(nt.math("ADD", nz, nt.math("MULTIPLY", nt.math("SUBTRACT", big, 0.5), 0.5)), thr, thr + 0.18)
-        smask = nt.math("MULTIPLY", smask, nt.map_range(fine, 0.25, 0.55, 0.35, 1.0))
-        col = nt.mix(smask, col, (0.78, 0.80, 0.84, 1))
-        rgh = nt.mix(smask, rgh, 0.55)
+        patch = nt.noise(wpos, 1.7, 5.0, 0.62)
+        speck = nt.noise(wpos, 28.0, 3.0, 0.7)
+        cover = nt.math("ADD", nt.math("MULTIPLY", patch, 0.65), nt.math("MULTIPLY", speck, 0.35))
+        smask = nt.math("MULTIPLY", nt.map_range(nz, 0.78, 0.96), nt.map_range(cover, 0.66 - 0.4 * snow, 0.74 - 0.4 * snow))
+        col = nt.mix(smask, col, (0.74, 0.77, 0.82, 1))
+        rgh = nt.mix(smask, rgh, 0.5)
         if wet > 0:
             nt.put(b.inputs["Coat Weight"], nt.math("MULTIPLY", wmask, nt.math("SUBTRACT", 1.0, smask)))
-        sn = nt.bump(nt.noise(wpos, 60.0, 3.0, 0.7), 0.25, 0.01, normal)
         state["snow_mask"] = smask
-        normal = sn
+        if normal is None:
+            normal = nt.bump(nt.math("MULTIPLY", speck, smask), 0.3, 0.008)
 
     nt.put(b.inputs["Base Color"], col)
     nt.put(b.inputs["Roughness"], rgh)
@@ -276,7 +277,7 @@ def stone_slab():
 
 def stone_lantern():
     return get("MAT_Stone_Lantern", surface, "lichen_rock", size=1.3, tint=(0.8, 0.84, 0.9), value=0.6, sat=0.3,
-               rough=1.0, rough_min=0.3, bump=1.0, bump_dist=0.03, moss=0.85, rand_offset=3.0)
+               rough=1.0, rough_min=0.3, bump=1.0, bump_dist=0.03, moss=0.95, snow=0.58, rand_offset=3.0)
 
 
 def stone_block():
@@ -308,7 +309,7 @@ def _paint_over_wood(paint, worn=0.55):
 
 def red_lacquer():
     return get("MAT_Wood_RedLacquer", surface, "wood_peeling_paint_weathered", size=1.4, value=0.8, sat=0.8,
-               rough=1.0, rough_min=0.22, bump=0.8, bump_dist=0.01, moss=0.15, extra=_paint_over_wood((0.33, 0.012, 0.012)))
+               rough=1.0, rough_min=0.22, bump=0.8, bump_dist=0.01, moss=0.15, wet=0.45, extra=_paint_over_wood((0.58, 0.022, 0.016)))
 
 
 def black_lacquer():
@@ -322,7 +323,7 @@ def dark_wood():
 
 
 def red_wood():
-    return get("MAT_Wood_RedStain", surface, "weathered_planks", size=1.8, tint=(0.95, 0.22, 0.18), value=0.75, sat=1.0,
+    return get("MAT_Wood_RedStain", surface, "weathered_planks", size=1.8, tint=(1.0, 0.2, 0.15), value=1.1, sat=1.0,
                rough=1.0, rough_min=0.28, bump=0.8, bump_dist=0.012, moss=0.15, snow=0.35)
 
 
@@ -337,7 +338,7 @@ def bark():
 
 
 def roof_tile():
-    return get("MAT_Roof_Tile", surface, None, base=(0.022, 0.026, 0.032), rough=1.0, rough_min=0.22, wet=0.9, snow=0.75, moss=0.55)
+    return get("MAT_Roof_Tile", surface, None, base=(0.022, 0.026, 0.032), rough=1.0, rough_min=0.22, wet=0.9, snow=0.5, moss=0.55)
 
 
 def rope():
@@ -397,3 +398,23 @@ def water_film():
         return m
 
     return get("MAT_Water_Film", build)
+
+
+def interior_glow(name, color, strength):
+    def build(name):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        nt = NT(m.node_tree, clear=True)
+        out = nt.new("ShaderNodeOutputMaterial")
+        pos = nt.world_pos()
+        sep = nt.new("ShaderNodeSeparateXYZ")
+        nt.link(pos, sep.inputs[0])
+        patch = nt.map_range(nt.noise(pos, 0.45, 2.0, 0.5), 0.3, 0.7, 0.25, 1.0)
+        low = nt.map_range(sep.outputs[2], 2.0, 7.5, 1.0, 0.18)
+        em = nt.new("ShaderNodeEmission")
+        em.inputs[0].default_value = (*color, 1)
+        nt.link(nt.math("MULTIPLY", nt.math("MULTIPLY", patch, low), strength), em.inputs[1])
+        nt.link(em.outputs[0], out.inputs["Surface"])
+        return m
+
+    return get(name, build)

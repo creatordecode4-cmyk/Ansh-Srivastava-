@@ -47,7 +47,7 @@ def _roof(name, col, half=0.55, peak=0.34, lift=0.11, thick=0.07, n=33):
     return ob
 
 
-def stone_lantern(lib, broken=False, name=None, seed=1, height=2.6, power=260.0):
+def stone_lantern(lib, broken=False, name=None, seed=1, height=2.6, power=300.0):
     name = name or ("PROP_StoneLantern_Broken" if broken else "PROP_StoneLantern")
     r = core.rng(seed + (50 if broken else 0))
     master = bpy.data.collections.new(name)
@@ -148,10 +148,11 @@ def stone_lantern(lib, broken=False, name=None, seed=1, height=2.6, power=260.0)
 
     # glow core + actual light (the mesh gives the visible ember, the lamp lights the scene)
     core_ob = core.box(name + "_glow", (fb * 0.62, fb * 0.62, fh * 0.6), (top.x, top.y, box_z + fh * 0.45), master, bevel=0.03)
-    core.set_mat(core_ob, mats.emission("MAT_Lantern_Glow", GLOW, 55.0 if not broken else 32.0))
+    core.set_mat(core_ob, mats.emission("MAT_Lantern_Glow" + ("_Dim" if broken else ""), GLOW, 9.0 if not broken else 5.0))
     core_ob.visible_shadow = False
     ld = bpy.data.lights.new(name + "_light", "POINT")
     ld.color, ld.energy, ld.shadow_soft_size = GLOW, power * (0.55 if broken else 1.0), 0.09
+    ld.volume_factor = 0.1
     lo = bpy.data.objects.new(name + "_light", ld)
     lo.location = (top.x, top.y, box_z + fh * 0.5)
     master.objects.link(lo)
