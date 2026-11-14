@@ -3,3 +3,7 @@ assets/
 *.blend1
 render_tmp/
 __pycache__/
+previews/s2_*.png
+previews/s2c_*.png
+previews/t_*.png
+previews/tc_*.png
