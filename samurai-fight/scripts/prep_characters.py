@@ -42,6 +42,7 @@ def prep(path, name):
     bm.to_mesh(me)
     n1, f1 = len(bm.verts), len(bm.faces)
     bm.free()
+    ob.rotation_mode = 'XYZ'                 # the glTF importer leaves objects in quaternion mode
     ob.matrix_world = Matrix.Identity(4)
     if 'custom_normal' in me.attributes:
         me.attributes.remove(me.attributes['custom_normal'])

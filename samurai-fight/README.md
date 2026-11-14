@@ -30,9 +30,22 @@ python3 scripts/render.py build/arena.blend out.png --cam CAM_Hero --res 960x540
 - Lighting: cold key sun + red rim sun from the moon (both hidden from volume scatter so the fog stays dark),
   red practicals in lanterns and temples, three mist-only lights behind the torii. AgX, exposure 0.
 
+## Characters (Stage 2)
+
+- Source: two Tripo image-to-3D GLBs kept in the owner's Google Drive folder `3d` (about 59 MB each, not in git).
+  Download them into `build/glb_in/`, then:
+  `python3 -I scripts/prep_characters.py <oni.glb> <ronin.glb> build/characters.blend`
+  followed by `bash scripts/render_stage2.sh`.
+- Each GLB is ONE fused watertight shell in a T-pose (1.9 M triangles, 1024 px base colour / normal /
+  roughness-metallic). Hat, cape, waist cloth, hakama and sheathed swords are part of the body surface, so
+  they cannot simply be split into objects. `prep_characters.py` welds UV-seam splits, scales to real height
+  (Oni 1.98 m to the horn tips, Ronin 2.00 m to the hat tip), grounds the feet and decimates to 400k triangles.
+- Drawn katanas are procedural (`scripts/weapons.py`): +Z along the blade, edge toward -Y, origin at the guard.
+- The glTF importer leaves objects in quaternion rotation mode; set `rotation_mode = 'XYZ'` before using Euler angles.
+
 ## Stage status
 
-1. Arena – procedural blockout + look pass done, waiting for review and optional GLB props.
-2. Characters – waiting for `oni_body.glb` / `ronin_body.glb` (see `pack/README.md`).
-3. Rigging and animation – not started.
-4. Timeline – not started.
+1. Arena - procedural build + look pass done and reviewed sheets posted; optional GLB props can still replace stand-ins.
+2. Characters - meshes prepared, katanas built, previews posted; waiting for review.
+3. Rigging and animation - not started.
+4. Timeline - not started.

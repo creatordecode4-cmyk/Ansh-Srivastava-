@@ -2,19 +2,21 @@
 python3 scripts/render_turnaround.py build/characters.blend Oni out_prefix [--spp 24] [--res 620x900]
 """
 import bpy, sys, math
+import numpy as np
 from mathutils import Vector
 
 blend, name, prefix = sys.argv[1], sys.argv[2], sys.argv[3]
 spp = int(sys.argv[sys.argv.index('--spp') + 1]) if '--spp' in sys.argv else 24
-res = sys.argv[sys.argv.index('--res') + 1] if '--res' in sys.argv else '620x900'
+res = sys.argv[sys.argv.index('--res') + 1] if '--res' in sys.argv else '900x900'
 bpy.ops.wm.open_mainfile(filepath=blend)
 sc = bpy.context.scene
 for ob in sc.objects:
     ob.hide_render = not ob.name.startswith(name)
 ob = bpy.data.objects[name + '_Body']
-co = [ob.matrix_world @ v.co for v in ob.data.vertices[::50]]
-lo = Vector([min(c[i] for c in co) for i in range(3)])
-hi = Vector([max(c[i] for c in co) for i in range(3)])
+co = np.empty(len(ob.data.vertices) * 3, dtype=np.float32)
+ob.data.vertices.foreach_get('co', co)
+co = co.reshape(-1, 3)
+lo, hi = Vector(co.min(0).tolist()), Vector(co.max(0).tolist())
 c, size = (lo + hi) / 2, hi - lo
 w = bpy.data.worlds.new('studio')
 sc.world = w
@@ -37,8 +39,7 @@ sc.camera = cam
 W, H = map(int, res.split('x'))
 sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = W, H, 100
 cd.type = 'ORTHO'
-cd.ortho_scale = max(size.z * 1.06, 1.25 * W / H * 1.0, size.z * 1.06)
-cd.ortho_scale = size.z * 1.06 if W < H else size.x * 1.06
+cd.ortho_scale = max(size.z, size.x * H / W) * 1.05        # fit height and the full T-pose arm span
 sc.render.engine = 'CYCLES'
 sc.cycles.samples, sc.cycles.use_denoising, sc.cycles.device = spp, True, 'CPU'
 sc.view_settings.view_transform = 'Standard'

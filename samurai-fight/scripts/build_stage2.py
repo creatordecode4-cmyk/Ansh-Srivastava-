@@ -16,11 +16,14 @@ for c in dst.collections:
     sc.collection.children.link(c)
 oni, ronin = bpy.data.objects['Oni_Body'], bpy.data.objects['Ronin_Body']
 # standoff marks on the court (fight centre is (0, 1)); the characters face each other along X
-oni.location, oni.rotation_euler = (-3.2, 1.0, 0.0), (0, 0, math.radians(90))
-ronin.location, ronin.rotation_euler = (3.2, 1.0, 0.0), (0, 0, math.radians(-90))
+for ob in (oni, ronin):
+    ob.rotation_mode = 'XYZ'                 # the glTF importer leaves objects in quaternion mode
+# still in T-pose (rigging is Stage 3): turned 35 degrees toward each other so the designs read on camera
+oni.location, oni.rotation_euler = (-2.3, 1.0, 0.0), (0, 0, math.radians(35))
+ronin.location, ronin.rotation_euler = (2.3, 1.0, 0.0), (0, 0, math.radians(-35))
 wc = bpy.data.collections.new('WEAPONS')
 sc.collection.children.link(wc)
-for nm, style, loc in (('Katana_Oni', 'Oni', (-2.2, 0.2, 0.0)), ('Katana_Ronin_R', 'Ronin', (2.2, 0.4, 0.0)), ('Katana_Ronin_L', 'Ronin', (2.3, 1.7, 0.0))):
+for nm, style, loc in (('Katana_Oni', 'Oni', (-1.25, -0.6, 0.0)), ('Katana_Ronin_R', 'Ronin', (1.05, -0.5, 0.0)), ('Katana_Ronin_L', 'Ronin', (1.5, -0.9, 0.0))):
     k = W.build_katana(wc, nm, style)
     # planted tip-down in the stone for the still (they move to the hands in Stage 3)
     k.location = (loc[0], loc[1], 0.70)
@@ -28,8 +31,8 @@ for nm, style, loc in (('Katana_Oni', 'Oni', (-2.2, 0.2, 0.0)), ('Katana_Ronin_R
 cd = bpy.data.cameras.new('CAM_Standoff')
 cam = bpy.data.objects.new('CAM_Standoff', cd)
 bpy.data.collections['CAMERAS'].objects.link(cam)
-cam.location = (0.3, -8.6, 1.35)
-cam.rotation_euler = (Vector((0.0, 1.0, 1.2)) - Vector(cam.location)).to_track_quat('-Z', 'Y').to_euler()
-cd.lens, cd.dof.use_dof, cd.dof.focus_distance, cd.dof.aperture_fstop = 38.0, True, 9.7, 4.0
+cam.location = (0.2, -6.4, 1.25)
+cam.rotation_euler = (Vector((0.0, 1.0, 1.12)) - Vector(cam.location)).to_track_quat('-Z', 'Y').to_euler()
+cd.lens, cd.dof.use_dof, cd.dof.focus_distance, cd.dof.aperture_fstop = 36.0, True, 7.4, 4.0
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(B, 'stage2.blend'))
 print('STAGE2 built')
