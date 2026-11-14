@@ -1,6 +1,7 @@
-"""Japanese temple buildings, built procedurally with bmesh (no textures, no UVs).
+"""Japanese temple buildings, built procedurally with bmesh (no textures, no UVs, no modifiers).
 
-Public builders (all return ONE mesh object, origin on the ground at the footprint centre, front = -Y):
+Public builders. Each returns ONE mesh object with its origin on the ground at the centre of the stone plinth,
+front = -Y, real-world metres. Same arguments + seed give the same mesh. Nothing is rendered, saved or reset.
 
     build_hall(width=16.0, depth=11.0, plinth=1.2, front_steps_width=6.0, name="PROP_TempleMain", seed=0)
     build_hall_small(width=8.0, depth=7.0, plinth=0.6, name="PROP_HallSmall", seed=0)
@@ -8,24 +9,27 @@ Public builders (all return ONE mesh object, origin on the ground at the footpri
     build_pagoda(tiers=3, name="PROP_Pagoda", seed=0)
     build_perimeter_wall(length=10.0, height=2.4, name="PROP_Wall", seed=0)
 
-`width` x `depth` is the stone plinth at ground level. The front staircase sticks out in front of it (-Y) and the
-roof overhangs it; the real extents are stored on the object (see below).
+`width` x `depth` (`length` x `depth`) is the stone plinth at ground level. The front staircase sticks out in
+front of it (-Y) and the roof overhangs it on all sides; the real extents are stored in bbox_min / bbox_max.
+The wall runs along X (length), is 0.62 m thick at the base, and pieces butt end to end without a seam.
 
-Custom properties written on every building:
-    obj["size"]            [width, depth, total_height]              nominal footprint and real height
-    obj["lantern_sockets"] [[x, y, z], ...]  local points on the underside of the front eave rafters (hang point)
-    obj["lantern_drop"]    suggested cord length (m) from a socket down to the top of a paper lantern
-    obj["door_point"]      [x, y, z]  local point on the floor in front of the main door (centre front for others)
-    obj["floor_z"]         height of the walkable floor
-    obj["eave_half"]       [ex, ey]  half extents of the roof edge in plan
-    obj["eave_z"]          height of the roof edge at mid span
-    obj["bbox_min"], obj["bbox_max"]   real local bounds (stairs and roof included)
+Custom properties written on every object (plain lists of floats, local space):
+    obj["size"]            [width, depth, total_height]   nominal plinth footprint and the real height
+    obj["lantern_sockets"] [[x, y, z], ...]  hang points on the underside of the front eave rafters
+                           (main hall 5, small hall 2, corridor one per second bay, pagoda 2, wall none)
+    obj["lantern_drop"]    suggested cord length from a socket down to the TOP of a paper lantern
+    obj["door_point"]      [x, y, z]  point on the floor in front of the main door (centre front for the others)
+    obj["floor_z"]         height of the walkable timber floor
+    obj["eave_half"]       [ex, ey]  half extents of the (lowest) roof edge in plan
+    obj["eave_z"]          height of the roof edge at mid span (corners curl up above this)
+    obj["bbox_min"], obj["bbox_max"]   real local bounds, stairs and roof included
 
-Materials used (by name through materials.get): MAT_Roof_Tile, MAT_Wood_Red, MAT_Wood_Dark, MAT_Plaster,
-MAT_Stone_Block, MAT_Stone_Mossy, MAT_Window_Glow, MAT_Metal_Dark, MAT_Gold.
+Materials (through materials.get): MAT_Roof_Tile, MAT_Wood_Red, MAT_Wood_Dark, MAT_Plaster, MAT_Stone_Block,
+MAT_Stone_Mossy, MAT_Window_Glow, MAT_Metal_Dark, MAT_Gold.
 """
 import math
 
+import bpy  # noqa: F401  (with the pip bpy module, bmesh and mathutils only exist after bpy is imported)
 import bmesh
 from mathutils import Matrix, Vector
 
