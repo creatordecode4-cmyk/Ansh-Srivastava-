@@ -546,7 +546,8 @@ def _floor_wet_stone(m):
     col = m.cscale(col, m.lerp(wet, 1.6, 1.0))
 
     # roughness: damp stone 0.2-0.45, dirt in the grooves, 0.02-0.08 in the puddles
-    damp = m.remap(t.rough, 0.72, 0.92, 0.20, 0.45)
+    sheen = m.noise(m.obj, 3.1, detail=4.0, rough=0.65)                     # patchy film of water on the damp stone
+    damp = m.add(m.remap(t.rough, 0.72, 0.92, 0.20, 0.36), m.smooth(sheen, 0.35, 0.7, -0.04, 0.09))
     rough = m.lerp(wet, m.remap(t.rough, 0.72, 0.92, 0.6, 0.9), damp)
     rough = m.lerp(grooves, rough, 0.65)
     rough = m.lerp(moss, rough, 0.9)

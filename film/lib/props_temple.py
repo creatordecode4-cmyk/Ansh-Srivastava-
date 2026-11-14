@@ -884,8 +884,10 @@ def _planks(b, x0, x1, y0, y1, z0, z1, along, width=0.24, mat=DARK):
             b.box2((a0, y0 + e0, z0), (a1, y1 - e1, z1 + dz), mat)
 
 
-def _railing(b, p0, p1, zf, h=0.9, k=1.0, end0=True, end1=True):
-    """Timber balustrade from p0 to p1 (2D points) standing on the floor at zf."""
+def _railing(b, p0, p1, zf, h=0.9, k=1.0, end0=True, end1=True, post0=True, post1=True):
+    """Timber balustrade from p0 to p1 (2D points) standing on the floor at zf.
+
+    end0/end1: taller capped newel at that end. post0/post1 = False leaves the end post to a neighbouring run."""
     r = b.rnd
     x0, y0 = p0
     x1, y1 = p1
@@ -898,6 +900,9 @@ def _railing(b, p0, p1, zf, h=0.9, k=1.0, end0=True, end1=True):
     for i in range(n + 1):
         t = length * i / n
         px, py = x0 + ux * t, y0 + uy * t
+        tops.append((px, py))
+        if (i == 0 and not post0) or (i == n and not post1):
+            continue
         is_end = (i == 0 and end0) or (i == n and end1)
         ph = h + (0.14 if is_end else -0.05)
         lean = Matrix.Rotation(math.radians(r.uniform(-0.7, 0.7)), 3, "X") @ \
@@ -906,7 +911,6 @@ def _railing(b, p0, p1, zf, h=0.9, k=1.0, end0=True, end1=True):
         if is_end:
             b.lathe((px, py, zf + ph - 0.015), [(0.07 * k, 0.0), (0.075 * k, 0.03), (0.045 * k, 0.05),
                                                 (0.068 * k, 0.1), (0.05 * k, 0.15), (0.0, 0.19)], 8, METAL)
-        tops.append((px, py))
     for i in range(n):
         (ax, ay), (bx, by) = tops[i], tops[i + 1]
         sag = r.uniform(0.0, 0.012)
@@ -962,16 +966,25 @@ def _bracket(b, x, y, zc, outs, k, stepped):
     """Bearing block, bracket arms and small blocks on a column head. outs: wall normals (1 or 2 for a corner)."""
     b.box((x, y, zc + 0.05 * k), (0.3 * k, 0.3 * k, 0.12 * k), RED, bevel=0.012)
     b.box((x, y, zc + 0.17 * k), (0.43 * k, 0.43 * k, 0.13 * k), RED, bevel=0.014)
-    for ox, oy in outs:
+    b.box((x, y, zc + 0.425 * k), (0.21 * k, 0.21 * k, 0.13 * k), RED, bevel=0.01)
+    corner = len(outs) == 2
+    e = 0.6 * k
+    for n, (ox, oy) in enumerate(outs):
         al = (-oy, ox)
-        _arm(b, x, y, zc + 0.16 * k, al, k, 1.3 * k)
-        for t in (-0.5, 0.0, 0.5):
+        other = outs[1 - n] if corner else None
+        if not (corner and stepped):
+            _arm(b, x, y, zc + 0.16 * k, al, k, 1.3 * k)
+        for t in (-0.5, 0.5):
+            if other is not None and stepped and (al[0] * t * other[0] + al[1] * t * other[1]) > 0:
+                continue                    # that side carries the other wall's projecting arm
             b.box((x + al[0] * t * k, y + al[1] * t * k, zc + 0.425 * k), (0.21 * k, 0.21 * k, 0.13 * k), RED,
                   bevel=0.01)
         if stepped:
-            e = 0.6 * k
-            shape = [(-0.15 * k, 0.2 * k), (-0.15 * k, 0.0), (e - 0.03 * k, 0.0), (e + 0.15 * k, 0.1 * k),
-                     (e + 0.15 * k, 0.2 * k)]
+            back = 0.65 * k if corner else 0.15 * k
+            shape = [(-back, 0.2 * k), (-back, 0.09 * k if corner else 0.0)]
+            if corner:
+                shape.append((-back + 0.17 * k, 0.0))
+            shape += [(e - 0.03 * k, 0.0), (e + 0.15 * k, 0.1 * k), (e + 0.15 * k, 0.2 * k)]
             b.prism(shape, (x, y, zc + 0.16 * k), (ox, oy, 0.0), _Z, 0.15 * k, RED)
             cx, cy = x + ox * e, y + oy * e
             b.box((cx, cy, zc + 0.425 * k), (0.21 * k, 0.21 * k, 0.13 * k), RED, bevel=0.01)
@@ -979,9 +992,8 @@ def _bracket(b, x, y, zc, outs, k, stepped):
             for t in (-0.46, 0.0, 0.46):
                 b.box((cx + al[0] * t * k, cy + al[1] * t * k, zc + 0.735 * k), (0.2 * k, 0.2 * k, 0.13 * k), RED,
                       bevel=0.01)
-    if stepped and len(outs) == 2:
+    if stepped and corner:
         dx, dy = outs[0][0] + outs[1][0], outs[0][1] + outs[1][1]
-        e = 0.6 * k
         b.beam((x, y, zc + 0.36 * k), (x + dx * (e + 0.12 * k), y + dy * (e + 0.12 * k), zc + 0.62 * k), 0.15 * k,
                0.2 * k, RED, bevel=0.012)
 
@@ -1114,7 +1126,7 @@ def _hall(name, seed, width, depth, plinth, steps_w, big):
         ver, col_r, hc, ov = 1.75 * sc, 0.21 * sc ** 0.5, 3.9 * sc ** 0.6, 2.55 * sc
         k, rise_k, lift, lift_r, vo = 0.82 * sc ** 0.5, 0.68, 0.85 * sc, 5.5 * sc, 0.5 * sc
         stepped, rs, rail_h, sag, cheek = True, 1.0 * sc ** 0.5, 0.9, 0.12, 0.45
-        roof_opt = dict(rib_dx=0.40, rib_r=0.082, course=0.34, dx=0.27, raf_dx=0.31)
+        roof_opt = dict(rib_dx=0.36, rib_r=0.08, course=0.31, dx=0.27, raf_dx=0.31)
     else:
         sc = math.sqrt(width * depth / 56.0)
         ver, col_r, hc, ov = 1.0 * sc, 0.17 * sc ** 0.5, 3.0 * sc ** 0.6, 1.75 * sc
@@ -1206,6 +1218,23 @@ def _hall(name, seed, width, depth, plinth, steps_w, big):
                     aq = -half + (q + 0.5) * 2 * half / m
                     fr.box(aq - 0.05, aq + 0.05, -0.05, 0.062, zc + _SIMPLE_TOP * k - 0.01, z_sof - 0.3, RED)
 
+    if big:
+        # name tablet hanging under the eave over the middle door, tipped forward
+        tw, th = min(1.5, 0.6 * bay_f), 0.78
+        tz = zc + 0.36 * k + 0.1
+        tilt = Matrix.Rotation(math.radians(-14.0), 3, "X")
+        ty = -(by + 0.6 * k + 0.2)
+        b.box((0.0, ty, tz), (tw, 0.06, th), DARK, bevel=0.01, rot=tilt)
+        for sgn in (-1, 1):
+            c0 = Vector((0.0, ty, tz))
+            b.box(tilt @ Vector((sgn * (tw * 0.5 - 0.03), -0.012, 0.0)) + c0, (0.075, 0.075, th + 0.02), GOLD,
+                  bevel=0.012, rot=tilt)
+            b.box(tilt @ Vector((0.0, -0.014, sgn * (th * 0.5 - 0.03))) + c0, (tw + 0.02, 0.075, 0.075), GOLD,
+                  bevel=0.012, rot=tilt)
+        for q in (-1, 0, 1):
+            b.box(tilt @ Vector((0.0, -0.036, q * 0.2)) + Vector((0.0, ty, tz)), (0.16, 0.014, 0.14), GOLD,
+                  bevel=0.004, rot=tilt)
+
     # ---- roof
     roof_opt.update(dk=dk, d_in=d_in, rs=rs)
     st = _build_roof(b, R, roof_opt)
@@ -1217,9 +1246,9 @@ def _hall(name, seed, width, depth, plinth, steps_w, big):
     kr = 1.0 if big else 0.85
     _railing(b, (-rx, -ry), (-gap, -ry), zf, rail_h, kr)
     _railing(b, (gap, -ry), (rx, -ry), zf, rail_h, kr)
-    _railing(b, (rx, -ry), (rx, ry), zf, rail_h, kr)
-    _railing(b, (-rx, ry), (-rx, -ry), zf, rail_h, kr)
-    _railing(b, (rx, ry), (-rx, ry), zf, rail_h, kr)
+    _railing(b, (rx, -ry), (rx, ry), zf, rail_h, kr, post0=False)
+    _railing(b, (rx, ry), (-rx, ry), zf, rail_h, kr, post0=False)
+    _railing(b, (-rx, ry), (-rx, -ry), zf, rail_h, kr, post0=False, post1=False)
 
     # ---- sockets
     ys = by + min(1.0, 0.55 * ver + 0.1)
@@ -1229,6 +1258,8 @@ def _hall(name, seed, width, depth, plinth, steps_w, big):
         if len(xs) > 5:
             c = len(xs) // 2
             xs = xs[c - 2:c + 3]
+        elif len(xs) < 5:
+            xs = [(-1.0 + 0.5 * i) * (bx - 0.5 * bay_f) for i in range(5)]
     else:
         xs = [-bx + 0.5 * bay_f, bx - 0.5 * bay_f]
     sockets = [(x, -ys, zs(x)) for x in xs]
@@ -1471,7 +1502,7 @@ def build_perimeter_wall(length=10.0, height=2.4, name="PROP_Wall", seed=0):
             ya, yb = sorted((sy * (wall_t * 0.5 - 0.02), sy * (wall_t * 0.5 + 0.05)))
             b.box2((x - 0.075, ya, base_h + 0.12), (x + 0.075, yb, z_head - 0.16), DARK, 0.01)
     _build_roof(b, R, dict(es=0.6, t1=0.09, t2=0.12, dk=0.3, d_in=ey, raf=False, rs=rs, verge=False, ends=False,
-                           rib_half=True, rib_dx=0.34, rib_r=0.065, rib_seg=4, disc_n=6, verge_margin=0.0,
+                           rib_half=True, rib_dx=0.34, rib_r=0.065, rib_seg=5, disc_n=8, verge_margin=0.0,
                            course=ey, dx=0.55, step=0.02))
     # flat closures so a free end is not hollow
     for sx in (-1, 1):
