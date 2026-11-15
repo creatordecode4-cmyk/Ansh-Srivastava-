@@ -54,7 +54,7 @@ class Skin:
         # meaningless - the vertex's normal points sideways across the hole - so questions answered
         # from a rim vertex are reported as 'clear'. Hands and brims are not judged there anyway.
         self.rim = {}
-        for name in ("trunk", "body", "nohead", "no_fore", "left_leg", "right_leg"):
+        for name in ("trunk", "body", "nohead", "no_fore", "left_leg", "right_leg", "left_arm", "right_arm"):
             inc = self.region[name]
             if inc.all():
                 continue

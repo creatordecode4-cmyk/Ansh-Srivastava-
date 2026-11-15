@@ -23,6 +23,7 @@ import os
 import bpy
 import numpy as np
 from mathutils import Matrix, Quaternion, Vector
+from mathutils.bvhtree import BVHTree
 
 from . import cache, core, fighters, motion, weapons
 from . import clear as clr
@@ -95,7 +96,8 @@ class Actor:
         self.hat = None
         if self.F.get("hat") is not None:
             spec = self.F["hat_spec"]
-            self.hat = dict(pos=self.arm.matrix_world.inverted() @ self.F["hat"].matrix_world.translation, pts=clr.hat_points(spec["radius"], spec["rise"]))
+            pos = self.arm.matrix_world.inverted() @ self.F["hat"].matrix_world.translation
+            self.hat = dict(pos=pos, pts=clr.hat_points(spec["radius"], spec["rise"]), solid=clr.Hat(self.pp, pos, spec))
         self.arm_gap = 0.02 if who == "oni" else 0.03                        # the Ronin's hands must also clear the cloth on his hips
         self.pre, self.poses, self.saya_local, self.report = [], [], {}, {}
 
@@ -252,7 +254,7 @@ class Actor:
         # 4. the hat brim clear of shoulders and sword grips; arms out of body and hat; carried blades off the body
         stats = dict(arm_push=0.0, elbow_turn=0.0, hat_tilt_kept=1.0, blade_left=0.0)
         if clear:
-            brims = None
+            hat = self.hat["solid"] if self.hat else None
             if self.hat:
                 grips = []
                 for f in range(n):
@@ -261,10 +263,9 @@ class Actor:
                         m = Tinv @ planned[key][f]
                         seg.append((np.array(m.translation), np.array(m @ Vector(sw.arc(-sw.spec["grip"] - 0.02))), 0.024))
                     grips.append(seg)
-                stats["hat_tilt_kept"] = clr.hat(pp, posed, poses, self.hat["pos"], self.hat["pts"], grips)
-                brims = [clr.brim_points(pp, p, self.hat["pos"], self.hat["pts"]) for p in poses]
+                stats["hat_tilt_kept"] = clr.hat(pp, posed, poses, self.hat["pos"], self.hat["pts"], grips, controls=local)
             free = [dict(Left=not held[f]["Left"], Right=not held[f]["Right"]) for f in range(n)]
-            stats["arm_push"], stats["elbow_turn"] = clr.arms(pp, skin, posed, local, poses, free, gap=self.arm_gap, brims=brims)
+            stats["arm_push"], stats["elbow_turn"] = clr.arms(pp, skin, posed, local, poses, free, gap=self.arm_gap, hat=hat)
             carry = {}
             for h in holds:
                 if h.get("plan", 1.0) <= 0.0 and h.get("lead", True):
@@ -277,8 +278,18 @@ class Actor:
                     W = self._ungrip(tag, pp.heads(pose)[tag + "Hand"], pose["D"][tag + "Hand"], h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
                     return np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.04, sw.spec["blade"], 10)])
 
-                stats["blade_left"] = clr.blades(pp, skin, posed, local, poses, carried, blade_of, brims=brims)
+                stats["blade_left"] = clr.blades(pp, skin, posed, local, poses, carried, blade_of, hat=hat)
             posed = [skin.pose(p) for p in poses]
+            # 5. the scabbards once more: moving the arms moved the shoulders they lie on
+            for key, sw in self.swords.items():
+                sw.carry.prev = None
+                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"]) for f in range(n)]
+            for f in range(n):
+                sp = self._spine(final[f])
+                for key, sw in self.swords.items():
+                    sp["sheath"] = Tobj @ saya[key][f]
+                    tr = swords.get(key)
+                    planned[key][f] = self._track(sw, tr, f, sp) if tr else sp["sheath"]
         # 6. swords: read back from the lead hand where one is closed on the grip, else as planned
         miss = {}
         sword_m = {k: [None] * n for k in self.swords}
@@ -341,37 +352,49 @@ class Actor:
 
     def clip_report(self):
         """What still passes through what in the baked shot (before cloth): worst overlap in millimetres
-        per kind of contact, 0 meaning clear. An overlap is how far one surface is inside the other."""
+        per kind of contact, 0 meaning clear. An overlap is how far one surface is inside the other.
+        arm_in_hat is measured against the hat and the space over it (clear.Hat.above); blade_in_hat
+        is the length of blade that has gone through the hat, or how far a blade presses into it."""
         pp, skin, n = self.pp, self.skin, self.frames
         Tinv = self.arm.matrix_world.inverted()
-        out = dict(arm_in_body=0.0, scabbard_in_body=0.0, hat_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_hat=0.0)
+        out = dict(arm_in_body=0.0, scabbard_in_body=0.0, hat_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_arm=0.0, blade_in_hat=0.0)
+        hat = self.hat["solid"] if self.hat else None
         for f in range(n):
             posed, pose = self.posed[f], self.poses[f]
+            at = hat.at(pose) if hat else None
             for tag in ("Left", "Right"):
                 pts = clr.arm_points(pp, skin, pose, tag)
                 d, _, _ = posed.signed([p for _, p, _ in pts], "body")
                 out["arm_in_body"] = max(out["arm_in_body"], float((np.array([r for _, _, r in pts]) - d).max()))
+                if hat:
+                    chain = clr.arm_chain(pp, skin, pose, tag, upper=True)
+                    sd, _ = hat.above(hat.local(at, [p for _, p, _ in chain]))
+                    out["arm_in_hat"] = max(out["arm_in_hat"], float((np.array([r for _, _, r in chain]) - sd).max()))
             for key, sw in self.swords.items():
                 m = self.saya_local[key][f]
                 pts = sw.carry.local @ np.array(m.to_3x3()).T + np.array(m.translation)
                 d, _, _ = posed.signed(pts[2:], "body")
                 out["scabbard_in_body"] = max(out["scabbard_in_body"], float((0.018 - d).max()))
                 W = Tinv @ self.sword_m[key][f]
-                if (W.translation - m.translation).length > 0.05:        # drawn: the blade against the fighter's own body
+                if (W.translation - m.translation).length > 0.05:        # drawn: the blade against the fighter's own body, arms and hat
                     blade = np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.05, sw.spec["blade"], 12)])
                     d, _, _ = posed.signed(blade, "body")
                     out["blade_in_body"] = max(out["blade_in_body"], float((0.012 - d).max()))
-                    if self.hat:
-                        B = clr.brim_points(pp, pose, self.hat["pos"], self.hat["pts"])
-                        out["blade_in_hat"] = max(out["blade_in_hat"], 0.008 - float(np.linalg.norm(blade[:, None, :] - B[None, :, :], axis=2).min()))
+                    line = clr.dense(blade)
+                    for side in ("left_arm", "right_arm"):               # beyond the hands that hold it
+                        d, _, _ = posed.signed(line[10:], side)
+                        d = d[d > -0.07]                                  # deeper than an arm is thick: the side test has failed, not the blade
+                        if len(d):
+                            out["blade_in_arm"] = max(out["blade_in_arm"], float((0.004 - d).max()))
+                    if hat:
+                        L = hat.local(at, line)
+                        k = hat.crossing(L)
+                        through = float(np.linalg.norm(np.diff(line[k:], axis=0), axis=1).sum()) if k is not None else 0.003 - float(hat.shell(L).min())
+                        out["blade_in_hat"] = max(out["blade_in_hat"], through)
             if self.hat:
-                head = np.array(pp.heads(pose)["Head"])
-                P = (self.hat["pts"] + (np.array(self.hat["pos"]) - np.array(pp.H0["Head"]))) @ np.array(pose["D"]["Head"]).T + head
+                P = clr.brim_points(pp, pose, self.hat["pos"], self.hat["pts"])
                 d, _, _ = posed.signed(P, "trunk")
                 out["hat_in_body"] = max(out["hat_in_body"], float((-d).max()))
-                for tag in ("Left", "Right"):
-                    for _, q, r in clr.arm_points(pp, skin, pose, tag):
-                        out["arm_in_hat"] = max(out["arm_in_hat"], r - float(np.linalg.norm(P - np.array(q), axis=1).min()))
                 for key, sw in self.swords.items():
                     W = Tinv @ self.planned[key][f]
                     a, b = np.array(W.translation), np.array(W @ Vector(sw.arc(-sw.spec["grip"] - 0.02)))
@@ -431,6 +454,7 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
         cl.point_cache.frame_end = end + 2
     first = start - 1
     rec = {ob.name: [] for ob in panels}
+    faces = {}
     for f in range(1, end + 2):
         sc.frame_set(f)
         if f >= first:
@@ -440,6 +464,8 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                 co = np.empty(len(me.vertices) * 3, dtype=np.float32)
                 me.vertices.foreach_get("co", co)
                 rec[ob.name].append(co)
+                if ob.name not in faces:
+                    faces[ob.name] = [tuple(p.vertices) for p in me.polygons]
         if report and f % report == 0:
             print(f"    cloth frame {f}/{end + 1}", flush=True)
     # trousers that are part of the body: the two legs may press together but not pass through each other
@@ -466,17 +492,22 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
             continue
         before, deepest, left = 0, 0.0, 0
         total = sum(len(rec[ob.name][0]) // 3 for ob in mine) * len(rec[mine[0].name])
+        Tinv = a.arm.matrix_world.inverted()
+        cut = []                                                        # shot frames on which a drawn blade passes through a cloth panel
         for i, fr in enumerate(range(first, end + 2)):
             k = fr - a.start
             pose = a.pre[-1] if k < 0 else a.poses[min(a.frames - 1, k)]
             posed = a.skin.pose(pose)
-            segs = []
+            segs, drawn = [], []
             if k >= 0:
                 kk = min(a.frames - 1, k)
                 for key, sw in a.swords.items():
                     m = a.saya_local[key][kk]
                     pts = sw.carry.local @ np.array(m.to_3x3()).T + np.array(m.translation)
                     segs += [(pts[j], pts[j + 1], 0.019) for j in range(len(pts) - 1)]
+                    W = Tinv @ a.sword_m[key][kk]
+                    if (W.translation - m.translation).length > 0.05:
+                        drawn.append([W @ Vector(sw.arc(t)) for t in np.linspace(0.05, sw.spec["blade"], 12)])
             for ob in mine:
                 X = rec[ob.name][i].reshape(-1, 3).astype(np.float64)
                 n_bad, deep = clr.depenetrate(X, posed, gap=0.004)
@@ -488,8 +519,14 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                 d, _, _ = posed.signed(X, "all")
                 left += int((d < -0.001).sum())
                 rec[ob.name][i] = X.astype(np.float32).reshape(-1)
-        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left)
+                if drawn and k not in cut:                               # a blade is planned, not pushed: this only reports
+                    tree = BVHTree.FromPolygons(X.tolist(), faces[ob.name])
+                    if any(tree.ray_cast(p, (q - p).normalized(), (q - p).length)[0] is not None for line in drawn for p, q in zip(line[:-1], line[1:])):
+                        cut.append(k)
+        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left, blade_frames=cut)
         print(f"  {a.who} cloth: {before} of {total} points were inside the body or too close (deepest {deepest * 1000:.0f} mm); after putting them back: {left}", flush=True)
+        if any(len(m) for m in a.sword_m.values()):
+            print(f"  {a.who} blades through cloth: {len(cut)} frames" + (f" (shot frames {cut})" if cut else ""), flush=True)
     files = []
     for ob in panels:
         path = os.path.join(folder, f"{ob.name}.pc2")

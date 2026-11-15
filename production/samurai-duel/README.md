@@ -144,23 +144,36 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   moves rigidly with the head.
 - Simulated cloth is written to PC2 files and played back by a Mesh Cache modifier, so rendering
   needs no simulation and can start at any frame.
-- Nothing may pass through anything else. A captured performer is slim and unarmoured; on the
-  broad, armoured fighters his motion puts hands inside hips, a scabbard through the trousers and
-  a cape through the swords. `skin.py` poses the watertight skin and answers how far outside the
-  body a point is; `clear.py` resolves each contact while a shot is baked (`Actor.perform`):
+- Nothing may pass through anything else. A captured performer is slim, unarmoured and bare-headed;
+  on the broad, armoured fighters his motion puts hands inside hips, a scabbard through the
+  trousers, a cape through the swords and an arm through the hat. `skin.py` poses the watertight
+  skin and answers how far outside the body a point is; `clear.py` resolves each contact while a
+  shot is baked (`Actor.perform`):
   - free hands are pushed out along the body's surface normal, elbows are turned out of the way
+  - the hat is a solid (`clear.Hat`), not a ring of points: a thin blade slips between points.
+    A free arm is kept out of the cylinder that stands on the rim (the shoulder is under the brim,
+    so a hand over the hat means a forearm through it). Each arm has one sideways way out, eased
+    over time, so a hand rising past the head swings out round the rim instead of jumping
   - a hand closed on a planned sword cannot be moved: there the choreography has to be clean
-    (the Oni's guard is at chest height because his arms are short for his trunk)
+    (the Oni's guard is at chest height because his arms are short for his trunk; the Ronin's two
+    blades in the spinning kick keep the captured rhythm of his wrists but stay beside the body
+    and below the brim, pointing out and back)
   - scabbards lie on two points of the skin (back) or hang from the belt and are pushed aside by
-    the leg (hip), instead of being glued to one bone
+    the leg (hip), instead of being glued to one bone; they are fitted again after the arms have
+    been moved, because the shoulders move with them
   - the hat gives up tilt where its brim would meet shoulders or sword grips
-  - a carried sword's wrist is turned until the blade clears the body
+  - a carried sword's wrist is turned until the blade clears body and hat (the blade is tested
+    every centimetre against the hat's own cone)
   - after a cloth run, cloth left inside the body is put back on its surface; the cape is pinned
     under the scabbards; the Oni's trouser legs press together instead of crossing
-  `Actor.clip_report()` gives the worst overlap per kind of contact in millimetres. Measured on
-  the preview shots, before -> after: Oni walk arm 79 -> 11 (his hand rests on the scabbard),
-  scabbard 14 -> 0; Ronin walk arm 72 -> 0; Oni cut arm 51 -> 0 (142 with the first, navel-high
-  guard); Ronin spinning kick blade 133 -> 0, arm 116 -> 13, arm against hat brim 65 -> 35.
+  `Actor.clip_report()` gives the worst overlap per kind of contact in millimetres, and the cloth
+  run reports how many frames have a drawn blade passing through cloth. Measured on the preview
+  shots, before -> after: Oni walk arm 79 -> 11 (his hand rests on the scabbard), scabbard
+  14 -> 0; Ronin walk arm 72 -> 0; Ronin dash arm in the hat's space 27 -> 0; Oni cut arm 51 -> 0
+  (142 with the first, navel-high guard); Ronin spinning kick with both blades, as captured: arm
+  in body 116, arm in the hat's space 167, blade in body 133, blade in his own arm 72, 67 cm of
+  blade through the hat -> all 0 with the planned swords. The same kick with free hands and the
+  swords sheathed also clears to 0.
   The side test is only trusted near the skin and away from the open rims of body regions.
 - The preview is rendered without motion blur or depth of field so that every frame is sharp.
 - Not done yet: the draw (sword leaving the scabbard), clips downloaded from Mixamo (the folder

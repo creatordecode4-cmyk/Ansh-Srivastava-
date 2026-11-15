@@ -10,7 +10,8 @@ Each kind of contact is resolved the way it resolves in life, against the posed 
   arms      a free hand that would enter the body is moved out along the body's surface normal
   scabbards are not glued to one bone: they lie on the skin at two points (back) or hang from the
             belt and are pushed aside by whatever moves under them (hip)
-  hat       the head keeps its turn but loses as much of its tilt as is needed for the brim to clear
+  hat       the head keeps its turn but loses as much of its tilt as is needed for the brim to clear;
+            arms and carried blades are kept off it as a solid (Hat), not off a handful of points
   tassels   swing as before but stop at the body
   cloth     after simulation, any vertex left inside the body is put back on its surface
 
@@ -62,10 +63,28 @@ def arm_points(pp, skin, pose, tag):
             ("forearm", E.lerp(W, 0.5), r["forearm"])]              # not the elbow: it is too near the shoulder to be judged against the trunk
 
 
-def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, brim=None):
+def arm_chain(pp, skin, pose, tag, upper=False):
+    """Centre-line points down the arm, close enough together for something as thin as a hat brim:
+    (name, position, radius). upper adds the elbow and the upper arm."""
+    H = pp.heads(pose)
+    S, E, W, K = H[tag + "Arm"], H[tag + "ForeArm"], H[tag + "Hand"], H[tag + "HandMiddle1"]
+    tip = K + (K - W).normalized() * (0.55 * pp.hand[tag]["Lh"])
+    r = skin.limb_radius
+    pts = [("fingers", K.lerp(tip, 0.5), r["hand"] * 0.8), ("hand", W.lerp(K, 0.6), r["hand"]), ("wrist", W, r["wrist"]),
+           ("forearm", E.lerp(W, 0.75), 0.5 * (r["forearm"] + r["wrist"])), ("forearm", E.lerp(W, 0.5), r["forearm"]),
+           ("forearm", E.lerp(W, 0.25), r["forearm"])]
+    if upper:
+        pts += [("elbow", E, r["forearm"] * 0.9), ("upper", S.lerp(E, 0.6), r["forearm"])]
+    return pts
+
+
+HAT_GAP = 0.012
+
+
+def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, hat=None, way=None):
     """How far the arm is short of its clearance from the body (metres; <= 0 is clear), and the way out.
-    parts limits the test to some of the arm's points; brim = hat points on this frame (the arm must
-    also stay off the hat)."""
+    parts limits the test to some of the arm's points; hat = the fighter's Hat: the arm must also
+    stay out of the hat and of the space over it (Hat.funnel), leaving along 'way' (Hat.way)."""
     pts = [q for q in arm_points(pp, skin, pose, tag) if parts is None or q[0] in parts]
     if parts is not None and "elbow" in parts:
         pts.append(("elbow", pp.heads(pose)[tag + "ForeArm"], skin.limb_radius["forearm"] * 0.9))
@@ -75,21 +94,25 @@ def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, brim=None):
     lack = rad + gap - d
     k = int(np.argmax(lack))
     best = (float(lack[k]), nrm[k], pts[k][0])
-    if brim is not None:
-        for i in range(len(P)):
-            v = P[i] - brim
-            dist = np.linalg.norm(v, axis=1)
-            j = int(np.argmin(dist))
-            short = rad[i] + 0.012 - dist[j]
-            if short > best[0]:
-                best = (float(short), v[j] / max(dist[j], 1e-9), "hat")
+    if hat is not None:
+        chain = arm_chain(pp, skin, pose, tag, upper=parts is not None and "elbow" in parts)
+        if parts is not None:
+            chain = [q for q in chain if q[0] in parts or q[0] == "upper"]
+        if chain:
+            at = hat.at(pose)
+            if way is None:
+                way = hat.way(at, pose, tag)
+            far = hat.funnel(hat.local(at, [p for _, p, _ in chain]), [r for _, _, r in chain], way)
+            j = int(np.argmax(far))
+            if far[j] > max(best[0], 1e-9):
+                best = (float(far[j]), hat.out(at, (way[0], way[1], 0.0)), "hat")
     return best
 
 
-def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, brim=None):
+def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, hat=None, way=None):
     """Turn the elbow round the line from shoulder to wrist until forearm and elbow clear the body.
     Returns (angle in degrees, changed controls, pose) or None if they are clear as they are."""
-    lack, _, _ = arm_lack(pp, skin, posed, pose, tag, gap, parts=("forearm", "elbow"), brim=brim)
+    lack, _, _ = arm_lack(pp, skin, posed, pose, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way)
     if lack <= 1e-4 and abs(prefer) < 1.0:
         return None
     H = pp.heads(pose)
@@ -105,7 +128,7 @@ def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, brim=None):
         c2 = dict(c)
         c2[key] = Matrix.Rotation(math.radians(ang), 3, n) @ b0
         p2 = pp.solve(c2)
-        lk, _, _ = arm_lack(pp, skin, posed, p2, tag, gap, parts=("forearm", "elbow"), brim=brim)
+        lk, _, _ = arm_lack(pp, skin, posed, p2, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way)
         if best is None or lk < best[0] - 1e-4:
             best = (lk, ang, c2, p2)
         if lk <= 1e-4:
@@ -113,23 +136,28 @@ def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, brim=None):
     return best[1], best[2], best[3]
 
 
-def arms(pp, skin, posed, controls, poses, free, gap=0.012, brims=None):
+def arms(pp, skin, posed, controls, poses, free, gap=0.012, hat=None):
     """Keep the arms out of the body. controls and poses are in the armature's space and are changed
     in place; posed[f] is the skin in that space; free[f][tag] says whether that hand may be moved
-    on frame f (a hand closed on a planned sword may not: only its elbow is turned).
+    on frame f (a hand closed on a planned sword may not: only its elbow is turned). hat: the
+    fighter's Hat, which the arms are kept clear of as well.
     Returns (largest hand push in metres, largest elbow turn in degrees)."""
     n = len(poses)
     worst, turn = 0.0, 0.0
     for tag in ("Left", "Right"):
         s = tag[0]
         reach = (pp.arm_[tag]["L1"] + pp.arm_[tag]["L2"]) * 0.97       # a pushed hand never asks for a locked-straight arm
+        ways = [None] * n
+        if hat is not None:                                            # which way this arm leaves the hat's space: settled once, and eased over time
+            w = _smooth(np.array([hat.way(hat.at(poses[f]), poses[f], tag) for f in range(n)]), 9)
+            ways = list(w / np.maximum(np.linalg.norm(w, axis=1, keepdims=True), 1e-9))
         # free hands first: push them out; the first push is eased in and out over time
         total = np.zeros((n, 3))
         for rnd in range(8):
             need = np.zeros((n, 3))
             for f in range(n):
                 if free[f][tag]:
-                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, brim=brims[f] if brims else None)
+                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f])
                     if lack > 1e-4:
                         need[f] = nrm * lack
             if not need.any():
@@ -157,7 +185,7 @@ def arms(pp, skin, posed, controls, poses, free, gap=0.012, brims=None):
         # then elbows: turn them out of the way, following on from the frame before
         prev = 0.0
         for f in range(n):
-            got = _swivel(pp, skin, posed[f], controls[f], poses[f], tag, gap * 0.5, prev, brims[f] if brims else None)
+            got = _swivel(pp, skin, posed[f], controls[f], poses[f], tag, gap * 0.5, prev, hat, ways[f])
             if got is None:
                 prev *= 0.7
                 continue
@@ -176,7 +204,7 @@ BENDS = [(0, 0, 0)] + [(y, p, r) for r in (0, 25, -25, 50, -50, 80, -80) for p i
 BENDS.sort(key=lambda b: abs(b[0]) + abs(b[1]) + 0.6 * abs(b[2]))
 
 
-def blades(pp, skin, posed, controls, poses, carried, blade_of, gap=0.02, brims=None):
+def blades(pp, skin, posed, controls, poses, carried, blade_of, gap=0.02, hat=None):
     """Turn the wrist of a hand that carries a sword until the blade clears the fighter's own body
     (and hat). carried[f] = {tag: key}; blade_of(pose, tag, key) -> (m, 3) points along that blade.
     Changes controls and poses in place; returns the largest overlap left, in metres."""
@@ -194,8 +222,8 @@ def blades(pp, skin, posed, controls, poses, carried, blade_of, gap=0.02, brims=
                 B = blade_of(pose, tag, key)
                 d, _, _ = posed[f].signed(B, "body")
                 worst = float((gap - d).max())
-                if brims is not None:
-                    worst = max(worst, gap - float(np.linalg.norm(B[:, None, :] - brims[f][None, :, :], axis=2).min()))
+                if hat is not None:                                  # a blade is thin: tested every centimetre against the hat itself
+                    worst = max(worst, HAT_GAP - float(hat.shell(hat.local(hat.at(pose), dense(B))).min()))
                 return worst
 
             base = dict(controls[f]["hand_" + s])
@@ -302,6 +330,125 @@ class Scabbard:
 
 
 # ----------------------------------------------------------------------------- the hat
+def dense(P, step=0.01):
+    """A line of points (n, 3) filled in so that neighbours are no more than 'step' apart."""
+    P = np.asarray(P, dtype=np.float64)
+    out = [P[:1]]
+    for a, b in zip(P[:-1], P[1:]):
+        k = max(1, int(math.ceil(np.linalg.norm(b - a) / step)))
+        out.append(a + (b - a) * (np.arange(1, k + 1) / k)[:, None])
+    return np.concatenate(out)
+
+
+def _seg2(q, a, b):
+    """2D points q (n, 2) against segments a-b (m, 2): distances (n, m) and nearest points (n, m, 2)."""
+    ab = b - a
+    t = np.clip(np.einsum("nmk,mk->nm", q[:, None, :] - a[None], ab) / np.einsum("mk,mk->m", ab, ab)[None], 0.0, 1.0)
+    c = a[None] + t[..., None] * ab[None]
+    return np.linalg.norm(q[:, None, :] - c, axis=2), c
+
+
+class Hat:
+    """The kasa as a solid: a shallow cone that rides on the head (sd/kasa.py gives its profile).
+
+    shell(L)   distance of points from the hat itself; what a blade is tested against
+    above(L)   signed distance from 'the hat and all the space over it': what an arm is measured
+               against. The shoulder is under the brim, so a hand over the hat means a forearm
+               through it.
+    funnel()   the same widened and given a single way out: what a free arm is steered clear of.
+    Points are in the hat's own space (origin on the axis at rim height, +Z up): at() and local()."""
+
+    def __init__(self, pp, pos, spec):
+        self.pp = pp
+        self.off = np.array(pos, dtype=np.float64) - np.array(pp.H0["Head"], dtype=np.float64)   # hat origin from the head joint, at rest
+        R, H, th = spec["radius"], spec["rise"], spec["thick"]
+        self.R = R + 0.006                                            # the wire rim
+        u = np.linspace(0.0, 1.0, 11)
+        under = np.stack([u * R, H * (1.0 - u) ** 0.94], axis=1)
+        under[-1] = (self.R, 0.0)
+        self.under = under                                            # profile of the underside: (radius, height)
+        self.half = 0.5 * th + 0.004                                  # half the shell's thickness, with the lapping panels
+        mid = under + np.array([0.0, self.half])
+        zc = H * (1.0 - spec["cap_r"] / R) ** 0.94 + th
+        cap = np.array([[spec["cap_r"] * 1.24, zc], [0.0, zc + spec["cap_h"] + 0.011]])   # the metal cone at the apex
+        self.seg_a = np.concatenate([mid[:-1], cap[:1]])
+        self.seg_b = np.concatenate([mid[1:], cap[1:]])
+
+    def at(self, pose):
+        """Where the hat is in a pose: (rotation, head joint) in the armature's space."""
+        return np.array(pose["D"]["Head"]), np.array(self.pp.heads(pose)["Head"])
+
+    def local(self, at, P):
+        D, head = at
+        return (np.atleast_2d(np.asarray(P, dtype=np.float64)) - head) @ D - self.off
+
+    def out(self, at, v):
+        """A direction in the hat's space, in the armature's."""
+        return at[0] @ np.asarray(v, dtype=np.float64)
+
+    def into(self, at, v):
+        """A direction in the armature's space, in the hat's."""
+        return np.asarray(v, dtype=np.float64) @ at[0]
+
+    def shell(self, L):
+        q = np.stack([np.hypot(L[:, 0], L[:, 1]), L[:, 2]], axis=1)
+        d, _ = _seg2(q, self.seg_a, self.seg_b)
+        return np.maximum(d.min(axis=1) - self.half, 0.0)
+
+    def above(self, L):
+        r, z = np.hypot(L[:, 0], L[:, 1]), L[:, 2]
+        q = np.stack([r, z], axis=1)
+        d, c = _seg2(q, self.under[:-1], self.under[1:])
+        i = np.arange(len(q))
+        k = d.argmin(axis=1)
+        du, cu = d[i, k], c[i, k]
+        cw = np.stack([np.full(len(q), self.R), np.maximum(z, 0.0)], axis=1)   # the cylinder that stands on the rim
+        dw = np.linalg.norm(q - cw, axis=1)
+        near = np.where((dw < du)[:, None], cw, cu)
+        dist = np.minimum(du, dw)
+        inside = (r <= self.R) & (z >= np.interp(r, self.under[:, 0], self.under[:, 1]))
+        v = (q - near) / np.maximum(dist, 1e-9)[:, None]
+        v[inside] *= -1.0                                             # from inside, the way out is toward the nearest face
+        rh = np.where((r > 1e-6)[:, None], L[:, :2] / np.maximum(r, 1e-9)[:, None], np.array([1.0, 0.0]))
+        return np.where(inside, -dist, dist), np.concatenate([rh * v[:, :1], v[:, 1:2]], axis=1)
+
+    def way(self, at, pose, tag):
+        """The way out of the hat's space for one arm in one pose: a level direction (hat's space)
+        from the axis through the wrist, leaning toward the arm's own shoulder - which a hand on
+        the axis needs, and which keeps the answer within the arm's reach."""
+        side = self.into(at, pose["D"]["Spine2"] @ Vector((0.8 if tag == "Left" else -0.8, -0.6, 0.0)))
+        q = self.local(at, [self.pp.heads(pose)[tag + "Hand"]])[0]
+        d = q[:2] + 0.25 * side[:2]
+        return d / max(float(np.linalg.norm(d)), 1e-9)
+
+    def funnel(self, L, rad, way, drop=0.04, band=0.15):
+        """How far points on a free arm must go along 'way' to be clear of the hat (0 where clear).
+
+        An arm point of radius 'rad' is kept outside the cylinder that stands on the rim, from a
+        little under the brim ('drop') upward. Below that the forbidden radius shrinks to nothing
+        over 'band' metres, so a rising hand is steered out round the rim instead of being stopped
+        at a wall. The way out is always sideways - never down into the head or up through the
+        hat - and is the same for the whole arm, so its points do not pull against each other."""
+        L = np.atleast_2d(L)
+        rad = np.asarray(rad, dtype=np.float64)
+        q = L[:, :2]
+        r = np.hypot(q[:, 0], q[:, 1])
+        t = np.clip((L[:, 2] + drop + rad + HAT_GAP + band) / band, 0.0, 1.0)
+        need = t * t * (3.0 - 2.0 * t) * (self.R + rad + HAT_GAP)
+        qd = q @ np.asarray(way, dtype=np.float64)
+        return np.where(r < need, -qd + np.sqrt(np.maximum(qd * qd + need * need - r * r, 0.0)), 0.0)
+
+    def crossing(self, L):
+        """For a line of points in order (a blade from guard to point): index of the first one that
+        is on the other side of the hat from the one before it, or None if the line never passes
+        through the hat."""
+        r = np.hypot(L[:, 0], L[:, 1])
+        over = L[:, 2] > np.interp(r, self.under[:, 0], self.under[:, 1]) + self.half
+        inr = r <= self.R
+        hit = np.flatnonzero(inr[1:] & inr[:-1] & (over[1:] != over[:-1]))
+        return int(hit[0]) + 1 if len(hit) else None
+
+
 def hat_points(radius, rise, n=28):
     """Points on the underside of the brim, in the hat's own space (origin on the axis at rim height)."""
     out = []
@@ -312,11 +459,12 @@ def hat_points(radius, rise, n=28):
     return np.array(out)
 
 
-def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012):
-    """Take tilt off the head until the hat brim clears shoulders, arms and sword grips.
-    poses are changed in place (neck and head only); posed[f] is the skin on that frame;
-    grips[f] = list of (a, b, radius) segments. Returns the smallest share of the tilt that was
-    kept (1 = nothing had to be changed)."""
+def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012, controls=None):
+    """Take tilt off the head until the hat brim clears shoulders and sword grips.
+    poses are changed in place (neck and head only), and so are controls if given, so that the
+    limit survives a later solve; posed[f] is the skin on that frame; grips[f] = list of
+    (a, b, radius) segments. Returns the smallest share of the tilt that was kept (1 = nothing
+    had to be changed)."""
     from .motion import foot_angles
     n = len(poses)
     keep = np.ones(n)
@@ -330,7 +478,7 @@ def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012):
         trial = dict(D=D, hips=pose["hips"], short={})
         head = np.array(pp.heads(trial)["Head"])
         P = off @ np.array(Dhead).T + head
-        d, _, _ = posed[f].signed(P, "trunk")                         # the arms are kept off the hat by arms(), not the other way round
+        d, _, _ = posed[f].signed(P, "trunk")                         # the arms are kept out of the hat's way by arms(), not the other way round
         lo = float(d.min())
         for a, b, r in (grips[f] if grips else ()):
             ab = b - a
@@ -356,7 +504,21 @@ def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012):
     if keep.min() < 1.0:
         soft = _smooth(np.minimum.reduce([np.roll(keep, k) for k in (-2, -1, 0, 1, 2)]), 5)   # ease in and out of the limit
         soft[:2], soft[-2:] = np.minimum(soft[:2], keep[:2]), np.minimum(soft[-2:], keep[-2:])
-        keep = np.minimum(keep, soft)
+        eased = np.minimum(keep, soft)
+        for f in range(n):                                             # less tilt is not always clearer (a bowed head lifts the brim off the grips behind):
+            if eased[f] < keep[f]:                                     # where the easing itself brings the brim into contact, give tilt back until it clears
+                yaw, pitch, roll = rel[f]
+                Dc = poses[f]["D"]["Spine2"]
+                if clear(poses[f], Dc @ ypr(yaw, pitch * eased[f], roll * eased[f]), f) < gap:
+                    lo, hi = eased[f], keep[f]
+                    for _ in range(6):
+                        mid = 0.5 * (lo + hi)
+                        if clear(poses[f], Dc @ ypr(yaw, pitch * mid, roll * mid), f) >= gap:
+                            hi = mid
+                        else:
+                            lo = mid
+                    eased[f] = hi
+        keep = eased
         for f in range(n):
             if keep[f] < 1.0:
                 yaw, pitch, roll = rel[f]
@@ -364,6 +526,8 @@ def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012):
                 Dh = Dc @ ypr(yaw, pitch * keep[f], roll * keep[f])
                 poses[f]["D"]["Neck"] = slerp(Dc, Dh, 0.45)
                 poses[f]["D"]["Head"] = Dh
+                if controls is not None:
+                    controls[f]["head_D"] = Dh
     return float(keep.min())
 
 

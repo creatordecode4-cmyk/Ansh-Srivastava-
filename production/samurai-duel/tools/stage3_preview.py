@@ -131,13 +131,55 @@ def seg_oni_strike(lib, new):
 
 
 def seg_ronin_blades(lib, new):
-    """Motion capture for the body, a katana in each hand: the swords follow the fists."""
+    """Motion capture for the body, a katana in each hand.
+
+    The captured performer throws his hands over his head; a swordsman under a wide hat cannot,
+    and a blade carried wherever such a hand points goes through hat and cape. So the two swords
+    are planned and the hands follow them: each wrist keeps the rhythm it was captured with, but
+    is held to the space beside the body and below the brim, and the blade points out and back
+    from there - clear of head, hat and the kicking legs, which pass in front."""
+    import numpy as np
+    from mathutils import Vector
+    from sd import clear as clr
+    from sd.puppet import perp, sword_matrix
     A = new("ronin")
+    pp = A.pp
     take, lead = _mocap(A, "spinkick", 1, 1.6)
     n = len(take)
-    holds = [dict(sword=k, hand=h, f0=0, f1=n, plan=0.0, blend_in=0, bend=(0, 0, 0)) for k, h in (("R", "Right"), ("L", "Left"))]
-    return dict(cast=[(A, take, None, holds)], lead=lead, views=[("SIDE", 100, 4), ("FRONT", 30, 5)], height=3.0, look=1.2, wide=3.0,
+    tracks = {}
+    for key, tag, sgn in (("R", "Right", -1.0), ("L", "Left", 1.0)):
+        sh = pp.H0[tag + "Arm"]                                     # the shoulder, in the chest's own (rest pose) coordinates
+        reach = (pp.arm_[tag]["L1"] + pp.arm_[tag]["L2"]) * 0.90
+        W = []
+        for f in range(n):
+            c = take.c[f]
+            sp = A._spine(c)
+            w = sp["chest"].inverted() @ A._hand_world(c, tag, sp)[0]                  # the captured wrist, seen from the chest
+            w = Vector((sgn * max(sgn * w.x, 0.34), min(w.y, 0.15), min(w.z, sh.z + 0.02)))   # beside the body, no higher than the shoulder
+            v = w - sh
+            w = sh + v.normalized() * min(v.length, reach)
+            near = 0.32 ** 2 - (w.y - sh.y) ** 2 - (w.z - sh.z) ** 2                   # ...and not folded up against his own shoulder plate
+            if near > 0.0:
+                w.x = sgn * max(sgn * w.x, sgn * sh.x + math.sqrt(near))
+            W.append(w)
+        W = clr._smooth(np.array(W), 7)
+        keys = []
+        for f in range(n):
+            w = Vector(W[f])
+            arm = (w - sh).normalized()
+            t = min(1.0, max(0.0, (w.z - (sh.z - 0.45)) / 0.40))
+            lift = t * t * (3.0 - 2.0 * t)                           # 0 with the hand low, 1 with it at shoulder height
+            point = Vector((sgn * 0.80, 0.35, -0.45 + 0.60 * lift)).normalized()
+            if point.angle(arm) < math.radians(40.0):                # a blade in line with the forearm would break the wrist
+                point = (arm * math.cos(math.radians(40.0)) + perp(point, arm) * math.sin(math.radians(40.0))).normalized()
+            M = sword_matrix(w, point, arm)                          # knuckles, and so the edge, face the way the forearm runs
+            M.translation = w + (w - A._grip(tag, M, 0.058, 0.0, A.swords[key].R)[0])   # so that the wrist comes to w
+            keys.append(dict(f=f, space="chest", m=M))
+        tracks[key] = keys
+    holds = [dict(sword=k, hand=h, f0=0, f1=n, blend_in=0) for k, h in (("R", "Right"), ("L", "Left"))]
+    return dict(cast=[(A, take, tracks, holds)], lead=lead, views=[("SIDE", 100, 4), ("FRONT", 30, 5)], height=3.0, look=1.2, wide=3.0,
                 title="CYBER RONIN  -  spinning kick with both blades drawn")
+
 
 
 SEGMENTS = {k[4:]: v for k, v in list(globals().items()) if k.startswith("seg_")}
@@ -154,7 +196,7 @@ def render(segment):
     from sd import render as rnd
 
     W, H = [int(v) for v in arg("--size", (1280, 720), 2)]
-    samples = int(arg("--samples", 32))
+    samples = int(arg("--samples", 16))
     step = int(arg("--step", 1))
     proxy = "--proxy" in sys.argv
     sc = core.reset_scene()
