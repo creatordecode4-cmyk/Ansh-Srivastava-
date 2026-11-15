@@ -400,6 +400,7 @@ class Hat:
     above(L)   signed distance from 'the hat and all the space over it': what an arm is measured
                against. The shoulder is under the brim, so a hand over the hat means a forearm
                through it.
+    Both include the two strap arms that hang from the head band beside the face.
     funnel()   the same widened and given a single way out: what a free arm is steered clear of.
     Points are in the hat's own space (origin on the axis at rim height, +Z up): at() and local()."""
 
@@ -418,6 +419,17 @@ class Hat:
         cap = np.array([[spec["cap_r"] * 1.24, zc], [0.0, zc + spec["cap_h"] + 0.011]])   # the metal cone at the apex
         self.seg_a = np.concatenate([mid[:-1], cap[:1]])
         self.seg_b = np.concatenate([mid[1:], cap[1:]])
+        # the two strap arms that hang from the head band beside the face (same points as kasa._fittings)
+        zb = H * (1.0 - spec["band_r"] / R) ** 0.94 - spec["band_h"]
+        a, b = [], []
+        for sx in (-1.0, 1.0):
+            x0, o = sx * spec["strap_x"], spec["strap_out"]
+            pts = [np.array((x0 * o[0], 0.0, zb + 0.012)), np.array((x0 * o[1], -0.006, zb - 0.04)), np.array((x0 * o[2], -0.016, zb - 0.09)),
+                   np.array((x0 * o[3], -0.03, zb - spec["strap_drop"] + 0.03))]
+            pts.append(pts[-1] + (pts[-1] - pts[-2]) / np.linalg.norm(pts[-1] - pts[-2]) * 0.03)
+            a += pts[:-1]
+            b += pts[1:]
+        self.strap_a, self.strap_b, self.strap_r = np.array(a), np.array(b), 0.013
 
     def at(self, pose):
         """Where the hat is in a pose: (rotation, head joint) in the armature's space."""
@@ -435,10 +447,23 @@ class Hat:
         """A direction in the armature's space, in the hat's."""
         return np.asarray(v, dtype=np.float64) @ at[0]
 
+    def strap_points(self, n=5):
+        """Points down the two strap arms, in the hat's space."""
+        return np.concatenate([self.strap_a + (self.strap_b - self.strap_a) * u for u in np.linspace(0.0, 1.0, n)])
+
+    def straps(self, L):
+        """Distance of points from the strap arms' surface, and the way off them."""
+        a, ab = self.strap_a, self.strap_b - self.strap_a
+        t = np.clip(np.einsum("nmk,mk->nm", L[:, None, :] - a[None], ab) / np.einsum("mk,mk->m", ab, ab)[None], 0.0, 1.0)
+        v = L[:, None, :] - (a[None] + t[..., None] * ab[None])
+        dist = np.linalg.norm(v, axis=2)
+        i, k = np.arange(len(L)), dist.argmin(axis=1)
+        return dist[i, k] - self.strap_r, v[i, k] / np.maximum(dist[i, k], 1e-9)[:, None]
+
     def shell(self, L):
         q = np.stack([np.hypot(L[:, 0], L[:, 1]), L[:, 2]], axis=1)
         d, _ = _seg2(q, self.seg_a, self.seg_b)
-        return np.maximum(d.min(axis=1) - self.half, 0.0)
+        return np.maximum(np.minimum(d.min(axis=1) - self.half, self.straps(L)[0]), 0.0)
 
     def above(self, L):
         r, z = np.hypot(L[:, 0], L[:, 1]), L[:, 2]
@@ -455,7 +480,10 @@ class Hat:
         v = (q - near) / np.maximum(dist, 1e-9)[:, None]
         v[inside] *= -1.0                                             # from inside, the way out is toward the nearest face
         rh = np.where((r > 1e-6)[:, None], L[:, :2] / np.maximum(r, 1e-9)[:, None], np.array([1.0, 0.0]))
-        return np.where(inside, -dist, dist), np.concatenate([rh * v[:, :1], v[:, 1:2]], axis=1)
+        sd, g = np.where(inside, -dist, dist), np.concatenate([rh * v[:, :1], v[:, 1:2]], axis=1)
+        ds, gs = self.straps(L)                                       # the strap arms belong to the hat as well
+        nearer = ds < sd
+        return np.where(nearer, ds, sd), np.where(nearer[:, None], gs, g)
 
     def way(self, at, pose, tag):
         """The way out of the hat's space for one arm in one pose: a level direction (hat's space)
@@ -509,7 +537,10 @@ def hat(pp, posed, poses, hat_pos, pts, grips=None, gap=0.012, controls=None):
     poses are changed in place (neck and head only), and so are controls if given, so that the
     limit survives a later solve; posed[f] is the skin on that frame; grips[f] = list of
     (a, b, radius) segments. Returns the smallest share of the tilt that was kept (1 = nothing
-    had to be changed)."""
+    had to be changed).
+
+    The strap arms under the hat are not part of this: holding them off the shoulders costs the
+    head all of its tilt in a kick (tried). They are rigid here and should hang and swing instead."""
     from .motion import foot_angles
     n = len(poses)
     keep = np.ones(n)

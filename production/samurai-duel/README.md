@@ -168,8 +168,10 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
     every centimetre against the hat's own cone)
   - after a cloth run, cloth left inside the body is put back on its surface; the cape is pinned
     under the scabbards; the Oni's trouser legs press together instead of crossing
-  `Actor.clip_report()` gives the worst overlap per kind of contact in millimetres, and the cloth
-  run reports how many frames have a drawn blade passing through cloth. Measured on the preview
+  `Actor.clip_report()` gives the worst overlap per kind of contact in millimetres (arm in body,
+  arm in arm, scabbard, hat, strap arms, blade in body / arm / hat), and the cloth run reports
+  how many frames have a drawn blade passing through cloth and how many cloth points came up
+  through the hat (none in any preview shot). Measured on the preview
   shots, before -> after: Oni walk arm 79 -> 11 (his hand rests on the scabbard), scabbard
   14 -> 0; Ronin walk arm 72 -> 0; Ronin dash arm in the hat's space 27 -> 0; Oni cut arm 51 -> 0
   (142 with the first, navel-high guard); Ronin spinning kick with both blades, as captured: arm
@@ -177,6 +179,10 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   blade through the hat -> all 0 with the planned swords. The same kick with free hands and the
   swords sheathed also clears to 0.
   The side test is only trusted near the skin and away from the open rims of body regions.
+  Still open: the two strap arms under the hat are rigid and dip up to 15 mm into the shoulder
+  when the head tilts hard in the spinning kick (they should hang and swing like the tassels);
+  cloth is not tested against other cloth; at the crotch the thigh plates of a leg kicked high
+  sink into each other under the waist cloth.
 - The preview is rendered without motion blur or depth of field so that every frame is sharp.
 - Not done yet: the draw (sword leaving the scabbard), clips downloaded from Mixamo (the folder
   for them is `assets/user/mixamo/`; `retarget.py` carries such a clip over bone by bone).

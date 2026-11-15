@@ -357,7 +357,7 @@ class Actor:
         is the length of blade that has gone through the hat, or how far a blade presses into it."""
         pp, skin, n = self.pp, self.skin, self.frames
         Tinv = self.arm.matrix_world.inverted()
-        out = dict(arm_in_body=0.0, scabbard_in_body=0.0, hat_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_arm=0.0, blade_in_hat=0.0)
+        out = dict(arm_in_body=0.0, arm_in_arm=0.0, scabbard_in_body=0.0, hat_in_body=0.0, strap_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_arm=0.0, blade_in_hat=0.0)
         hat = self.hat["solid"] if self.hat else None
         for f in range(n):
             posed, pose = self.posed[f], self.poses[f]
@@ -366,10 +366,15 @@ class Actor:
                 pts = clr.arm_points(pp, skin, pose, tag)
                 d, _, _ = posed.signed([p for _, p, _ in pts], "body")
                 out["arm_in_body"] = max(out["arm_in_body"], float((np.array([r for _, _, r in pts]) - d).max()))
+                chain = clr.arm_chain(pp, skin, pose, tag, upper=True)
                 if hat:
-                    chain = clr.arm_chain(pp, skin, pose, tag, upper=True)
                     sd, _ = hat.above(hat.local(at, [p for _, p, _ in chain]))
                     out["arm_in_hat"] = max(out["arm_in_hat"], float((np.array([r for _, _, r in chain]) - sd).max()))
+                fore = [q for q in chain if q[0] in ("forearm", "elbow", "upper")]      # one arm through the other (the fists may meet on a grip)
+                d, _, _ = posed.signed([p for _, p, _ in fore], "right_arm" if tag == "Left" else "left_arm")
+                over = (np.array([r for _, _, r in fore]) - d)[d > -0.09]
+                if len(over):
+                    out["arm_in_arm"] = max(out["arm_in_arm"], float(over.max()))
             for key, sw in self.swords.items():
                 m = self.saya_local[key][f]
                 pts = sw.carry.local @ np.array(m.to_3x3()).T + np.array(m.translation)
@@ -395,6 +400,8 @@ class Actor:
                 P = clr.brim_points(pp, pose, self.hat["pos"], self.hat["pts"])
                 d, _, _ = posed.signed(P, "trunk")
                 out["hat_in_body"] = max(out["hat_in_body"], float((-d).max()))
+                d, _, _ = posed.signed(clr.brim_points(pp, pose, self.hat["pos"], hat.strap_points()), "all")
+                out["strap_in_body"] = max(out["strap_in_body"], float((hat.strap_r - d).max()))
                 for key, sw in self.swords.items():
                     W = Tinv @ self.planned[key][f]
                     a, b = np.array(W.translation), np.array(W @ Vector(sw.arc(-sw.spec["grip"] - 0.02)))
@@ -494,6 +501,7 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
         total = sum(len(rec[ob.name][0]) // 3 for ob in mine) * len(rec[mine[0].name])
         Tinv = a.arm.matrix_world.inverted()
         cut = []                                                        # shot frames on which a drawn blade passes through a cloth panel
+        hat, in_hat = (a.hat["solid"] if a.hat else None), 0
         for i, fr in enumerate(range(first, end + 2)):
             k = fr - a.start
             pose = a.pre[-1] if k < 0 else a.poses[min(a.frames - 1, k)]
@@ -516,6 +524,13 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                 if segs:
                     clr.out_of_capsules(X, segs)
                     clr.depenetrate(X, posed, gap=0.004)
+                if hat:                                                  # cloth that came up through the brim goes back under it
+                    at = hat.at(pose)
+                    sd, g = hat.above(hat.local(at, X))
+                    up = sd < 0.002
+                    if up.any():
+                        in_hat += int(up.sum())
+                        X[up] += (g[up] * (0.004 - sd[up])[:, None]) @ at[0].T
                 d, _, _ = posed.signed(X, "all")
                 left += int((d < -0.001).sum())
                 rec[ob.name][i] = X.astype(np.float32).reshape(-1)
@@ -523,8 +538,9 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                     tree = BVHTree.FromPolygons(X.tolist(), faces[ob.name])
                     if any(tree.ray_cast(p, (q - p).normalized(), (q - p).length)[0] is not None for line in drawn for p, q in zip(line[:-1], line[1:])):
                         cut.append(k)
-        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left, blade_frames=cut)
-        print(f"  {a.who} cloth: {before} of {total} points were inside the body or too close (deepest {deepest * 1000:.0f} mm); after putting them back: {left}", flush=True)
+        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left, blade_frames=cut, in_hat=in_hat)
+        print(f"  {a.who} cloth: {before} of {total} points were inside the body or too close (deepest {deepest * 1000:.0f} mm); after putting them back: {left}"
+              + (f"; {in_hat} points had come up through the hat" if hat else ""), flush=True)
         if any(len(m) for m in a.sword_m.values()):
             print(f"  {a.who} blades through cloth: {len(cut)} frames" + (f" (shot frames {cut})" if cut else ""), flush=True)
     files = []
