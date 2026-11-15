@@ -26,7 +26,9 @@ LEAD = 60                                            # scene frames before take 
 # one move) and some beats are shown slowed down.
 #        first film frame, last, take frame of the first, take frames per film frame
 TIME = [(1, 224, 0.0, 1.0),          # intro up to the hands closing on the grips and the blades starting out
-        (225, 240, 232.0, 1.0)]      # the wide standoff picks the draws up 8 frames later, blades already clear
+        (225, 240, 232.0, 1.0),      # the wide standoff picks the draws up 8 frames later, blades already clear
+        (241, 262, 248.0, 1.0),      # 10 s: both dash
+        (263, 288, 270.0, 0.25)]     # the last strides and the clash at a quarter speed (blades meet on take frame 273)
 
 
 def take_time(film_frame):
@@ -88,6 +90,38 @@ def walk(pp, clip_name, frames, heading, speed=1.0, widen=0.0, front="Right"):
     h = R @ cut.c[-1]["hips"]
     out = motion.Take([motion.moved(c, R, Vector((-h.x, -h.y, 0.0))) for c in cut.c], clip_name)
     out.locks = cut.locks
+    return out
+
+
+def run_to(pp, frames, heading, speed=1.0, widen=0.012, front="Right"):
+    """A run of frames + 1 frames along 'heading' that ends on the frame where the 'front' foot
+    strikes the ground ahead of the body - the stride a runner can strike or stop from.
+    The last frame's hips are over the origin; move it with shifted()."""
+    clip = mocap.Clip("run")
+    cycle = clip.T / speed * motion.FPS
+    take = motion.Take.from_clip(pp, clip, seconds=clip.T * (math.ceil(frames / cycle) + 2) / speed, speed=speed, widen=widen)
+    take.lock_feet(pp)
+    take.fit_hips(pp)
+    ends = [i for i in range(frames, len(take)) if take.locks[front][i] is not None and take.locks[front][i - 1] is None]
+    e = ends[0]
+    cut = motion.Take(take.c[e - frames:e + 1], "run")
+    cut.locks = {k: v[e - frames:e + 1] for k, v in take.locks.items()}
+    travel = cut.c[-1]["hips"] - cut.c[0]["hips"]
+    R = rot(Z, heading - math.degrees(math.atan2(travel.x, -travel.y)))
+    h = R @ cut.c[-1]["hips"]
+    out = motion.Take([motion.moved(c, R, Vector((-h.x, -h.y, 0.0))) for c in cut.c], "run")
+    out.locks = cut.locks
+    return out
+
+
+def launched(pp, pose, take, frames=7):
+    """'take' entered from a standing pose: over the first frames the controls go from the pose to
+    the take's own, which carries the body from rest up to the take's speed; feet that are still
+    down while that happens are then held where they are (lock_feet)."""
+    c = [motion.mix(pose, t, (lambda u: u * u * (3 - 2 * u))((i + 1) / (frames + 1))) for i, t in enumerate(take.c[:frames])] + take.c[frames:]
+    out = motion.Take(c, take.name)
+    out.lock_feet(pp)
+    out.fit_hips(pp)
     return out
 
 
@@ -220,6 +254,101 @@ def ronin_intro(A, mark=(0.25, 5.95), face=0.0):
     holds.append(dict(hat=(-0.225, -0.165, -0.150), hand="Right", f0=tf(204), f1=tf(217), blend_in=8, blend_out=6, fingers=(0.16, 0.10, 1.0), back=(-0.95, -0.3, 0.1),
                       shape=PINCH, elbow=(-0.75, -0.25, -0.6)))
     return take, tracks, holds, None
+
+
+# ----------------------------------------------------------------------------- the fight
+CLASH1 = Vector((-0.05, 2.05, 1.60))                 # where the three blades meet at the end of the dash (take frame 273)
+
+
+def blade_key(f, point, direction, along, edge, ease="inout", **more):
+    """A sword track key in the world that puts the blade's point 'along' metres from the guard on
+    'point', the blade lying along 'direction' with its edge toward 'edge'. This is how blades are
+    made to meet: both swords get a key on the same point on the same frame."""
+    from .puppet import sword_matrix
+    d = Vector(direction).normalized()
+    return dict(f=f, space="world", m=sword_matrix(Vector(point) - d * along, d, edge), ease=ease, **more)
+
+
+def oni_fight(A):
+    """The Oni's whole part: the intro, then the fight beat by beat. Returns (take, tracks, holds, steering)."""
+    pp = A.pp
+    take, tracks, holds, steer = oni_intro(A)
+    track = tracks["main"]
+    del track[-1]                                                    # the closing hold of the intro: the fight carries on from the guard
+    g = A.swords["main"].spec["grip"]
+    still = dict(hips=tuple(pp.H0["Hips"]))
+    # --- 10 s: the dash. He runs with the sword in his right hand, up beside the shoulder (with both
+    #     hands there the left forearm would lie in his chest), then both hands bring it down onto the
+    #     Ronin's crossed blades.
+    T0, HIT = tf(241), 273
+    PLANT = HIT - 3                                                  # the stride he cuts from
+    face = 176.5                                                     # north, closing a little on the Ronin's line
+    run = run_to(pp, PLANT - T0, face, speed=0.85, front="Right")
+    last = take.c[-1]
+    run = shifted(run, (last["hips"].x - run.c[0]["hips"].x, last["hips"].y - run.c[0]["hips"].y))
+    run = launched(pp, last, run, 7)
+    at = (run.c[-1]["hips"].x, run.c[-1]["hips"].y)
+    here = lambda pose: to_world(pp, pose, at, face)
+    back = dict(pos=(0.24, 0.14, 0.0), yaw=38, pitch=20)             # the rear foot of the lunge, on its ball
+    lunge = dict(hips=(0.0, -0.30, 0.92), hips_rot=(10, 12, 0), chest_rot=(4, 22, 0), head_rot=(0, 8, 0))
+    press = dict(hips=(0.0, -0.36, 0.89), hips_rot=(10, 14, 0), chest_rot=(4, 26, 0), head_rot=(0, 9, 0))
+    keys = [(0, run.c[-1], "inout"), (HIT - PLANT, here(lunge), "slow_out"), (HIT - PLANT + 4, here(press), "slow_out")]
+    steps = [("Left", 0, 4, dict(pos=tuple(here(dict(lunge, foot_L=back))["foot_L"]["pos"]), yaw=face + back["yaw"], pitch=back["pitch"]), 0.03),
+             ("Right", 0, 2, dict(yaw=face, pitch=0), 0.0)]
+    tail = motion.Take.from_keys(pp, keys, steps, "oni_clash")
+    take = joined(joined(take, run), tail)
+    take.fit_hips(pp)
+    k_carry = A.sword_key(T0 + 7, still, (-0.44, -0.22, 1.36), (-0.10, 0.30, 0.95), (0.3, -0.9, 0.3))               # in the right hand beside the shoulder, point up
+    k_up = A.sword_key(HIT - 4, still, (-0.04, -0.50, 1.86), (0.0, 0.25, 0.97), (0, -0.97, 0.25), ease="slow_in")   # both hands, up in front of the brow
+    k_hit = blade_key(HIT, CLASH1, (0.05, 0.86, 0.50), 0.55, (0.0, 0.5, -0.86), ease="slow_in")
+    k_press = blade_key(HIT + 4, CLASH1 + Vector((0.0, 0.03, -0.05)), (0.05, 0.89, 0.45), 0.52, (0.0, 0.45, -0.89), ease="slow_out")
+    track += [k_carry, dict(k_carry, f=HIT - 9), k_up, k_hit, k_press]
+    for h in holds:                                                  # the left hand lets go of the grip for the run and comes back for the cut
+        if h["hand"] == "Left" and h.get("on") != "saya" and h["f1"] >= T0:
+            h["f1"], h["blend_out"] = T0, 5
+    holds.append(dict(sword="main", hand="Left", f0=HIT - 4, f1=len(take), along=g - 0.062, roll=-28, lead=False, blend_in=5))
+    for h in holds:
+        if h["hand"] == "Right":
+            h["f1"] = len(take)
+    return take, dict(main=track), holds, steer
+
+
+def ronin_fight(A):
+    """The Ronin's whole part: the intro, then the fight beat by beat."""
+    pp = A.pp
+    take, tracks, holds, steer = ronin_intro(A)
+    for key in tracks:
+        del tracks[key][-1]
+    still = dict(hips=tuple(pp.H0["Hips"]))
+    # --- 10 s: the dash. Blades trail low behind him as he runs, then come up crossed under the Oni's cut.
+    T0, HIT = tf(241), 273
+    PLANT = HIT - 3
+    face = -2.5                                                      # south, closing a little on the Oni's line
+    run = run_to(pp, PLANT - T0, face, speed=0.88, front="Left")
+    last = take.c[-1]
+    run = shifted(run, (last["hips"].x - run.c[0]["hips"].x, last["hips"].y - run.c[0]["hips"].y))
+    run = launched(pp, last, run, 7)
+    at = (run.c[-1]["hips"].x, run.c[-1]["hips"].y)
+    here = lambda pose: to_world(pp, pose, at, face)
+    back = dict(pos=(-0.24, 0.16, 0.0), yaw=-36, pitch=20)
+    brace = dict(hips=(0.0, -0.24, 0.84), hips_rot=(-8, 6, 0), chest_rot=(-3, 8, 0), head_rot=(0, -6, 0))       # sunk under the blow, looking up at it
+    sink = dict(hips=(0.0, -0.22, 0.80), hips_rot=(-8, 7, 0), chest_rot=(-3, 10, 0), head_rot=(0, -7, 0))
+    keys = [(0, run.c[-1], "inout"), (HIT - PLANT, here(brace), "slow_out"), (HIT - PLANT + 4, here(sink), "slow_out")]
+    steps = [("Right", 0, 4, dict(pos=tuple(here(dict(brace, foot_R=back))["foot_R"]["pos"]), yaw=face + back["yaw"], pitch=back["pitch"]), 0.03),
+             ("Left", 0, 2, dict(yaw=face, pitch=0), 0.0)]
+    tail = motion.Take.from_keys(pp, keys, steps, "ronin_clash")
+    take = joined(joined(take, run), tail)
+    take.fit_hips(pp)
+    for key, sg, hand_at, edge in (("R", -1.0, (-0.22, 2.44, 1.36), (0.2, -0.4, 0.9)), ("L", 1.0, (0.31, 2.42, 1.34), (-0.2, -0.4, 0.9))):
+        k_trail = A.sword_key(T0 + 8, still, (sg * 0.46, 0.02, 1.12), (sg * 0.55, 0.72, -0.42), (sg * 0.3, -0.5, -0.8))     # low and behind as he runs
+        d = (CLASH1 - Vector(hand_at)).normalized()
+        k_hit = blade_key(HIT, CLASH1, d, (CLASH1 - Vector(hand_at)).length, edge, ease="slow_in")
+        k_press = blade_key(HIT + 4, CLASH1 + Vector((0.0, 0.03, -0.05)), d, (CLASH1 - Vector(hand_at)).length, edge, ease="slow_out")
+        tracks[key] += [k_trail, dict(k_trail, f=HIT - 6), k_hit, k_press]
+    for h in holds:
+        if "sword" in h:
+            h["f1"] = len(take)
+    return take, tracks, holds, steer
 
 
 # ----------------------------------------------------------------------------- cameras

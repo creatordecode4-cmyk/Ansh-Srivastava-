@@ -200,6 +200,17 @@ def seg_s4_ronin(lib, new):
                 title="STAGE 4 CHECK  -  Ronin: out of the fog, hat, blades")
 
 
+def seg_s4_fight(lib, new):
+    """Stage 4 check: both fighters' parts from the standoff on, side on."""
+    from sd import film
+    A, B = new("oni"), new("ronin")
+    ta, sa, ha, steer = film.oni_fight(A)
+    tb, sb, hb, _ = film.ronin_fight(B)
+    lead = film.tf(236)
+    return dict(cast=[(A, ta, sa, ha), (B, tb, sb, hb)], steer=steer, lead=lead, views=[("FROM THE EAST", 90, 3), ("FROM ABOVE", 90, 62)], height=3.2, look=1.2, wide=9.5,
+                title="STAGE 4 CHECK  -  the fight, take frames from the standoff")
+
+
 SEGMENTS = {k[4:]: v for k, v in list(globals().items()) if k.startswith("seg_")}
 
 

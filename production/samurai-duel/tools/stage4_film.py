@@ -1,6 +1,6 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
-    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--tag NAME]
+    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME]
     python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME] [--out previews/stage4_intro.mp4]
     python3 -I tools/stage4_film.py shots                       # the shot list
 
@@ -90,7 +90,7 @@ def render():
     i = sys.argv.index("render")
     first, last = int(sys.argv[i + 1]), int(sys.argv[i + 2])
     step = arg("--step", 1, cast=int)
-    sc, cast, shots = build(preset, cloth="--no-cloth" not in sys.argv, last=last)
+    sc, cast, shots = build(preset, cloth="--no-cloth" not in sys.argv, last=max(last, arg("--cloth-to", last, cast=int)))
     W, H = P["size"]
     rnd.setup(sc, W, H, P["samples"], 0.03)
     sc.cycles.adaptive_min_samples = P["samples"]
