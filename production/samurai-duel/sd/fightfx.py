@@ -51,8 +51,9 @@ def read_pc2(path, sample):
 
 
 def flame_mat(name="MAT_Flame"):
-    """Fire as light only: white-yellow where v = 0 (on the blade, or the newest part of a trail),
-    through orange to a dark red that thins out to nothing at v = 1."""
+    """Fire as light only. v runs from 0 (on the blade, or the newest part of a trail) to 1 (the
+    tip of a tongue, the oldest part of a trail): orange-white, through red, to a dark red that
+    thins out to nothing. u runs along the blade; the fire is broken into streaks along it."""
     m = bpy.data.materials.get(name)
     if m is not None:
         return m
@@ -61,43 +62,54 @@ def flame_mat(name="MAT_Flame"):
     nt = m.node_tree
     for n in list(nt.nodes):
         nt.nodes.remove(n)
+    link = nt.links.new
+
+    def math(op, a=None, b=None, c=None, name=None):
+        n = nt.nodes.new("ShaderNodeMath")
+        n.operation = op
+        for i, v in enumerate((a, b, c)):
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                n.inputs[i].default_value = v
+            else:
+                link(v, n.inputs[i])
+        if name:
+            n.name = name
+        return n.outputs[0]
+
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     uv = nt.nodes.new("ShaderNodeUVMap")
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-    nt.links.new(uv.outputs["UV"], sep.inputs[0])
+    link(uv.outputs["UV"], sep.inputs[0])
+    u, v = sep.outputs["X"], sep.outputs["Y"]
     ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position, ramp.color_ramp.elements[0].color = 0.0, (1.0, 0.80, 0.42, 1)
-    ramp.color_ramp.elements[1].position, ramp.color_ramp.elements[1].color = 1.0, (0.30, 0.008, 0.0, 1)
-    mid = ramp.color_ramp.elements.new(0.36)
-    mid.color = (1.0, 0.24, 0.03, 1)
-    nt.links.new(sep.outputs["Y"], ramp.inputs["Fac"])
-    inv = nt.nodes.new("ShaderNodeMath")
-    inv.operation = "SUBTRACT"
-    inv.inputs[0].default_value = 1.0
-    nt.links.new(sep.outputs["Y"], inv.inputs[1])
-    sq = nt.nodes.new("ShaderNodeMath")
-    sq.operation = "POWER"
-    sq.inputs[1].default_value = 2.0
-    nt.links.new(inv.outputs[0], sq.inputs[0])
-    gain = nt.nodes.new("ShaderNodeMath")
-    gain.name = "gain"
-    gain.operation = "MULTIPLY_ADD"
-    gain.inputs[1].default_value = 55.0
-    gain.inputs[2].default_value = 2.5
-    nt.links.new(sq.outputs[0], gain.inputs[0])
+    ramp.color_ramp.elements[0].position, ramp.color_ramp.elements[0].color = 0.0, (1.0, 0.50, 0.16, 1)
+    ramp.color_ramp.elements[1].position, ramp.color_ramp.elements[1].color = 1.0, (0.20, 0.0, 0.0, 1)
+    mid = ramp.color_ramp.elements.new(0.30)
+    mid.color = (1.0, 0.10, 0.015, 1)
+    link(v, ramp.inputs["Fac"])
+    young = math("SUBTRACT", 1.0, v)
+    strength = math("MULTIPLY_ADD", math("POWER", young, 2.0), 14.0, 1.2, name="gain")
     em = nt.nodes.new("ShaderNodeEmission")
-    nt.links.new(ramp.outputs["Color"], em.inputs["Color"])
-    nt.links.new(gain.outputs[0], em.inputs["Strength"])
-    alpha = nt.nodes.new("ShaderNodeMath")
-    alpha.operation = "POWER"
-    alpha.inputs[1].default_value = 1.3
-    nt.links.new(inv.outputs[0], alpha.inputs[0])
+    link(ramp.outputs["Color"], em.inputs["Color"])
+    link(strength, em.inputs["Strength"])
+    # streaks: noise stretched along the trail
+    scale = nt.nodes.new("ShaderNodeCombineXYZ")
+    link(math("MULTIPLY", u, 16.0), scale.inputs[0])
+    link(math("MULTIPLY", v, 2.2), scale.inputs[1])
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 1.0
+    noise.inputs["Detail"].default_value = 3.0
+    link(scale.outputs[0], noise.inputs["Vector"])
+    streak = math("MINIMUM", math("MAXIMUM", math("MULTIPLY_ADD", noise.outputs["Fac"], 2.4, -0.62), 0.0), 1.0)
+    alpha = math("MULTIPLY", math("MULTIPLY", math("POWER", young, 1.6), math("MULTIPLY_ADD", u, 0.75, 0.25)), streak)
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     mix = nt.nodes.new("ShaderNodeMixShader")
-    nt.links.new(alpha.outputs[0], mix.inputs["Fac"])
-    nt.links.new(tr.outputs[0], mix.inputs[1])
-    nt.links.new(em.outputs[0], mix.inputs[2])
-    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    link(alpha, mix.inputs["Fac"])
+    link(tr.outputs[0], mix.inputs[1])
+    link(em.outputs[0], mix.inputs[2])
+    link(mix.outputs[0], out.inputs["Surface"])
     return m
 
 
@@ -157,7 +169,7 @@ class FightFX:
         if self.flame_ev:
             self.flame = hits.holder("FX_Flame", col, flame_mat())
             ld = bpy.data.lights.new("FX_FlameLight", "POINT")
-            ld.color, ld.shadow_soft_size, ld.energy = (1.0, 0.30, 0.07), 0.12, 0.0
+            ld.color, ld.shadow_soft_size, ld.energy = (1.0, 0.22, 0.05), 0.12, 0.0
             self.flame_light = bpy.data.objects.new("FX_FlameLight", ld)
             col.objects.link(self.flame_light)
         # --- the Ronin's cape: the part that the cut takes off, and the scrap that flies
@@ -387,7 +399,7 @@ class FightFX:
             return motion._mix4(A.sword_m["main"][i], A.sword_m["main"][min(i + 1, A.frames - 1)], tt - i)
 
         verts, faces, uvs = [], [], []
-        N, dt = 18, 0.22                                             # a trail four take frames long
+        N, dt = 14, 0.16                                             # a trail a little over two take frames long
         rows = [(M @ Vector(sw.arc(0.10)), M @ Vector(sw.arc(L - 0.005))) for M in (blade(t - k * dt) for k in range(N + 1))]
         for k in range(N):
             (a0, b0), (a1, b1) = rows[k], rows[k + 1]
@@ -408,10 +420,11 @@ class FightFX:
             i = len(verts)
             verts += [tuple(p - along * 0.024), tuple(p + along * 0.024), tuple(p + Z * h + lean)]
             faces.append((i, i + 1, i + 2))
-            uvs += [(0.5, 0.0), (0.5, 0.0), (0.5, 1.0)]
+            uu = 0.3 + 0.7 * j / 19.0
+            uvs += [(uu - 0.03, 0.0), (uu + 0.03, 0.0), (uu, 1.0)]
         _fill(self.flame, verts, faces, uvs)
         self.flame_light.location = M @ Vector(sw.arc(L * 0.55))
         self.flame_light.data.energy = 260.0 * env
         gain = flame_mat().node_tree.nodes.get("gain")
         if gain is not None:
-            gain.inputs[1].default_value = 55.0 * (0.4 + 0.6 * env)
+            gain.inputs[1].default_value = 14.0 * (0.4 + 0.6 * env)

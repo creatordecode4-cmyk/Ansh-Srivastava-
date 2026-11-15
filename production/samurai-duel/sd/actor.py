@@ -30,6 +30,9 @@ from . import clear as clr
 from .puppet import EASE, I3, SHAPES, Puppet, Y, ease, mix_shapes, perp, slerp, sword_matrix, ypr
 from .skin import Skin
 
+FLOOR = 0.006                                        # lowest a cloth point may be: the cloth's own thickness above the ground
+
+
 def _ramp(f, a, b):
     """0 before a, 1 after b, smooth between."""
     if b <= a:
@@ -419,7 +422,9 @@ class Actor:
                 if (W.translation - m.translation).length > 0.05:        # drawn: the blade against the fighter's own body, arms and hat
                     blade = np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.05, sw.spec["blade"], 12)])
                     d, _, _ = posed.signed(blade, "body")
-                    out["blade_in_body"] = max(out["blade_in_body"], float((0.012 - d).max()))
+                    d = d[d > -0.20]                                      # deeper than a body is thick: the point is far away and the side test has failed
+                    if len(d):
+                        out["blade_in_body"] = max(out["blade_in_body"], float((0.012 - d).max()))
                     line = clr.dense(blade)
                     for side in ("left_arm", "right_arm"):               # beyond the hands that hold it
                         d, _, _ = posed.signed(line[10:], side)
@@ -549,7 +554,7 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
         total = sum(len(rec[ob.name][0]) // 3 for ob in mine) * len(rec[mine[0].name])
         Tinv = a.arm.matrix_world.inverted()
         cut = []                                                        # shot frames on which a drawn blade passes through a cloth panel
-        hat, in_hat = (a.hat["solid"] if a.hat else None), 0
+        hat, in_hat, on_floor = (a.hat["solid"] if a.hat else None), 0, 0
         for i, fr in enumerate(range(first, end + 2)):
             k = fr - a.start
             pose = a.pre[-1] if k < 0 else a.poses[min(a.frames - 1, k)]
@@ -579,6 +584,10 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                     if up.any():
                         in_hat += int(up.sum())
                         X[up] += (g[up] * (0.004 - sd[up])[:, None]) @ at[0].T
+                low = X[:, 2] < FLOOR                                    # the ground: a cape's hem lies on it when he sinks low, it does not go through
+                if low.any():
+                    on_floor += int(low.sum())
+                    X[low, 2] = FLOOR
                 d, _, _ = posed.signed(X, "all")
                 left += int((d < -0.001).sum())
                 rec[ob.name][i] = X.astype(np.float32).reshape(-1)
@@ -586,9 +595,9 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
                     tree = BVHTree.FromPolygons(X.tolist(), faces[ob.name])
                     if any(tree.ray_cast(p, (q - p).normalized(), (q - p).length)[0] is not None for line in drawn for p, q in zip(line[:-1], line[1:])):
                         cut.append(k)
-        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left, blade_frames=cut, in_hat=in_hat)
+        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left, blade_frames=cut, in_hat=in_hat, on_floor=on_floor)
         print(f"  {a.who} cloth: {before} of {total} points were inside the body or too close (deepest {deepest * 1000:.0f} mm); after putting them back: {left}"
-              + (f"; {in_hat} points had come up through the hat" if hat else ""), flush=True)
+              + (f"; {in_hat} points had come up through the hat" if hat else "") + (f"; {on_floor} points were below the ground and were laid on it" if on_floor else ""), flush=True)
         if any(len(m) for m in a.sword_m.values()):
             print(f"  {a.who} blades through cloth: {len(cut)} frames" + (f" (shot frames {cut})" if cut else ""), flush=True)
     files = []

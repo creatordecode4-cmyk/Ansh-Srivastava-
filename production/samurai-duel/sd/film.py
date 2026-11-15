@@ -43,10 +43,10 @@ DASH, HIT = 248, 273                                 # both start to run; the bl
 B0, HAMMER = 277, (293, 313, 334)                    # the Oni's three cuts land
 C0, SPIN, KICK = 342, 354, 378                       # the Ronin slips out; his spin starts; his heel lands
 D0, TRADE = 412, (423, 441, 459)                     # the exchange: three meetings of blades
-F0, CHARGE, SLASH = 478, 495, 514                    # the Oni winds up; he comes in; his blade passes the Ronin
+F0, CHARGE, SLASH = 478, 492, 514                    # the Oni winds up; he comes in; his blade passes the Ronin
 G0, RUSH, CROSS = 544, 556, 566                      # they set themselves; both run; the blades meet as they pass
 J0, END = 595, 667                                   # both stand frozen, back to back; the last frame of the film
-SPLIT, CRACK = J0 + 16, J0 + 44                      # the Ronin's hat parts; the crack runs across the Oni's mask
+SPLIT, CRACK = J0 + 9, J0 + 44                       # the Ronin's hat parts; the crack runs across the Oni's mask
 
 TIME = _timeline([
     (224, 1.0, 0),            # intro up to the hands closing on the grips and the blades starting out
@@ -407,6 +407,7 @@ def _oni_stations(A):
                 # the passing cut, one-handed, from in front of his left breast out to his right (the edge leads)
                 pass1=K(still, (-0.04, -0.40, 1.42), (0.92, -0.25, 0.10), (-0.25, -0.92, 0.0)),
                 pass2=K(still, (-0.46, -0.36, 1.44), (-0.70, -0.71, 0.05), (-0.71, 0.70, 0.0)),
+                pass2b=K(still, (-0.52, -0.26, 1.50), (-0.72, -0.35, 0.60), (-0.35, 0.72, 0.0)),      # just after the blades meet: up and over the other's arm
                 pass3=K(still, (-0.60, -0.08, 1.50), (-0.80, 0.45, 0.40), (0.45, 0.80, 0.0)))
 
 
@@ -917,7 +918,8 @@ def _power(O, R):
     fr, fl = _local(O, foot_xy(O.last, "Right")), _local(O, foot_xy(O.last, "Left"))
     y = fr.y
     here = lambda pose: to_world(pp, pose, O.spot, face)
-    coil = dict(hips=(0.0, y + 0.42, 0.94), hips_rot=(-28, 4, 0), chest_rot=(-50, 6, 0), head_rot=(-4, 2, 0))        # wound up to his right, eyes on the Ronin
+    coil = dict(hips=(0.0, y + 0.42, 0.94), hips_rot=(-28, 4, 0), chest_rot=(-50, 6, 0), head_rot=(-4, 2, 0),       # wound up to his right, eyes on the Ronin,
+                hand_L=dict(rel=(0.28, -0.12, -0.34)))                                                                # the empty hand held out before him
     coil2 = dict(coil, hips=(0.0, y + 0.44, 0.92), chest_rot=(-54, 7, 0))
     O.keyed([(F0 + 12, here(coil), "inout"), (CHARGE, here(coil2), "inout")], [], "oni_coil")
     # where he must stand for the point of his blade to pass in front of the Ronin's chest
@@ -1017,7 +1019,8 @@ def _crossing(O, R):
         P.spot, P.face = (to.x, to.y), face
     # swords: the Oni's leads, the Ronin's right blade is laid on it at the crossing
     K, RK = O.K, R.K
-    for f, name, e in ((G0 + 9, "pass1", "inout"), (CROSS - 3, "pass1", "inout"), (CROSS, "pass2", "slow_in"), (CROSS + 3, "pass3", "slow_out"), (J0, "pass3", "inout")):
+    for f, name, e in ((G0 + 9, "pass1", "inout"), (CROSS - 3, "pass1", "inout"), (CROSS, "pass2", "slow_in"), (CROSS + 1, "pass2b", "linear"), (CROSS + 4, "pass3", "slow_out"),
+                       (J0, "pass3", "inout")):
         O.at("main", f, K[name], ease=e)
     for h in O.holds:
         if h["hand"] == "Left" and h.get("on") != "saya" and h["f1"] >= G0:
@@ -1032,7 +1035,7 @@ def _crossing(O, R):
     a, b = O.take.c[CROSS]["hips"], R.take.c[CROSS]["hips"]
     sep = Vector((b.x - a.x, b.y - a.y, 0.0))
     R.note["crossing: apart along the run, apart in depth, blade used from the fist"] = (round(sep.dot(north), 2), round(abs(sep.dot(west)), 2), round(used, 2))
-    EVENTS.append(dict(kind="clash", f=CROSS, at=O.on_blade("main", CROSS, ALONG), power=2.0, blades=(("oni", "main", ALONG), ("ronin", "R", None))))
+    EVENTS.append(dict(kind="clash", f=CROSS, at=O.on_blade("main", CROSS, ALONG), power=1.6, blades=(("oni", "main", ALONG), ("ronin", "R", None))))
     for P_, tag in ((O, "Right"), (R, "Left")):
         EVENTS.append(dict(kind="splash", f=PLANT + 5, at=foot_xy(P_.take.c[PLANT + 6], tag), power=1.2, toward=tuple(north if P_ is O else -north)))
     return J0
@@ -1191,7 +1194,7 @@ def shots(cast):
 
     def clash(ff):
         u = _smooth((ff - 263) / 25.0)
-        return dict(pos=_mix((3.5, 1.85, 0.95), (2.9, 1.95, 1.12), u), look=(-0.05, 2.05, 1.42), lens=35.0)
+        return dict(pos=_mix((3.7, 1.70, 0.95), (3.1, 1.80, 1.12), u), look=(-0.05, 1.88, 1.40), lens=30.0)
     add("S04c the clash", 263, 288, clash)
 
     # 12 s: the three cuts, the camera circling from the east round behind the Oni's shoulder
@@ -1221,7 +1224,7 @@ def shots(cast):
 
     def trade_b(ff):
         c = both(ff)
-        return dict(pos=flat(c, 0.0) + Vector((-3.1, 0.4, 0.85)), look=flat(c, 1.40), lens=42.0, hand=0.022)
+        return dict(pos=flat(c, 0.0) + Vector((-3.6, 0.4, 0.85)), look=flat(c, 1.38), lens=32.0, hand=0.022)
     add("S07b second blow", 446, 465, trade_b)
 
     def trade_c(ff):
@@ -1255,7 +1258,7 @@ def shots(cast):
     # 24 s: the last pass, side on and wide; at the crossing nearer and slowed down; then both still, back to back
     def last_a(ff):
         c = both(ff)
-        return dict(pos=Vector((7.2, c.y, 0.80)), look=flat(c, 1.20), lens=30.0)
+        return dict(pos=Vector((4.9, c.y, 0.80)), look=flat(c, 1.20), lens=30.0)
     add("S09a they set themselves", 577, 595, last_a)
 
     def last_b(ff):
@@ -1267,7 +1270,7 @@ def shots(cast):
     def last_c(ff):
         c = both(648)
         u = _smooth((ff - 624) / 24.0)
-        return dict(pos=_mix((6.6, c.y, 0.62), (6.9, c.y, 0.60), u), look=flat(c, 1.25), lens=28.0)
+        return dict(pos=_mix((4.5, c.y, 0.62), (4.75, c.y, 0.60), u), look=flat(c, 1.20), lens=28.0)
     add("S09c back to back", 624, 648, last_c)
 
     # 27 s: the Ronin's hat, seen from in front of him with the moon behind; the Oni's mask; black
