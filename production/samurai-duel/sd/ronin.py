@@ -231,8 +231,9 @@ def _boundary_loops(bm, pick):
     return loops
 
 
-def _mirror_lower(bm, zm, verbose=True):
-    """Rebuild the right side below z = zm as a mirror image of the left side."""
+def _mirror_lower(bm, zm, keep=+1, verbose=True):
+    """Rebuild one side below z = zm as a mirror image of the other. keep = +1 keeps the half at
+    x > 0 (the wearer's left) and rebuilds the right from it; keep = -1 does the opposite."""
     geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
     bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, zm), plane_no=(0, 0, 1), dist=1e-7)
     low = [f for f in bm.faces if f.calc_center_median().z < zm]
@@ -242,10 +243,10 @@ def _mirror_lower(bm, zm, verbose=True):
         lg.update(f.edges)
         lg.update(f.verts)
     bmesh.ops.bisect_plane(bm, geom=list(lg), plane_co=(0, 0, 0), plane_no=(1, 0, 0), dist=1e-7)
-    right = [f for f in bm.faces if (c := f.calc_center_median()).z < zm and c.x < 0]
-    bmesh.ops.delete(bm, geom=right, context="FACES")
-    left = [f for f in bm.faces if (c := f.calc_center_median()).z < zm and c.x > 0]
-    dup = bmesh.ops.duplicate(bm, geom=left)["geom"]
+    gone = [f for f in bm.faces if (c := f.calc_center_median()).z < zm and c.x * keep < 0]
+    bmesh.ops.delete(bm, geom=gone, context="FACES")
+    kept = [f for f in bm.faces if (c := f.calc_center_median()).z < zm and c.x * keep > 0]
+    dup = bmesh.ops.duplicate(bm, geom=kept)["geom"]
     dverts = [g for g in dup if isinstance(g, bmesh.types.BMVert)]
     dfaces = [g for g in dup if isinstance(g, bmesh.types.BMFace)]
     bmesh.ops.scale(bm, vec=(-1, 1, 1), verts=dverts)
@@ -254,13 +255,13 @@ def _mirror_lower(bm, zm, verbose=True):
     for v in seam:
         v.co.x = 0.0
     bmesh.ops.remove_doubles(bm, verts=seam, dist=1e-6)
-    # stitch the waistline on the right: the mirrored half ends on the plane z = zm, and so does the
-    # original torso above it, but their outlines differ by the model's own asymmetry. Pull every
-    # mirrored border vertex onto the nearest point of the torso's border, then weld.
+    # stitch the cut line on the rebuilt side: the mirrored half ends on the plane z = zm, and so
+    # does the original surface above it, but their outlines differ by the model's own asymmetry.
+    # Pull every mirrored border vertex onto the nearest point of the upper border, then weld.
     from scipy.spatial import cKDTree
     upper, lower = [], []
     for v in bm.verts:
-        if abs(v.co.z - zm) < 1e-5 and v.co.x < -1e-6 and v.is_boundary:
+        if abs(v.co.z - zm) < 1e-5 and v.co.x * keep < -1e-6 and v.is_boundary:
             above = any(f.calc_center_median().z > zm for f in v.link_faces)
             (upper if above else lower).append(v)
     moved = 0
@@ -273,8 +274,8 @@ def _mirror_lower(bm, zm, verbose=True):
                 moved += 1
         bmesh.ops.remove_doubles(bm, verts=upper + lower, dist=1e-6)
     if verbose:
-        print(f"  mirror: removed {len(right)} faces on the right, mirrored {len(left)} from the left, welded {len(seam)} seam verts, "
-              f"stitched {moved} of {len(lower)} waist verts")
+        print(f"  mirror: removed {len(gone)} faces, mirrored {len(kept)} from the other side, welded {len(seam)} seam verts, "
+              f"stitched {moved} of {len(lower)} verts on the cut line")
 
 
 def _crown_fit(bm, centre, rim_z):
@@ -329,7 +330,7 @@ def _crown(bm, fit, height, mat_index, rings=20, segs=128, verbose=True):
     return apex_z
 
 
-def _patch(bm, mat_index, sides, verbose=True):
+def _patch(bm, mat_index, sides, back_plates=True, verbose=True):
     """Close the holes left in the armour; long ragged borders (cloth edges) stay open."""
     n0 = len(bm.faces)
     border = [e for e in bm.edges if e.is_boundary]
@@ -340,9 +341,9 @@ def _patch(bm, mat_index, sides, verbose=True):
         f.material_index = mat_index
         f.smooth = True
     bmesh.ops.triangulate(bm, faces=new)
-    # the wounds the swords left in the back plates are not clean loops (their rims touch
+    # the wounds the Ronin's swords left in the back plates are not clean loops (their rims touch
     # themselves), so the simple fill skips them: close what is left open on the upper back
-    back = [e for e in bm.edges if e.is_boundary and all(v.co.y > 0.05 and 0.66 < v.co.z < 0.84 and abs(v.co.x) < 0.14 for v in e.verts)]
+    back = [e for e in bm.edges if e.is_boundary and all(v.co.y > 0.05 and 0.66 < v.co.z < 0.84 and abs(v.co.x) < 0.14 for v in e.verts)] if back_plates else []
     n1 = len(bm.faces)
     if back:
         bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=back)
@@ -404,17 +405,17 @@ def build_body(verbose=True):
     return ob, anchors
 
 
-def _proxy(ob, verbose=True):
+def _proxy(ob, verbose=True, tag="Ronin"):
     """Stand-ins for the body in metres: a watertight outer skin 5 mm outside the surface (what
     cloth collides with, and what the auto-rigger is given) at two densities."""
     from . import envelope
-    full = envelope.build(ob.data, voxel=0.005, offset=0.005, name="RoninSkin", verbose=verbose)
-    low = envelope.simplify(full, faces=24000, smooth=2, name="RoninCollider")
-    mid = envelope.simplify(full, faces=90000, smooth=1, name="RoninProxy")
+    full = envelope.build(ob.data, voxel=0.005, offset=0.005, name=tag + "Skin", verbose=verbose)
+    low = envelope.simplify(full, faces=24000, smooth=2, name=tag + "Collider")
+    mid = envelope.simplify(full, faces=90000, smooth=1, name=tag + "Proxy")
     bpy.data.meshes.remove(full)
     if verbose:
         print(f"  stand-ins: proxy {len(mid.polygons)} faces, collider {len(low.polygons)} faces")
-    return bpy.data.objects.new("RoninProxy", mid), bpy.data.objects.new("RoninCollider", low)
+    return bpy.data.objects.new(tag + "Proxy", mid), bpy.data.objects.new(tag + "Collider", low)
 
 
 def _scaled(a, k):

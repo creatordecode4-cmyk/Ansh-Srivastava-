@@ -11,7 +11,7 @@ sys.path.insert(0, HERE)
 
 import bpy  # noqa: E402
 
-from sd import core, fighters, ronin, studio  # noqa: E402
+from sd import core, fighters, oni, ronin, studio  # noqa: E402
 
 
 def arg(flag, default, n=1, cast=float):
@@ -28,18 +28,24 @@ def main():
     lib = core.collection("PROPS_LIB", hide_render=True)
     col = core.collection(who.upper())
     t0 = time.time()
+    src = oni if who == "oni" else ronin
     if "--rebuild" in sys.argv:
-        os.path.exists(ronin.CACHE) and os.remove(ronin.CACHE)
-    parts = fighters.ronin(lib, col)
+        os.path.exists(src.CACHE) and os.remove(src.CACHE)
+    parts = fighters.oni(lib, col) if who == "oni" else fighters.ronin(lib, col)
     print(f"BUILD {who}: {time.time() - t0:.1f}s, tris {core.tri_count()}")
-    studio.world(sc, strength=0.55)
+    if who == "oni":
+        print("  scabbard moved out by", round(parts["saya_shift"], 4), "m; tassels", [t.name for t in parts["tassels"]])
+    studio.world(sc, strength=0.3)
     studio.floor(sc, 0.0)
     n = int(arg("--samples", 32))
     tag = arg("--tag", "", 1, str)
     out = os.path.join(core.OUT, "stage2", f"{who}{tag}.png")
-    H = ronin.HEIGHT
+    H = src.HEIGHT
     t0 = time.time()
-    if "--zoom" in sys.argv:
+    if "--zoom" in sys.argv and who == "oni":
+        studio.turnaround(sc, out.replace(".png", "_hip.png"), (0.1, 0, 1.12), 1.05, azimuths=(0, 50, 90, 140), size=(640, 640), samples=n)
+        studio.turnaround(sc, out.replace(".png", "_head.png"), (0, 0, 1.78), 0.62, azimuths=(0, 45, 180), size=(640, 640), samples=n)
+    elif "--zoom" in sys.argv:
         studio.turnaround(sc, out.replace(".png", "_head.png"), (0, 0, 1.72), 0.75, azimuths=(0, 60, 180, 300), size=(560, 560), samples=n)
         studio.turnaround(sc, out.replace(".png", "_back.png"), (0, 0, 1.25), 1.5, azimuths=(180, 135, 225), size=(640, 760), samples=n)
     elif "--hero" in sys.argv:      # larger frames for a preview sheet

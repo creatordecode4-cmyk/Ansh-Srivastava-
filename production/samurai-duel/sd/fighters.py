@@ -11,13 +11,15 @@ from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
 from . import core, garments, kasa, weapons
+from . import oni as oni_src
 from . import ronin as ronin_src
 
 
-def _mirrored_copy(ob, name, lib):
-    """Left-handed twin of a sword or scabbard: same fittings on the same face, curve the other way."""
+def _mirrored_copy(ob, name, lib, axis=(0, 0, 1)):
+    """Mirror-image twin of a sword or scabbard. Along Z: same fittings on the same face, curve
+    the other way. Along X: same curve, knob and cords on the other face."""
     me = ob.data.copy()
-    me.transform(Matrix.Scale(-1, 4, (0, 0, 1)))
+    me.transform(Matrix.Scale(-1, 4, axis))
     me.flip_normals()
     twin = bpy.data.objects.new(name, me)
     lib.objects.link(twin)
@@ -113,4 +115,48 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220):
 
     root = core.group(name, col, [body, whole] + halves + parts["katanas"] + parts["sayas"] + drapes)
     parts["root"] = root
+    return parts
+
+
+def oni(lib, col, name="ONI"):
+    """Oni Samurai: cut Tripo body + katana in its scabbard at the left hip, worn edge up, with
+    the red cords and tassels as their own objects."""
+    body, A = oni_src.load_body(col)
+    parts = {"body": body, "anchors": A}
+    spec = weapons.ONI
+    sword, ki = weapons.katana(lib, "PROP_Katana_Oni", spec)
+    saya, si = weapons.scabbard(lib, "PROP_Saya_Oni", spec)
+    saya_w = _mirrored_copy(saya, "PROP_Saya_Oni_Worn", lib, axis=(1, 0, 0))      # knob and cords on the outer face when worn on the left
+
+    sw = A["sword"]
+    c, d = Vector(sw["centre"]), Vector(sw["dir"])               # d runs from the scabbard's tip to the pommel
+    pommel = c + d * sw["t"][1]
+    mouth = pommel - d * (spec["grip"] + 0.012)
+    m = _frame(mouth, -d, (-1, 0, 0))                            # +Y toward the tip, cutting edge up
+    # the hip was rebuilt after the sword was removed: move the scabbard out until it clears the body
+    sim = core.collection(name + "_SIM", hide_render=True)
+    px = bpy.data.objects[A["proxy"]]
+    sim.objects.link(px)
+    bpy.context.view_layer.update()
+    bvh = BVHTree.FromObject(px, bpy.context.evaluated_depsgraph_get())
+    need = 0.0
+    for i in range(41):
+        p = mouth - d * (i / 40) * (spec["blade"] + 0.02)
+        hit = bvh.ray_cast(Vector((2.0, p.y, p.z)), Vector((-1, 0, 0)), 4.0)
+        if hit[0] is not None:
+            need = max(need, hit[0].x + 0.022 - p.x)             # skin of the stand-in + half the scabbard's thickness
+    m.translation.x += need
+    ks = core.instance(sword, "Oni_Katana", col)
+    ss = core.instance(saya_w, "Oni_Saya", col)
+    ks.matrix_world = m
+    ss.matrix_world = m
+    tassels = []
+    for nm, flip in [(n_, 1) for n_ in ki["tassels"]] + [(n_, -1) for n_ in si["tassels"]]:
+        t = bpy.data.objects[nm]
+        local = Vector(t.location)
+        local.x *= flip                                           # the worn scabbard is the mirror image
+        ti = core.instance(t, "Oni_" + nm.replace("PROP_", ""), col, m @ local)
+        tassels.append(ti)
+    parts.update(katana=ks, saya=ss, tassels=tassels, saya_shift=need, collider=px)
+    parts["root"] = core.group(name, col, [body, ks, ss] + tassels)
     return parts

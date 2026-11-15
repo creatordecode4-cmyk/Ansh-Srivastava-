@@ -20,7 +20,7 @@ from skimage import measure
 
 
 def surface_points(me, max_edge=0.006):
-    """Vertices plus extra points inside triangles that are larger than max_edge."""
+    """Vertices and face centres, plus extra points inside triangles that are larger than max_edge."""
     nv = len(me.vertices)
     co = np.empty(nv * 3, dtype=np.float32)
     me.vertices.foreach_get("co", co)
@@ -34,7 +34,7 @@ def surface_points(me, max_edge=0.006):
     pts = [co, P.mean(axis=1)]
     big = P[e > max_edge]
     if len(big):
-        n = int(min(12, np.ceil(e.max() / max_edge)))
+        n = int(min(12, np.ceil(np.percentile(e[e > max_edge], 99) / max_edge)))      # a few huge patch faces must not set the density for all
         for i in range(n + 1):
             for j in range(n + 1 - i):
                 a, b = i / n, j / n

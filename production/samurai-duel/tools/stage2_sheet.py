@@ -1,7 +1,8 @@
-"""Stage 2 preview for one fighter: turnaround, close-up, exploded parts and the reference panels.
+"""Stage 2 previews.
 
-    python3 -I tools/stage2_sheet.py ronin [--samples N] [--quick]
-Writes previews/stage2_<who>.jpg and previews/stage2_<who>_parts.jpg
+    python3 -I tools/stage2_sheet.py ronin|oni [--samples N] [--quick]   turnaround, close-ups, exploded parts, reference panels
+    python3 -I tools/stage2_sheet.py duo [--samples N]                   both fighters in one frame
+Writes previews/stage2_<who>.jpg, previews/stage2_<who>_parts.jpg, previews/stage2_duo.jpg
 """
 import math
 import os
@@ -15,7 +16,7 @@ import bpy  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
-from sd import core, fighters, render, ronin, studio  # noqa: E402
+from sd import core, fighters, oni, render, ronin, studio  # noqa: E402
 
 OUT = os.path.join(core.OUT, "stage2")
 PREV = os.path.join(HERE, "previews")
@@ -46,7 +47,7 @@ def label(im, text, size=24):
     return im
 
 
-def exploded(sc, parts, path, samples):
+def exploded_ronin(sc, parts, path, samples):
     """Every separate object pulled apart on one line, seen from the front."""
     slots = []                                   # (objects, x offset, label, extra transform)
 
@@ -106,14 +107,14 @@ def exploded(sc, parts, path, samples):
         o.hide_render = True
     W, H = 2600, 900
     render.setup(sc, W, H, samples, 0.03)
-    sc.view_settings.exposure = -1.0
+    sc.view_settings.exposure = -0.2
     cx, span = 0.1, 6.6
     cam = studio.camera(sc, (cx, 0, 0.95), 0, 0, 12.0, ortho=span, name="CAM_Explode")
     keyl = bpy.data.objects.get("LGT_TurnKey")
     if keyl:
         keyl.location = Vector((-3.0, -7.0, 6.0))
         core.look_at(keyl, Vector((0, 0, 1.0)))
-        keyl.data.size, keyl.data.energy = 6.0, 9000
+        keyl.data.size, keyl.data.energy = 6.0, 3600
     render.still(sc, path, cam)
     im = Image.open(path).convert("RGB")
     d = ImageDraw.Draw(im)
@@ -132,35 +133,120 @@ def exploded(sc, parts, path, samples):
     return im
 
 
+def exploded_oni(sc, parts, path, samples):
+    """Body, katana drawn from its scabbard, and the tassels, pulled apart on one line."""
+    slots = []
+    body = bpy.data.objects.new("X_body", parts["body"].data)
+    sc.collection.objects.link(body)
+    body.matrix_world = Matrix.Translation((-0.9, 0, 0))
+    slots.append((-0.9, "BODY (mask, hair, armour, hakama)"))
+    stand = Matrix(((0, 0, 1, 0), (-1, 0, 0, 0), (0, -1, 0, 0), (0, 0, 0, 1)))       # point down, flat toward the camera
+    for o, x in ((parts["katana"], 1.0), (parts["saya"], 1.45)):
+        c = bpy.data.objects.new("X_" + o.name, o.data)
+        sc.collection.objects.link(c)
+        c.matrix_world = Matrix.Translation((x, 0, 1.55)) @ stand
+    slots.append((1.0, "KATANA"))
+    slots.append((1.45, "SCABBARD"))
+    for k, t in enumerate(parts["tassels"]):
+        c = bpy.data.objects.new("X_" + t.name, t.data)
+        sc.collection.objects.link(c)
+        c.matrix_world = Matrix.Translation((1.95 + 0.22 * k, 0, 1.3))
+    slots.append((2.17, "TASSELS x3"))
+    for o in parts["root"].children:
+        o.hide_render = True
+    W, H = 2600, 900
+    render.setup(sc, W, H, samples, 0.03)
+    sc.view_settings.exposure = -0.2
+    cx, span = 0.35, 6.6
+    cam = studio.camera(sc, (cx, 0, 1.02), 0, 0, 12.0, ortho=span, name="CAM_Explode")
+    keyl = bpy.data.objects.get("LGT_TurnKey")
+    if keyl:
+        keyl.location = Vector((-3.0, -7.0, 6.0))
+        core.look_at(keyl, Vector((0, 0, 1.0)))
+        keyl.data.size, keyl.data.energy = 6.0, 3600
+    render.still(sc, path, cam)
+    im = Image.open(path).convert("RGB")
+    d = ImageDraw.Draw(im)
+    f = font(24)
+    for xs, text in slots:
+        px = W / 2 + (xs - cx) / span * W
+        tw = d.textlength(text, font=f)
+        d.text((px - tw / 2, H - 46), text, fill=(238, 236, 230), font=f)
+    d.text((24, 18), "ONI SAMURAI: the sword, its scabbard and the tassels are their own objects", fill=(238, 236, 230), font=font(30))
+    im.save(path)
+    for o in list(sc.collection.objects):
+        if o.name.startswith("X_"):
+            bpy.data.objects.remove(o)
+    for o in parts["root"].children:
+        o.hide_render = False
+    return im
+
+
+FIGHTERS = {
+    "ronin": dict(build=fighters.ronin, height=ronin.HEIGHT, exploded=exploded_ronin, title="Cyber Ronin", close=((0, 0.02, 1.66), 0.78, (-28, 150)),
+                  ref_views=(5, 5, 1320, 630), ref_tpose=(5, 632, 745, 1010)),
+    "oni": dict(build=fighters.oni, height=oni.HEIGHT, exploded=exploded_oni, title="Oni Samurai", close=((0, 0.0, 1.72), 0.80, (-28, 150)),
+                ref_views=(5, 5, 1330, 630), ref_tpose=(5, 632, 705, 1010)),
+}
+
+
+def duo(n):
+    """Both fighters in one frame, to compare size and look."""
+    sc = core.reset_scene()
+    lib = core.collection("PROPS_LIB", hide_render=True)
+    a = fighters.oni(lib, core.collection("ONI"))
+    b = fighters.ronin(lib, core.collection("RONIN"))
+    a["root"].location.x, b["root"].location.x = -1.15, 1.15
+    studio.world(sc, strength=0.3)
+    studio.floor(sc, 0.0)
+    path = os.path.join(OUT, "duo.png")
+    studio.turnaround(sc, path, (0, 0, 1.04), 2.2, width=4.5, azimuths=(0, 180), size=(1920, 1080), samples=n, lens=70.0)
+    im = Image.open(path).convert("RGB")
+    d = ImageDraw.Draw(im)
+    for x0, (l, r) in ((0, ("ONI SAMURAI", "CYBER RONIN")), (1920, ("CYBER RONIN", "ONI SAMURAI"))):
+        for k, text in enumerate((l, r)):
+            tw = d.textlength(text, font=font(30))
+            d.text((x0 + 480 + k * 960 - tw / 2, 1020), text, fill=(238, 236, 230), font=font(30))
+    d.text((24, 18), "FRONT", fill=(238, 236, 230), font=font(30))
+    d.text((1944, 18), "BACK", fill=(238, 236, 230), font=font(30))
+    out = os.path.join(PREV, "stage2_duo.jpg")
+    im.save(out, quality=90)
+    print("SHEET", out, im.size)
+
+
 def main():
     who = sys.argv[1]
     n = int(arg("--samples", 48))
     os.makedirs(PREV, exist_ok=True)
+    if who == "duo":
+        return duo(n)
+    F = FIGHTERS[who]
     sc = core.reset_scene()
     lib = core.collection("PROPS_LIB", hide_render=True)
     col = core.collection(who.upper())
     t0 = time.time()
-    parts = fighters.ronin(lib, col)
+    parts = F["build"](lib, col)
     print(f"BUILD {time.time() - t0:.1f}s, tris {core.tri_count()}", flush=True)
-    studio.world(sc, strength=0.4)
+    studio.world(sc, strength=0.3)
     studio.floor(sc, 0.0)
-    H = ronin.HEIGHT
+    H = F["height"]
     S = 620 if "--quick" in sys.argv else 900
     t0 = time.time()
     turn = os.path.join(OUT, f"{who}_s2_turn.png")
-    studio.turnaround(sc, turn, (0, 0, H * 0.54), H * 1.14, width=2.0, azimuths=(0, 40, 180, 215), size=(S, S), samples=n, exposure=-1.0)
+    studio.turnaround(sc, turn, (0, 0, H * 0.54), H * 1.14, width=2.0, azimuths=(0, 40, 180, 215), size=(S, S), samples=n)
     close = os.path.join(OUT, f"{who}_s2_close.png")
-    studio.turnaround(sc, close, (0, 0.02, 1.66), 0.78, azimuths=(-28, 150), size=(S, S), samples=n, exposure=-1.0)
+    c_at, c_h, c_az = F["close"]
+    studio.turnaround(sc, close, c_at, c_h, azimuths=c_az, size=(S, S), samples=n)
     print(f"RENDER views {time.time() - t0:.1f}s", flush=True)
     t0 = time.time()
-    ex = exploded(sc, parts, os.path.join(OUT, f"{who}_s2_parts.png"), n)
+    ex = F["exploded"](sc, parts, os.path.join(OUT, f"{who}_s2_parts.png"), n)
     print(f"RENDER parts {time.time() - t0:.1f}s", flush=True)
 
     # ---- sheets
     turn_im, close_im = Image.open(turn).convert("RGB"), Image.open(close).convert("RGB")
     ref = Image.open(os.path.join(HERE, "refs", f"{who}_sheet.png")).convert("RGB")
-    ref_t = ref.crop((5, 632, 745, 1010))                     # T-pose front + back panels of the user's sheet
-    ref_v = ref.crop((5, 5, 1320, 630))                       # front / side / back / three-quarter
+    ref_t = ref.crop(F["ref_tpose"])                          # T-pose front + back panels of the user's sheet
+    ref_v = ref.crop(F["ref_views"])                          # front / side / back / three-quarter
     W = turn_im.width
     rv = ref_v.resize((W, round(ref_v.height * W / ref_v.width)), Image.LANCZOS)
     rt_w = W - 2 * S - 12
@@ -169,7 +255,7 @@ def main():
     sheet = Image.new("RGB", (W, rv.height + 12 + S + 12 + row3_h), (10, 10, 11))
     sheet.paste(label(rv, "YOUR REFERENCE SHEET"), (0, 0))
     y = rv.height + 12
-    sheet.paste(label(turn_im, "BLENDER: Cyber Ronin, rest pose (T-pose for rigging)"), (0, y))
+    sheet.paste(label(turn_im, f"BLENDER: {F['title']}, rest pose (T-pose for rigging)"), (0, y))
     y += S + 12
     sheet.paste(label(close_im, "CLOSE-UP"), (0, y))
     sheet.paste(label(rt, "REFERENCE: T-pose"), (2 * S + 12, y))
