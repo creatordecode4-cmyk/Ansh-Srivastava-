@@ -96,6 +96,8 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
         ss = core.instance(saya if outward else saya_m, f"Ronin_Saya_{i + 1}", col)
         ks.matrix_world = m
         ss.matrix_world = m
+        ks["edge"] = -1.0 if outward else 1.0      # which way the cutting edge faces along local Z (the twin is a mirror image)
+        ks["hand"] = "Right" if mouth.x < 0 else "Left"            # drawn over this shoulder
         parts["katanas"].append(ks)
         parts["sayas"].append(ss)
         straps.append((mouth, mouth - d * (spec_k["blade"] + 0.02)))
@@ -209,19 +211,24 @@ def oni(lib, col, name="ONI", rigged=False):
     ss = core.instance(saya_w, "Oni_Saya", col)
     ks.matrix_world = m
     ss.matrix_world = m
+    ks["edge"] = -1.0
+    ks["hand"] = "Right"
     tassels = []
-    for nm, flip in [(n_, 1) for n_ in ki["tassels"]] + [(n_, -1) for n_ in si["tassels"]]:
+    bpy.context.view_layer.update()
+    for nm, flip, owner in [(n_, 1, ks) for n_ in ki["tassels"]] + [(n_, -1, ss) for n_ in si["tassels"]]:
         t = bpy.data.objects[nm]
         local = Vector(t.location)
         local.x *= flip                                           # the worn scabbard is the mirror image
         ti = core.instance(t, "Oni_" + nm.replace("PROP_", ""), col, m @ local)
+        ti.parent = owner                                         # each tassel hangs from its own piece and goes where that goes
+        ti.matrix_parent_inverse = owner.matrix_world.inverted()
         tassels.append(ti)
     parts.update(katana=ks, saya=ss, tassels=tassels, saya_shift=need, collider=px)
     if rigged:
-        for o in [ks, ss] + tassels:               # the scabbard is tied to the belt; the sword leaves it when drawn
+        for o in (ks, ss):                         # the scabbard is tied to the belt; the sword leaves it when drawn
             _attach(o, arm, "Hips")
         arm.name = name
         parts["root"] = arm
     else:
-        parts["root"] = core.group(name, col, [body, ks, ss] + tassels)
+        parts["root"] = core.group(name, col, [body, ks, ss])
     return parts
