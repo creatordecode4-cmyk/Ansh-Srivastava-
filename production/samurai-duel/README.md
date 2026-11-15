@@ -44,6 +44,18 @@ The first build of each fighter analyses and cuts the Tripo model and builds its
 (1.5 to 3 min); the result is cached in `assets/gen/` and later builds take seconds, plus about
 a minute of cloth simulation for the Ronin.
 
+## Rigging and animation (Stage 3)
+```bash
+python3 tools/fetch_mocap.py                          # free motion-capture clips -> assets/mocap/ (once)
+python3 -I tools/stage3_preview.py list               # segments of the motion test
+python3 -I tools/stage3_preview.py render oni_walk    # one segment at 1280x720, 16 samples (15-20 s per frame)
+python3 -I tools/stage3_preview.py render oni_strike --proxy --samples 6 --step 4   # quick clay check of a move
+python3 -I tools/stage3_preview.py assemble           # previews/stage3_motion_test.mp4
+python3 -I tools/rig_test.py oni                      # skeleton and skin weights on test poses
+```
+The first actor build of the Ronin drapes his cloth once (about 90 s) and stores it in
+`assets/gen/ronin_actor_drape.npz`; after that an actor is ready in 2 to 3 seconds.
+
 ## Folders
 - `refs/` — the 7 reference sheets (characters, arena, props).
 - `sd/` — the scene builder:
@@ -60,6 +72,12 @@ a minute of cloth simulation for the Ronin.
   - `garments.py` — simulated cloth: panels, pins, tears, fabric, cloth settings
   - `fighters.py` — assembles each fighter from separate objects
   - `studio.py` — neutral studio set for turnarounds
+  - `rig.py` — Mixamo-named skeleton measured on each fighter, skin weights
+  - `puppet.py` — poses a skeleton from a few controls (hips, chest, feet, hands, sword grips)
+  - `mocap.py`, `motion.py` — motion-capture clips as controls; takes: placing, blending, foot locking, keyed moves
+  - `actor.py` — a fighter in a shot: body, swords on tracks or in the hand, cloth run and stored
+  - `soft.py`, `cache.py` — soft cage for the Oni's trousers; cloth stored on disk (PC2) for rendering
+  - `retarget.py` — bone-by-bone carry-over of a downloaded FBX clip (for Mixamo files)
 - `tools/` — prop test stage, preview sheets, image-to-3D crop tool.
 - `previews/` — preview images shown at each stage.
 - `assets/`, `out/` — downloads and renders. Not in git; re-created by the scripts.
@@ -95,3 +113,36 @@ a minute of cloth simulation for the Ronin.
 - Cloth settings for the 12.5 mm grid are in `garments.cloth()` with the measurements behind
   them. Mass and air drag are per vertex and must shrink with the grid; stiffness must not grow.
 - Blade and scabbard designs are lifted from the parts sheets by `tools/extract_patterns.py`.
+
+## Stage 3 notes
+- The skeletons use Mixamo's bone names (65 bones with fingers) but are built here, from joints
+  measured on each fighter's own model; nothing had to be uploaded to Mixamo.
+- A pose is not 65 bone rotations but a handful of controls: where the hips are, how pelvis, chest
+  and head are turned, where each foot stands and where each hand or the sword is. `puppet.py`
+  solves legs and arms to those targets, so a planted foot cannot slide and a hand cannot miss
+  the grip. `actor.perform()` reports any reach it could not make.
+- Body motion comes from the free DeepMimic reference clips (walk, run, kick, spin kick, jump,
+  punch ...; zlib licence, shipped inside the `pybullet` package). A clip is read as controls and
+  scaled to each fighter's limb lengths, then the feet are locked: heel and ball contacts are
+  held exactly where they land. Measured drift of a planted foot after solving: 0.00 mm.
+- Moves the clips do not have (sword work) are keyed by hand with `Take.from_keys`: body controls
+  blend between keys, feet only move in listed steps.
+- A sword is put on a track (in its scabbard, relative to the chest, or in the world) and the
+  hands are solved onto its grip, or it is carried by a hand that follows the body. Once a hand
+  is closed on the grip the sword's place is read back from that hand, so it cannot float.
+- Cloth on a moving fighter is guided (`garments.driven`): it starts as it hangs at rest, every
+  vertex carries the nearest body weights, and springs tie it to that carried shape - rigid at the
+  top, almost free at the hem. Free cloth with collisions alone could not keep up with a walking
+  body. Three findings behind this, each measured:
+  - changing a cloth setting part-way through a run makes Blender jolt every panel outward
+  - pins tied to one bone sink into skin that bends with several bones; the collision then
+    throws the neighbouring cloth out on every frame (the cape stood up like a flag)
+  - Blender uses the 4th power of a pin weight as the strength of the tie
+- The Oni's trousers are part of his body mesh. A coarse cloth cage (`soft.py`) is simulated in
+  their place and the detailed mesh follows it through a Surface Deform modifier. His hair still
+  moves rigidly with the head.
+- Simulated cloth is written to PC2 files and played back by a Mesh Cache modifier, so rendering
+  needs no simulation and can start at any frame.
+- The preview is rendered without motion blur or depth of field so that every frame is sharp.
+- Not done yet: the draw (sword leaving the scabbard), clips downloaded from Mixamo (the folder
+  for them is `assets/user/mixamo/`; `retarget.py` carries such a clip over bone by bone).
