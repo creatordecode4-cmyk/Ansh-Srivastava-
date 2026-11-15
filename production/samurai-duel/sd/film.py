@@ -1259,10 +1259,10 @@ def shots(cast):
         return dict(pos=Vector((5.2, c.y, 1.05)), look=flat(_mix(o, c, 0.6), 1.15), lens=28.0, hand=0.008)
     add("S08b the great cut", 529, 549, great)
 
-    def torn(ff):                                                    # low behind the Ronin's left side: the cape with its corner gone, the scrap coming down, the Oni beyond
+    def torn(ff):                                                    # low behind the Ronin's right side: his cape with its corner gone, and past him the piece coming down in front of the Oni
         r = hips(ronin, ff)
         b, l = _along(ronin_face(576) + 180.0), _along(ronin_face(576) + 90.0)      # behind him, and to his left
-        return dict(pos=flat(r, 0.0) + b * 1.75 + l * 0.95 + Vector((0, 0, 0.62)), look=flat(r, 0.0) + b * 0.10 + l * 0.12 + Vector((0, 0, 0.86)), lens=32.0, hand=0.006)
+        return dict(pos=flat(r, 0.0) + b * 1.9 - l * 1.0 + Vector((0, 0, 0.70)), look=flat(r, 0.0) - b * 0.7 - l * 0.30 + Vector((0, 0, 0.90)), lens=30.0, hand=0.006)
     add("S08c the cape", 550, 576, torn)
 
     # 24 s: the last pass, side on and wide; at the crossing nearer and slowed down; then both still, back to back

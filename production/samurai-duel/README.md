@@ -247,9 +247,26 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   sword's length apart, and the blades meet between them.
 - A blow that lands is held for 3 film frames (rows with rate 0 in the time map); the camera's
   jolt runs in film frames and so carries on through the hold.
-- Blocking status: every beat is measured in clay with the scratch tool described in the commit
-  log (overlaps on shown frames, reach, blade distances, nearest approach between the fighters).
-  Cameras and effects for the fight are written but not yet checked in the arena.
+- Measured on the whole fight (take frames 248-667): blade centre lines 2-7 mm apart at all eight
+  clashes; nothing of one fighter inside the other (nearest: the Ronin's blades 27 and 42 mm from
+  the Oni's head as he leans out of the spinning cut, the Oni's point 45 mm from the Ronin as he
+  leaps back); planted feet do not drift. What still reads above zero: the Oni's trouser legs
+  against each other in runs and lunges (the collision skin; the cloth cage is parted afterwards),
+  and the hat's strap arms 14 mm into the Ronin's shoulders during the spinning kick.
+- Effects (`sd/fightfx.py`) are functions of time, drawn from `film.EVENTS`: sparks and an impact
+  flash at every clash (the flash runs in film frames, so it flares while the blow is held), water
+  from stamping and skidding feet, fire on the Oni's blade for his great cut (flames stand on the
+  blade and along the path of the swing, with a point light), the cut in the Ronin's cape (a mask
+  on the simulated cape plus the cut-off piece falling by formula), his hat as two pre-cut halves
+  from the frame it parts, and the crack laid on the Oni's mask by ray casts and grown over seven
+  frames. The last half second fades to black.
+- Cloth for the whole film (scene frames 1-729) takes about 17 minutes to simulate. Of 5.7 million
+  cloth points 78458 were inside the Ronin's body or too close and were put back; 277 stayed
+  inside; no blade passes through cloth and nothing went below the ground.
+- The Oni's hair is not simulated: on his model it is a short stiff mane (no vertex held by the
+  head is more than 22 cm from the middle of the skull, 14 cm behind it), which rides with the head.
+- Finished picture: preset `half` or `final` adds motion blur that follows the time map and depth
+  of field focused on what each shot looks at.
 - Intro preview (`previews/stage4_intro.mp4`, stills in `previews/stage4_intro.jpg`): 240 frames at
   the look preset. On the frames it shows, the takes measure: Oni's hand on his scabbard 10.5 mm
   (it rests there), his trouser legs 45 mm into each other at the crotch as he walks (the cloth
