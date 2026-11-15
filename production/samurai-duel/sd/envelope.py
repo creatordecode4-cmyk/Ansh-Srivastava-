@@ -6,9 +6,10 @@ so on such a mesh cloth gets sucked through every badly oriented patch and ends 
 
 The skin built here does not depend on the input's face directions at all:
   1. distance from every cell of a voxel grid to the surface (nearest surface point)
-  2. cells closer than 'offset' are wall; the outside is whatever a flood fill reaches from a corner
+  2. the outside is whatever a flood fill reaches from a corner without passing within 'seal'
+     of the surface, grown back toward the surface afterwards
   3. the skin is the border of that outside: a closed surface 'offset' away from the model,
-     faces pointing out, enclosed cavities filled
+     faces pointing out, the body solid, narrow openings plugged
 """
 import time
 
@@ -42,26 +43,33 @@ def surface_points(me, max_edge=0.006):
     return np.concatenate(pts)
 
 
-def build(me, voxel=0.005, offset=0.005, name="Envelope", verbose=True):
-    """Closed skin 'offset' metres outside mesh 'me'. Returns a new mesh (triangles, normals out)."""
+def build(me, voxel=0.005, offset=0.005, seal=0.02, name="Envelope", verbose=True):
+    """Closed, solid skin 'offset' metres outside mesh 'me'. Returns a new mesh (triangles, normals out).
+
+    seal: openings narrower than twice this are plugged, so that slits left by cutting the model
+    apart do not let the 'outside' flood into the hollow body. Without it the result is a
+    double-walled shell, which is useless for automatic skin weights."""
     t0 = time.time()
     pts = surface_points(me)
-    lo, hi = pts.min(0) - offset - 4 * voxel, pts.max(0) + offset + 4 * voxel
+    seal = max(seal, offset)
+    lo, hi = pts.min(0) - seal - 4 * voxel, pts.max(0) + seal + 4 * voxel
     shape = np.ceil((hi - lo) / voxel).astype(int) + 1
     gx, gy, gz = [lo[k] + np.arange(shape[k]) * voxel for k in range(3)]
     tree = cKDTree(pts)
-    far = offset + 3 * voxel
+    far = seal + 3 * voxel
     d = np.full(shape, far, dtype=np.float32)
     for i in range(shape[0]):                                   # slab by slab keeps memory flat
         q = np.stack(np.meshgrid([gx[i]], gy, gz, indexing="ij"), axis=-1).reshape(-1, 3)
         dist, _ = tree.query(q, distance_upper_bound=far, workers=-1)
         d[i] = np.minimum(dist, far).reshape(shape[1], shape[2])
-    wall = d < offset
-    lab, _ = ndimage.label(~wall)
+    # the outside as seen through thick walls: it cannot get through any opening narrower than 2 * seal
+    lab, _ = ndimage.label(d >= seal)
     outside = lab == lab[0, 0, 0]
-    phi = d - offset                                            # > 0 outside, < 0 in the wall
-    hidden = ~outside & ~wall                                   # cavities the fill cannot reach: solid
-    phi[hidden] = -np.abs(phi[hidden]) - 1e-4
+    del lab
+    # then let it come back in toward the surface, but no deeper into an opening than (seal - offset)
+    back = ndimage.distance_transform_edt(~outside).astype(np.float32) * voxel
+    phi = np.minimum(d - offset, (seal - offset) - back + voxel)        # > 0 outside, < 0 inside the solid
+    del back
     verts, faces, _, _ = measure.marching_cubes(phi, level=0.0, spacing=(voxel, voxel, voxel))
     verts = verts + lo
     out = bpy.data.meshes.new(name)
@@ -73,7 +81,6 @@ def build(me, voxel=0.005, offset=0.005, name="Envelope", verbose=True):
     out.polygons.foreach_set("loop_start", np.arange(0, len(faces) * 3, 3, dtype=np.int32))
     out.polygons.foreach_set("loop_total", np.full(len(faces), 3, dtype=np.int32))
     out.update(calc_edges=True)
-    # make the faces point out: the gradient of phi points away from the model
     P = verts[faces]
     n = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
     vol = float((P.mean(axis=1) * n).sum() / 6.0)
@@ -88,6 +95,7 @@ def build(me, voxel=0.005, offset=0.005, name="Envelope", verbose=True):
 
 def simplify(me, faces=30000, smooth=2, name=None):
     """Thinned and lightly smoothed copy (still closed, still pointing out)."""
+    import bmesh
     ob = bpy.data.objects.new("tmp_env", me)
     bpy.context.scene.collection.objects.link(ob)
     d = ob.modifiers.new("dec", "DECIMATE")
@@ -100,4 +108,15 @@ def simplify(me, faces=30000, smooth=2, name=None):
     out = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), depsgraph=dg)
     out.name = name or me.name + "_low"
     bpy.data.objects.remove(ob)
+    bm = bmesh.new()                                   # marching cubes can leave a pinhole or two
+    bm.from_mesh(out)
+    rim = [e for e in bm.edges if e.is_boundary]
+    if rim:
+        bmesh.ops.holes_fill(bm, edges=rim, sides=0)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        if bm.calc_volume(signed=True) < 0:
+            bmesh.ops.reverse_faces(bm, faces=bm.faces)
+        bm.to_mesh(out)
+    bm.free()
     return out
