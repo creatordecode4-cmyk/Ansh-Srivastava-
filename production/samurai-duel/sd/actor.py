@@ -27,7 +27,7 @@ from mathutils.bvhtree import BVHTree
 
 from . import cache, core, fighters, motion, weapons
 from . import clear as clr
-from .puppet import EASE, I3, SHAPES, Puppet, Y, ease, mix_shapes, slerp, sword_matrix, ypr
+from .puppet import EASE, I3, SHAPES, Puppet, Y, ease, mix_shapes, perp, slerp, sword_matrix, ypr
 from .skin import Skin
 
 def _ramp(f, a, b):
@@ -185,7 +185,7 @@ class Actor:
         return dict(f=f, space=space, m=W, ease=ease, **more)
 
     # ---- the performance
-    def perform(self, take, swords=None, holds=(), start=61, name=None, report=True, clear=True):
+    def perform(self, take, swords=None, holds=(), start=61, name=None, report=True, clear=True, steer=None):
         """Bake a shot.
 
         take    body motion as world controls, one per frame (sd/motion.py)
@@ -194,9 +194,15 @@ class Actor:
         holds   [dict(sword=key, hand='Right'|'Left', f0, f1 (frames it is fully closed on the grip), blend_in, blend_out,
                 along=fist behind the guard (negative: on the scabbard side), roll=degrees round the handle,
                 flip=True for thumb toward the pommel, lead=True for the hand the sword follows,
-                plan=1.0: the sword's track leads the hand; 0.0: the hand carries the sword)]
+                plan=1.0: the sword's track leads the hand; 0.0: the hand carries the sword,
+                on='saya': the hand holds the scabbard, and stays on it when the sword is drawn)]
+                A hold without 'sword' puts a hand on the hat: dict(hat=(x, y, z) of the wrist in the hat's
+                space, hand=, f0, f1, blend_in, blend_out, fingers=(x, y, z) the way the fingers point and
+                back=(x, y, z) the way the back of the hand faces, both in the hat's space, shape=hand shape)
         clear   keep hands, scabbards, hat and tassels out of the body (sd/clear.py). False bakes the
-                motion as it comes, which is only useful to measure what the clearing changes."""
+                motion as it comes, which is only useful to measure what the clearing changes.
+        steer   {sword key: [(take frame, yaw, pitch)]}: a scabbard worn in the belt turned by the hand
+                that holds it (degrees in the pelvis's frame, eased between the keys)"""
         pp, skin = self.pp, self.skin
         n = len(take)
         self.start, self.frames = start, n
@@ -210,10 +216,25 @@ class Actor:
         posed = [skin.pose(p) for p in poses]
         # 2. scabbards: on the back between two points of the skin, or hanging from the belt and pushed aside by the leg
         saya = {}
+
+        def turned(key, f):
+            ks = (steer or {}).get(key)
+            if not ks:
+                return None
+            if f <= ks[0][0]:
+                y, p = ks[0][1:]
+            elif f >= ks[-1][0]:
+                y, p = ks[-1][1:]
+            else:
+                i = max(j for j in range(len(ks) - 1) if ks[j][0] <= f)
+                u = EASE["inout"]((f - ks[i][0]) / (ks[i + 1][0] - ks[i][0]))
+                y, p = (ks[i][1] + (ks[i + 1][1] - ks[i][1]) * u, ks[i][2] + (ks[i + 1][2] - ks[i][2]) * u)
+            return ypr(y, p, 0.0) if (y or p) else None
+
         for key, sw in self.swords.items():
             sw.carry.prev = None
             if clear:
-                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"]) for f in range(n)]
+                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"], turned(key, f)) for f in range(n)]
             else:
                 saya[key] = [pp.bone_matrix(poses[f], sw.bone) @ sw.rest for f in range(n)]
         self.saya_local = saya
@@ -224,8 +245,9 @@ class Actor:
         for f in range(n):
             c = dict(take.c[f])
             sp = self._spine(c)
+            sheath = {}
             for key, sw in self.swords.items():
-                sp["sheath"] = Tobj @ saya[key][f]
+                sp["sheath"] = sheath[key] = Tobj @ saya[key][f]
                 tr = swords.get(key)
                 planned[key][f] = self._track(sw, tr, f, sp) if tr else sp["sheath"]
             for h in holds:
@@ -233,11 +255,21 @@ class Actor:
                 if wh <= 0.0:
                     continue
                 tag, s = h["hand"], h["hand"][0]
+                if "hat" in h:                                           # a hand on the hat: placed in the hat's own space, so it rides with the head
+                    held[f][tag] = True
+                    wrist, Dhand = self._on_hat(tag, poses[f], Tobj, h)
+                    bw = self._hand_world(c, tag, sp)
+                    c["hand_" + s] = dict(pos=bw[0].lerp(wrist, wh), D=slerp(bw[1], Dhand, wh) if bw[1] is not None else Dhand)
+                    if h.get("elbow") is not None:
+                        c["elbow_" + s] = sp["chest"].to_3x3() @ Vector(h["elbow"])
+                    c["fingers_" + s] = mix_shapes(c["fingers_" + s], h.get("shape", "relaxed"), wh)
+                    continue
                 sw = self.swords[h["sword"]]
                 wp = wh * h.get("plan", 1.0)
                 if wp > 0.0:
                     held[f][tag] = True
-                    wrist, Dhand = self._grip(tag, planned[h["sword"]][f], h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
+                    target = sheath[h["sword"]] if h.get("on") == "saya" else planned[h["sword"]][f]
+                    wrist, Dhand = self._grip(tag, target, h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
                     if wp < 1.0:                                         # still on the way: between where the body had the hand and the grip
                         bw = self._hand_world(c, tag, sp)
                         wrist = bw[0].lerp(wrist, wp)
@@ -268,7 +300,7 @@ class Actor:
             stats["arm_push"], stats["elbow_turn"] = clr.arms(pp, skin, posed, local, poses, free, gap=self.arm_gap, hat=hat)
             carry = {}
             for h in holds:
-                if h.get("plan", 1.0) <= 0.0 and h.get("lead", True):
+                if "sword" in h and h.get("plan", 1.0) <= 0.0 and h.get("lead", True):
                     carry[h["hand"]] = h
             if carry:
                 carried = [{tag: h["sword"] for tag, h in carry.items() if h["f0"] <= f <= h["f1"]} for f in range(n)]
@@ -283,7 +315,7 @@ class Actor:
             # 5. the scabbards once more: moving the arms moved the shoulders they lie on
             for key, sw in self.swords.items():
                 sw.carry.prev = None
-                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"]) for f in range(n)]
+                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"], turned(key, f)) for f in range(n)]
             for f in range(n):
                 sp = self._spine(final[f])
                 for key, sw in self.swords.items():
@@ -297,7 +329,7 @@ class Actor:
             for f in range(n):
                 W = planned[key][f]
                 for h in holds:
-                    if h["sword"] != key or not h.get("lead", True) or not (h["f0"] <= f <= h["f1"]):
+                    if h.get("sword") != key or not h.get("lead", True) or h.get("on") == "saya" or not (h["f0"] <= f <= h["f1"]):
                         continue
                     tag = h["hand"]
                     heads = pp.heads(poses[f])
@@ -350,16 +382,18 @@ class Actor:
                      f"hat kept {stats['hat_tilt_kept'] * 100:.0f} % of its tilt at worst" if clear else ""))
         return poses
 
-    def clip_report(self):
+    def clip_report(self, frames=None):
         """What still passes through what in the baked shot (before cloth): worst overlap in millimetres
         per kind of contact, 0 meaning clear. An overlap is how far one surface is inside the other.
+        frames limits the report to some take frames (those a film actually shows).
         arm_in_hat is measured against the hat and the space over it (clear.Hat.above); blade_in_hat
         is the length of blade that has gone through the hat, or how far a blade presses into it."""
         pp, skin, n = self.pp, self.skin, self.frames
         Tinv = self.arm.matrix_world.inverted()
         out = dict(arm_in_body=0.0, arm_in_arm=0.0, scabbard_in_body=0.0, hat_in_body=0.0, strap_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_arm=0.0, blade_in_hat=0.0)
         hat = self.hat["solid"] if self.hat else None
-        for f in range(n):
+        frames = [f for f in (range(n) if frames is None else frames) if 0 <= f < n]
+        for f in frames:
             posed, pose = self.posed[f], self.poses[f]
             at = hat.at(pose) if hat else None
             for tag in ("Left", "Right"):
@@ -411,7 +445,7 @@ class Actor:
         # one leg of the trousers inside the other
         L, R = np.flatnonzero(skin.region["left_leg"])[::6], np.flatnonzero(skin.region["right_leg"])[::6]
         legs = 0.0
-        for f in range(0, n, 2):
+        for f in frames[::2]:
             posed = self.posed[f]
             for mine, other in ((L, "right_leg"), (R, "left_leg")):
                 d, _, _ = posed.signed(posed.P[mine], other)
@@ -420,6 +454,19 @@ class Actor:
                     legs = max(legs, float((-d).max()))
         out["leg_in_leg"] = legs
         return {k: round(max(0.0, v) * 1000, 1) for k, v in out.items()}
+
+    def _on_hat(self, tag, pose, Tobj, h):
+        """World wrist position and hand rotation for a hand placed on the hat (see perform)."""
+        pp, hat = self.pp, self.hat["solid"]
+        hd = pp.hand[tag]
+        D, head = pose["D"]["Head"], pp.heads(pose)["Head"]
+        R = Tobj.to_3x3() @ D
+        wrist = Tobj @ (head + D @ (Vector(h["hat"]) + Vector(hat.off)))
+        a = (R @ Vector(h.get("fingers", (0, 0, 1)))).normalized()          # the way the fingers point
+        nb = perp(R @ Vector(h.get("back", (0, -1, 0))), a)                  # the way the back of the hand faces
+        rest = Matrix((hd["a"], hd["n"].cross(hd["a"]), hd["n"])).transposed()
+        now = Matrix((a, nb.cross(a), nb)).transposed()
+        return wrist, now @ rest.inverted()
 
     def _hand_world(self, c, tag, sp):
         """World wrist position (and hand rotation if given) of a body-driven hand control."""
@@ -552,6 +599,18 @@ def simulate(sc, actors, folder, end=None, report=40, clear=True):
     for a in actors:
         a.body.hide_viewport = hidden[a.who]
     return files
+
+
+def replay(actors, folder):
+    """Play the cloth of all actors back from a folder that simulate() filled earlier (same takes).
+    Returns False, changing nothing, if a file is missing."""
+    panels = [ob for a in actors for ob in a.cloth]
+    paths = [os.path.join(folder, f"{ob.name}.pc2") for ob in panels]
+    if not panels or not all(os.path.exists(p) for p in paths):
+        return False
+    for ob, path in zip(panels, paths):
+        cache.playback(ob, path, actors[0].start - 1)
+    return True
 
 
 def _key_object(ob, frames, mats, arm):

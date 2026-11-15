@@ -182,6 +182,24 @@ def seg_ronin_blades(lib, new):
 
 
 
+def seg_s4_oni(lib, new):
+    """Stage 4 check: the Oni's part of the intro (walk in, stop, turn, hand to the grip, draw, guard)."""
+    from sd import film
+    A = new("oni")
+    take, swords, holds, steer = film.oni_intro(A)
+    return dict(cast=[(A, take, swords, holds)], steer=steer, lead=film.tf(73), views=[("FROM THE EAST", 90, 4), ("FROM THE NORTH", 180, 5)], height=2.9, look=1.15, wide=2.6,
+                title="STAGE 4 CHECK  -  Oni: walk in, stop, draw")
+
+
+def seg_s4_ronin(lib, new):
+    """Stage 4 check: the Ronin's part of the intro (out of the fog, stop, lift the hat, both blades out)."""
+    from sd import film
+    A = new("ronin")
+    take, swords, holds, steer = film.ronin_intro(A)
+    return dict(cast=[(A, take, swords, holds)], steer=steer, lead=film.tf(145), views=[("FROM THE SOUTH", 0, 4), ("FROM THE SOUTH-WEST", -55, 5)], height=2.9, look=1.2, wide=2.6,
+                title="STAGE 4 CHECK  -  Ronin: out of the fog, hat, blades")
+
+
 SEGMENTS = {k[4:]: v for k, v in list(globals().items()) if k.startswith("seg_")}
 
 
@@ -214,7 +232,7 @@ def render(segment):
     for (A, take, swords, holds), lead in zip(S["cast"], leads):
         f0 = take.c[0]["hips"]
         A.place((f0.x, f0.y), 0.0)
-        A.perform(take, swords=swords, holds=holds, start=61 - lead + max(leads))
+        A.perform(take, swords=swords, holds=holds, start=61 - lead + max(leads), steer=S.get("steer"))
         slide, short = take.slide_report(A.pp, A.poses) if take.locks else (0.0, 0.0)
         print(f"  {A.who}: planted-foot drift {slide * 1000:.2f} mm", flush=True)
     print(f"BUILD + PERFORM {time.time() - t0:.1f}s", flush=True)

@@ -318,8 +318,10 @@ class Scabbard:
             self.anchor = [(int(v[a]), rest[a] - skin.P0[v[a]], self.local[a])]
         self.prev = None
 
-    def frame(self, posed, hips_D=None):
-        """4x4 matrix of the scabbard (its own standard axes) for a posed skin, clear of the body."""
+    def frame(self, posed, hips_D=None, steer=None):
+        """4x4 matrix of the scabbard (its own standard axes) for a posed skin, clear of the body.
+        steer (3x3, in the pelvis's frame) turns a scabbard that hangs from the belt about the point
+        where the belt holds it: the hand on it presents the grip to the other hand."""
         R0 = self.M0.to_3x3()
         if self.mode == "back":
             (v0, o0, l0), (v1, o1, l1) = self.anchor
@@ -344,7 +346,7 @@ class Scabbard:
             return m
         (v0, o0, l0), = self.anchor
         A = _vec(posed.carry(v0, o0))
-        pref = hips_D @ R0                                          # as if it were fixed to the pelvis
+        pref = hips_D @ (steer @ R0 if steer is not None else R0)   # as if it were fixed to the pelvis
         Rot = pref if self.prev is None else pref @ slerp(I3, self.prev, 0.86)     # it remembers where it was pushed and swings back slowly
         for _ in range(14):
             pts = (self.local - np.array(l0)) @ np.array(Rot).T + np.array(A)
