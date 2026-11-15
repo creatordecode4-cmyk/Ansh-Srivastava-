@@ -107,7 +107,7 @@
     .tog { height: 36px; }
     .swatch { padding: 6px 2px; gap: 5px; font-size: 10.5px; }
     .swatch b { width: 24px; height: 24px; }
-    .hint { bottom: auto; top: 44%; font-size: 17px; }
+    .hint { bottom: 236px; font-size: 17px; }
   }
   @media (max-width: 760px) and (max-height: 640px) { .hint { display: none; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -456,7 +456,6 @@ function createSim() {
       const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
       const L0 = tmpE[e], hi = L0 * eMax[e], lo = L0 * 0.35;
       let tgt;
-      if (S.noLimit) continue;
       if (len > hi) tgt = hi; else if (len < lo) tgt = lo; else continue;
       if (len < 1e-9) continue;
       const wa = invMass[a], wb = invMass[b];
@@ -730,9 +729,9 @@ const hex = h => [1, 3, 5].map(i => srgb2lin(parseInt(h.slice(i, i + 2), 16) / 2
    Palettes
    ================================================================ */
 const PRESETS = {
-  orange: { flesh: hex('#ff9a2e'), absorb: [0.32, 1.75, 5.2], dens: 1.5, rind: hex('#f27410'), pith: hex('#fff0d2'), memb: hex('#ffe6bd') },
-  blood:  { flesh: hex('#e0303f'), absorb: [0.55, 4.6, 3.6], dens: 1.3, rind: hex('#ec6a1c'), pith: hex('#ffe3cf'), memb: hex('#ffd1c4') },
-  lemon:  { flesh: hex('#f7e04a'), absorb: [0.18, 0.42, 4.3], dens: 1.6, rind: hex('#f4cd12'), pith: hex('#fff8dc'), memb: hex('#fff5cc') },
+  orange: { flesh: hex('#ff9a2e'), absorb: [0.28, 1.5, 4.6], dens: 0.95, rind: hex('#f27410'), pith: hex('#fff0d2'), memb: hex('#ffe6bd') },
+  blood:  { flesh: hex('#e0303f'), absorb: [0.5, 4.2, 3.3], dens: 0.85, rind: hex('#ec6a1c'), pith: hex('#ffe3cf'), memb: hex('#ffd1c4') },
+  lemon:  { flesh: hex('#f7e04a'), absorb: [0.16, 0.38, 3.9], dens: 1.0, rind: hex('#f4cd12'), pith: hex('#fff8dc'), memb: hex('#fff5cc') },
 };
 const BG = hex('#f3ede2');
 
@@ -859,6 +858,7 @@ fn shadowAt(g: vec3f) -> vec2f {
   let lp = u.lightViewProj * vec4f(g, 1.0);
   let uv = vec2f(lp.x * 0.5 + 0.5, 0.5 - lp.y * 0.5);
   let recv = lp.z;
+  if (any(uv < vec2f(0.02)) || any(uv > vec2f(0.98)) || recv >= 0.995) { return vec2f(0.0, 9.0); }
   let dims = vec2f(textureDimensions(shadowMap));
   let range = u.lightDir.w;
   let worldSize = u.params.w;
@@ -903,11 +903,11 @@ fn shadowAt(g: vec3f) -> vec2f {
     let g = ro + rd * t;
     let s = shadowAt(g);
     // translucent gummy: shadow is warm and lighter than an opaque object's
-    let strength = s.x * (0.30 + 0.42 * exp(-s.y * 3.2));
+    let strength = s.x * (0.34 + 0.5 * exp(-s.y * 2.4));
     let tint = mix(vec3f(1.0), u.flesh.rgb, 0.45);
     col *= vec3f(1.0) - strength * (vec3f(1.0) - tint * 0.55);
     // contact occlusion right under the body
-    col *= 1.0 - s.x * 0.22 * exp(-s.y * 14.0);
+    col *= 1.0 - s.x * 0.38 * exp(-s.y * 9.0);
   }
   return vec4f(col, 1.0);
 }
@@ -1252,7 +1252,7 @@ async function main() {
     cam.yaw += (cam.tyaw - cam.yaw) * 0.15; cam.pitch += (cam.tpitch - cam.pitch) * 0.15;
     const aspect = W / H, fovy = 30 * Math.PI / 180, th = Math.tan(fovy / 2);
     const mobile = aspect < 0.9;
-    const halfW = mobile ? 1.38 : 2.55, halfH = mobile ? 1.55 : 1.3;
+    const halfW = mobile ? 1.32 : 2.2, halfH = mobile ? 1.5 : 1.15;
     const d = Math.max(halfH / th, halfW / (th * aspect));
     const tgt = [0, 0.5, 0];
     camPos = [tgt[0] + d * Math.cos(cam.pitch) * Math.sin(cam.yaw), tgt[1] + d * Math.sin(cam.pitch), tgt[2] + d * Math.cos(cam.pitch) * Math.cos(cam.yaw)];
