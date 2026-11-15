@@ -148,14 +148,76 @@ class Clip:
         return out
 
 
+class FbxClip:
+    """A clip on an imported skeleton with Mixamo's bone names (a Mixamo download, see
+    retarget.import_fbx). Same interface as Clip: pose(t) in our axes at the performer's size.
+
+    The skeleton's rest pose must be a T-pose facing -Y, which is how Blender imports a Mixamo
+    FBX. Rotations are read as 'how far has this bone turned from its rest pose', so the bones'
+    own axes and rolls do not matter."""
+
+    def __init__(self, src, action, name=None, fps=30.0, loop=False):
+        import bpy
+        self.src, self.action, self.fps, self.loop = src, action, fps, loop
+        self.name = name or action.name
+        self.b = {b.name.split(":")[-1]: b.name for b in src.data.bones}
+        self.f0, f1 = (float(v) for v in action.frame_range)
+        self.T = (f1 - self.f0) / fps
+        ad = src.animation_data or src.animation_data_create()
+        ad.action = action
+        if hasattr(ad, "action_slot") and action.slots and ad.action_slot is None:
+            ad.action_slot = action.slots[0]
+        mw = src.matrix_world
+        self.rest = {k: (mw @ src.data.bones[v].matrix_local) for k, v in self.b.items()}
+        R = self.rest
+        self.leg = (R["LeftLeg"].translation - R["LeftUpLeg"].translation).length + (R["LeftFoot"].translation - R["LeftLeg"].translation).length
+        self.arm = (R["LeftForeArm"].translation - R["LeftArm"].translation).length + (R["LeftHand"].translation - R["LeftForeArm"].translation).length
+        self.sole = 0.5 * (R["LeftFoot"].translation.z + R["RightFoot"].translation.z)      # ankle height standing at rest
+        self._scene = bpy.context.scene
+        a, b = self._at(0.0), self._at(self.T)
+        self.step = b["root_p"] - a["root_p"]
+        self.step.z = 0.0
+
+    def _at(self, t):
+        fr = self.f0 + min(max(t, 0.0), self.T) * self.fps
+        self._scene.frame_set(int(fr // 1), subframe=fr % 1.0)
+        mw = self.src.matrix_world
+        M = {k: mw @ self.src.pose.bones[v].matrix for k, v in self.b.items()}
+
+        def D(k):
+            return (M[k].to_3x3().normalized() @ self.rest[k].to_3x3().normalized().inverted())
+
+        out = dict(root_p=0.5 * (M["LeftUpLeg"].translation + M["RightUpLeg"].translation), root=D("Hips"), chest=D("Spine2"), head=D("Head"),
+                   leg=self.leg, arm=self.arm)
+        for tag in ("Left", "Right"):
+            out[tag] = dict(hip=M[tag + "UpLeg"].translation.copy(), knee=M[tag + "Leg"].translation.copy(), ankle=M[tag + "Foot"].translation.copy(),
+                            foot=D(tag + "Foot"), shoulder=M[tag + "Arm"].translation.copy(), elbow=M[tag + "ForeArm"].translation.copy(),
+                            wrist=M[tag + "Hand"].translation.copy(), hand=D(tag + "Hand"))
+        return out
+
+    def pose(self, t):
+        cyc = 0
+        if self.loop:
+            cyc = math.floor(t / self.T)
+            t -= cyc * self.T
+        P = self._at(t)
+        if cyc:
+            off = self.step * cyc
+            P["root_p"] = P["root_p"] + off
+            for tag in ("Left", "Right"):
+                for k in ("hip", "knee", "ankle", "shoulder", "elbow", "wrist"):
+                    P[tag][k] = P[tag][k] + off
+        return P
+
+
 def controls(pp, P, ground=SOLE, widen=0.0):
     """Puppet controls (plain form) for clip pose P, fitted to the fighter behind puppet pp.
 
     ground  height of the clip's ankle joint when its foot is flat on the floor
     widen   extra distance of each foot from the body's centre line, metres"""
     from .puppet import perp
-    k = (pp.leg["Left"]["L1"] + pp.leg["Left"]["L2"]) / LEG
-    ka = (pp.arm_["Left"]["L1"] + pp.arm_["Left"]["L2"]) / ARM
+    k = (pp.leg["Left"]["L1"] + pp.leg["Left"]["L2"]) / P.get("leg", LEG)
+    ka = (pp.arm_["Left"]["L1"] + pp.arm_["Left"]["L2"]) / P.get("arm", ARM)
     ank0 = 0.5 * (pp.H0["LeftFoot"].z + pp.H0["RightFoot"].z)
 
     def place(p):
@@ -180,7 +242,7 @@ def controls(pp, P, ground=SOLE, widen=0.0):
         w = min(1.0, kv.length / 0.06)                                    # a straight leg has no knee direction of its own
         c["knee_" + s] = (kv.normalized() * w + dflt.normalized() * (1.0 - w)).normalized() if kv.length > 1e-6 else dflt.normalized()
         rel = Dc.transposed() @ (J["wrist"] - J["shoulder"]) * ka
-        c["hand_" + s] = dict(rel=rel)
+        c["hand_" + s] = dict(rel=rel, D=J["hand"]) if "hand" in J else dict(rel=rel)       # a clip with wrists keeps their turn
         n = (J["wrist"] - J["shoulder"]).normalized()
         ev = J["elbow"] - J["shoulder"]
         ev -= n * ev.dot(n)

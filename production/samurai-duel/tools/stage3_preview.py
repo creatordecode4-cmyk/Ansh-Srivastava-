@@ -240,23 +240,41 @@ def render(segment):
     print(f"RENDER {segment}: {time.time() - t_all:.1f}s -> {out}", flush=True)
 
 
+PLAYS = dict(oni_walk=2, ronin_walk=2, duo_walk=1, ronin_run=2, ronin_kick=1, ronin_spinkick=1, oni_strike=1, ronin_blades=1)   # times each is shown
+SLOW = ("oni_strike", "ronin_blades")                     # these are shown once more at half speed
+
+
 def assemble(names):
-    from PIL import Image
+    """Encode the rendered segments into one film. Walk cycles are played twice; the fast moves are
+    repeated at half speed (every frame shown twice, marked as slow motion)."""
+    from PIL import Image, ImageDraw, ImageFont
     names = [n for n in (names or ORDER) if os.path.isdir(os.path.join(OUT, n)) and any(f.startswith("f_") for f in os.listdir(os.path.join(OUT, n)))]
-    parts = []
-    for n in names:
-        d = os.path.join(OUT, n)
-        mp4 = os.path.join(d, "segment.mp4")
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "24", "-pattern_type", "glob", "-i", os.path.join(d, "f_*.png"),
-                        "-c:v", "libx264", "-crf", "15", "-preset", "slow", "-pix_fmt", "yuv420p", "-r", "24", mp4], check=True)
-        parts.append(mp4)
-    lst = os.path.join(OUT, "segments.txt")
+    lst = os.path.join(OUT, "frames.txt")
+    total = 0
     with open(lst, "w") as fh:
-        for p in parts:
-            fh.write(f"file '{p}'\n")
+        for n in names:
+            d = os.path.join(OUT, n)
+            frames = sorted(f for f in os.listdir(d) if f.startswith("f_") and f.endswith(".png"))
+            seq = [os.path.join(d, f) for f in frames] * PLAYS.get(n, 1)
+            if n in SLOW:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", 20)
+                for f in frames:
+                    im = Image.open(os.path.join(d, f)).convert("RGB")
+                    dr = ImageDraw.Draw(im)
+                    tag = "SLOW MOTION  x0.5"
+                    w = dr.textlength(tag, font=font)
+                    dr.rectangle((im.width - w - 34, 10, im.width - 10, 44), fill=(150, 20, 20))
+                    dr.text((im.width - w - 22, 15), tag, font=font, fill=(255, 255, 255))
+                    slow = os.path.join(d, "slow_" + f)
+                    im.save(slow)
+                    seq += [slow, slow]
+            for path in seq:
+                fh.write(f"file '{path}'\nduration {1 / 24:.6f}\n")
+            total += len(seq)
     os.makedirs(os.path.dirname(FILM), exist_ok=True)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", "-movflags", "+faststart", FILM], check=True)
-    print("FILM", FILM, f"{os.path.getsize(FILM) / 1e6:.1f} MB", names)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24", "-c:v", "libx264", "-crf", "16",
+                    "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", FILM], check=True)
+    print("FILM", FILM, f"{os.path.getsize(FILM) / 1e6:.1f} MB, {total} frames, {total / 24:.1f} s", names)
 
 
 if __name__ == "__main__":
