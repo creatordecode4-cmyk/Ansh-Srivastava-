@@ -69,6 +69,22 @@ def twist_angle(M, axis):
     return math.degrees((a + math.pi) % (2 * math.pi) - math.pi)
 
 
+EASE = dict(
+    linear=lambda u: u,
+    inout=lambda u: u * u * (3 - 2 * u),
+    slow_in=lambda u: u * u,                 # starts gently, arrives at speed
+    slow_out=lambda u: 1 - (1 - u) ** 2,     # leaves at speed, settles
+    wind=lambda u: u ** 3,
+    snap=lambda u: 1 - (1 - u) ** 3,
+)
+
+
+def ease(kind, u):
+    """Timing curve between two keys: a name from EASE or an exponent."""
+    u = min(1.0, max(0.0, u))
+    return EASE[kind](u) if isinstance(kind, str) else u ** kind
+
+
 def two_bone(A, T, L1, L2, pole):
     """Mid joint of a two-bone limb rooted at A reaching for T, bulging toward 'pole'.
     Returns (mid joint, reached end point, hinge axis, shortfall in metres if T is out of reach)."""

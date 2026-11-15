@@ -25,22 +25,7 @@ import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
 from . import cache, core, fighters, motion, weapons
-from .puppet import I3, SHAPES, Puppet, Y, mix_shapes, slerp
-
-EASE = dict(
-    linear=lambda u: u,
-    inout=lambda u: u * u * (3 - 2 * u),
-    slow_in=lambda u: u * u,                 # starts gently, arrives at speed
-    slow_out=lambda u: 1 - (1 - u) ** 2,     # leaves at speed, settles
-    wind=lambda u: u ** 3,
-    snap=lambda u: 1 - (1 - u) ** 3,
-)
-
-
-def ease(kind, u):
-    u = min(1.0, max(0.0, u))
-    return EASE[kind](u) if isinstance(kind, str) else u ** kind
-
+from .puppet import EASE, I3, SHAPES, Puppet, Y, ease, mix_shapes, slerp, sword_matrix, ypr
 
 def _ramp(f, a, b):
     """0 before a, 1 after b, smooth between."""
@@ -165,6 +150,15 @@ class Actor:
         station = W.translation + S @ Vector((0.0, R * math.sin(th), R * (1.0 - math.cos(th))))
         return self.pp.grip(tag, S @ Matrix.Rotation(th, 3, "X"), station, roll=roll, flip=flip)
 
+    def sword_key(self, f, controls, guard, point, edge, space="chest", ease="inout", **more):
+        """A track key that puts a sword where it is described in the world for the pose 'controls'
+        (guard position, direction of the point, direction of the edge), stored relative to the
+        chest or hips so that it travels with the body, or left in the world."""
+        W = sword_matrix(guard, point, edge)
+        if space in ("chest", "hips"):
+            W = self._spine(self.pp.canon(controls))[space].inverted() @ W
+        return dict(f=f, space=space, m=W, ease=ease, **more)
+
     # ---- the performance
     def perform(self, take, swords=None, holds=(), start=61, name=None, report=True):
         """Bake a shot.
@@ -208,6 +202,8 @@ class Actor:
                     c["hand_" + s] = dict(pos=wrist, D=Dhand)
                     if h.get("elbow") is not None:
                         c["elbow_" + s] = sp["chest"].to_3x3() @ Vector(h["elbow"])
+                elif h.get("bend") is not None:                          # carried: the wrist is set so the blade points where it should
+                    c["hand_" + s] = dict(c["hand_" + s], bend=ypr(*[v * wh for v in h["bend"]]))
                 c["fingers_" + s] = mix_shapes(c["fingers_" + s], "grip", min(1.0, max(0.0, (wh - 0.55) / 0.45)))
             final.append(c)
         # solve in the armature's own space

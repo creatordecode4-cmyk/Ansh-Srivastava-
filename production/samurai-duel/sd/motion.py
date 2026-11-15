@@ -15,7 +15,7 @@ import math
 import numpy as np
 from mathutils import Matrix, Vector
 
-from .puppet import X, Y, Z, mix_shapes, rot, slerp, ypr
+from .puppet import X, Y, Z, ease, mix_shapes, rot, slerp, ypr
 
 FPS = 24.0
 
@@ -163,6 +163,66 @@ class Take:
             ground = float(np.percentile(zs, 8))
         frames = [mocap.controls(pp, clip.pose(t0 + i / FPS * speed), ground=ground, widen=widen) for i in range(n)]
         return cls(frames, clip.name)
+
+    @classmethod
+    def from_keys(cls, pp, keys, steps=(), name="keyed"):
+        """A take from poses set by hand: keys = [(frame, controls, ease)], frames counted from 0.
+
+        Between two keys the controls are blended with the later key's ease ('inout', 'slow_in',
+        'slow_out', 'snap', 'wind', 'linear' or an exponent). The hips travel on a smooth curve
+        through the keys.
+
+        Feet are not blended between keys: a blended foot would slide over the ground. They stand
+        where the first key puts them and only move in the listed steps:
+            steps = [(foot 'Left'|'Right', first frame, last frame, dict(pos=, yaw=, pitch=), lift)]
+        A step with a new 'pos' leaves the ground heel first, travels in an arc 'lift' metres high
+        and lands heel first. A step without 'pos' keeps the ball of the foot planted and only
+        changes yaw or pitch (rising onto the ball, pivoting)."""
+        keys = sorted(((f, pp.canon(c), e) for f, c, e in keys), key=lambda k: k[0])
+        n = keys[-1][0] + 1
+        frames = []
+        for f in range(n):
+            i = max(k for k in range(len(keys)) if keys[k][0] <= f)
+            if i == len(keys) - 1:
+                frames.append(dict(keys[i][1]))
+                continue
+            (f0, c0, _), (f1, c1, e1) = keys[i], keys[i + 1]
+            u = ease(e1, (f - f0) / (f1 - f0))
+            c = mix(c0, c1, u)
+            if u > 0.0:
+                p = [keys[min(len(keys) - 1, max(0, j))][1]["hips"] for j in (i - 1, i, i + 1, i + 2)]
+                u2, u3 = u * u, u * u * u
+                c["hips"] = 0.5 * ((2 * p[1]) + (-p[0] + p[2]) * u + (2 * p[0] - 5 * p[1] + 4 * p[2] - p[3]) * u2 + (-p[0] + 3 * p[1] - 3 * p[2] + p[3]) * u3)
+            frames.append(c)
+        t = cls(frames, name)
+        for tag in ("Left", "Right"):
+            s = tag[0]
+            f0 = keys[0][1]["foot_" + s]
+            pos, (yaw, pitch, _) = f0["pos"].copy(), foot_angles(f0["D"])
+            track = [(pos.copy(), yaw, pitch, None, "flat")] * n
+            for who, a, b, to, lift in sorted((st for st in steps if st[0] == tag), key=lambda st: st[1]):
+                p1 = Vector(to["pos"]) if "pos" in to else pos
+                y1, t1 = to.get("yaw", yaw), to.get("pitch", pitch)
+                travels = (p1 - pos).length > 1e-6
+                for f in range(a + 1, min(b, n)):
+                    u = (f - a) / (b - a)
+                    g = u * u * (3 - 2 * u)
+                    q = pos.lerp(p1, g)
+                    tilt = pitch + (t1 - pitch) * g
+                    toe = None
+                    if travels:
+                        q.z += lift * math.sin(math.pi * u)
+                        tilt += 16.0 * math.sin(math.pi * min(1.0, u / 0.5)) if u < 0.5 else -9.0 * math.sin(math.pi * (u - 0.5) / 0.5)
+                        toe = 0.0 if u > 0.3 else None
+                    track[f] = (q, yaw + (y1 - yaw) * g, tilt, toe, None if travels else "ball")
+                pos, yaw, pitch = p1.copy(), y1, t1
+                for f in range(min(b, n), n):
+                    track[f] = (pos.copy(), yaw, pitch, None, "flat" if abs(pitch) < 1.0 else "ball")
+            for f in range(n):
+                q, y, tl, toe, _ = track[f]
+                t.c[f]["foot_" + s] = dict(pos=q, D=ypr(y, tl, 0.0), toe=toe)
+            t.locks[tag] = [tr[4] for tr in track]
+        return t
 
     def moved(self, yaw=0.0, to=(0, 0, 0)):
         R = rot(Z, yaw)

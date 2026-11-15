@@ -22,7 +22,7 @@ sys.path.insert(0, HERE)
 
 OUT = os.path.join(HERE, "out", "stage3", "preview")
 FILM = os.path.join(HERE, "previews", "stage3_motion_test.mp4")
-ORDER = ["oni_walk", "ronin_walk", "duo_walk", "ronin_run", "ronin_kick", "ronin_spinkick", "oni_strike", "ronin_draw"]
+ORDER = ["oni_walk", "ronin_walk", "duo_walk", "ronin_run", "ronin_kick", "oni_strike", "ronin_blades"]
 
 
 def arg(flag, default, n=1, cast=float):
@@ -93,6 +93,48 @@ def seg_ronin_spinkick(lib, new):
     take, lead = _mocap(A, "spinkick", 1, 1.6)
     return dict(cast=[(A, take, None, ())], lead=lead, views=[("SIDE", 100, 4), ("FRONT", 30, 5)], height=2.9, look=1.2, wide=2.6,
                 title="CYBER RONIN  -  spinning kick")
+
+
+def seg_oni_strike(lib, new):
+    """Hand-keyed: guard, sword raised overhead, step in and cut down, back to guard. Both hands on the grip."""
+    from sd import motion
+    A = new("oni")
+    g = 0.285                                                    # length of his grip
+    FR, FL = dict(pos=(-0.17, -0.40, 0.0), yaw=0), dict(pos=(0.20, 0.22, 0.0), yaw=35, pitch=10)
+    guard = dict(hips=(0.0, -0.05, 1.00), hips_rot=(8, 4, 0), chest_rot=(3, 9, 0), head_rot=(0, 6, 0), foot_R=FR, foot_L=FL)
+    high = dict(hips=(0.0, 0.0, 1.03), hips_rot=(10, -1, 0), chest_rot=(6, -7, 0), head_rot=(0, 4, 0))
+    cut = dict(hips=(0.0, -0.40, 0.93), hips_rot=(4, 10, 0), chest_rot=(0, 23, 0), head_rot=(0, 9, 0))
+    sunk = dict(cut, hips=(0.0, -0.43, 0.91), chest_rot=(0, 26, 0))
+    rest = dict(cut, hips=(0.0, -0.43, 0.93))
+    guard2 = dict(hips=(0.0, -0.49, 1.00), hips_rot=(8, 4, 0), chest_rot=(3, 9, 0), head_rot=(0, 6, 0))
+    steps = [("Right", 29, 37, dict(pos=(-0.17, -0.84, 0.0)), 0.06),          # the lunge
+             ("Left", 31, 38, dict(pitch=26), 0.0),                           # back foot rolls onto its ball as the body goes forward
+             ("Left", 38, 45, dict(pos=(0.20, -0.04, 0.0), pitch=18), 0.025),  # and is drawn up behind the cut
+             ("Left", 60, 72, dict(pos=(0.20, -0.22, 0.0), pitch=10), 0.04)]
+    take = motion.Take.from_keys(A.pp, [(0, guard, "inout"), (10, guard, "inout"), (26, high, "inout"), (31, high, "inout"), (38, cut, "slow_in"),
+                                        (45, sunk, "slow_out"), (58, rest, "inout"), (78, guard2, "inout"), (92, guard2, "inout")], steps, "strike")
+    take.fit_hips(A.pp)
+    k_guard = A.sword_key(0, guard, (-0.02, -0.46, 1.12), (0.02, -0.92, 0.38), (0, 0, -1))
+    k_high = A.sword_key(26, high, (0.0, 0.03, 2.03), (0.0, 0.55, 0.83), (0, -0.83, 0.55))
+    k_cut = A.sword_key(38, cut, (-0.02, -0.91, 1.05), (0.0, -0.975, -0.22), (0, 0.22, -0.975), ease="slow_in")
+    track = [k_guard, dict(k_guard, f=10), k_high, dict(k_high, f=31),
+             A.sword_key(35, cut, (0.0, -0.54, 1.80), (0.0, -0.5, 0.87), (0, -0.87, -0.5), space="world", ease="slow_in"),
+             k_cut, dict(k_cut, f=45, ease="slow_out"), dict(k_cut, f=58), dict(k_guard, f=78), dict(k_guard, f=92)]
+    n = len(take)
+    holds = [dict(sword="main", hand="Right", f0=0, f1=n, along=0.058, roll=28, blend_in=0),
+             dict(sword="main", hand="Left", f0=0, f1=n, along=g - 0.062, roll=-28, lead=False, blend_in=0)]
+    return dict(cast=[(A, take, dict(main=track), holds)], lead=0, views=[("SIDE", 90, 3), ("FRONT", 28, 5)], height=3.0, look=1.40, wide=2.7,
+                title="ONI SAMURAI  -  overhead cut  (keyed by hand, both hands on the grip)")
+
+
+def seg_ronin_blades(lib, new):
+    """Motion capture for the body, a katana in each hand: the swords follow the fists."""
+    A = new("ronin")
+    take, lead = _mocap(A, "spinkick", 1, 1.6)
+    n = len(take)
+    holds = [dict(sword=k, hand=h, f0=0, f1=n, plan=0.0, blend_in=0, bend=(0, 0, 0)) for k, h in (("R", "Right"), ("L", "Left"))]
+    return dict(cast=[(A, take, None, holds)], lead=lead, views=[("SIDE", 100, 4), ("FRONT", 30, 5)], height=3.0, look=1.2, wide=3.0,
+                title="CYBER RONIN  -  spinning kick with both blades drawn")
 
 
 SEGMENTS = {k[4:]: v for k, v in list(globals().items()) if k.startswith("seg_")}
