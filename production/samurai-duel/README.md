@@ -77,6 +77,7 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   - `mocap.py`, `motion.py` — motion-capture clips as controls; takes: placing, blending, foot locking, keyed moves
   - `actor.py` — a fighter in a shot: body, swords on tracks or in the hand, cloth run and stored
   - `soft.py`, `cache.py` — soft cage for the Oni's trousers; cloth stored on disk (PC2) for rendering
+  - `skin.py`, `clear.py` — the body as a solid; keeping hands, scabbards, hat, blades and cloth out of it
   - `retarget.py` — bone-by-bone carry-over of a downloaded FBX clip (for Mixamo files)
 - `tools/` — prop test stage, preview sheets, image-to-3D crop tool.
 - `previews/` — preview images shown at each stage.
@@ -143,6 +144,24 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   moves rigidly with the head.
 - Simulated cloth is written to PC2 files and played back by a Mesh Cache modifier, so rendering
   needs no simulation and can start at any frame.
+- Nothing may pass through anything else. A captured performer is slim and unarmoured; on the
+  broad, armoured fighters his motion puts hands inside hips, a scabbard through the trousers and
+  a cape through the swords. `skin.py` poses the watertight skin and answers how far outside the
+  body a point is; `clear.py` resolves each contact while a shot is baked (`Actor.perform`):
+  - free hands are pushed out along the body's surface normal, elbows are turned out of the way
+  - a hand closed on a planned sword cannot be moved: there the choreography has to be clean
+    (the Oni's guard is at chest height because his arms are short for his trunk)
+  - scabbards lie on two points of the skin (back) or hang from the belt and are pushed aside by
+    the leg (hip), instead of being glued to one bone
+  - the hat gives up tilt where its brim would meet shoulders or sword grips
+  - a carried sword's wrist is turned until the blade clears the body
+  - after a cloth run, cloth left inside the body is put back on its surface; the cape is pinned
+    under the scabbards; the Oni's trouser legs press together instead of crossing
+  `Actor.clip_report()` gives the worst overlap per kind of contact in millimetres. Measured on
+  the preview shots, before -> after: Oni walk arm 79 -> 11 (his hand rests on the scabbard),
+  scabbard 14 -> 0; Ronin walk arm 72 -> 0; Oni cut arm 51 -> 0 (142 with the first, navel-high
+  guard); Ronin spinning kick blade 133 -> 0, arm 116 -> 13, arm against hat brim 65 -> 35.
+  The side test is only trusted near the skin and away from the open rims of body regions.
 - The preview is rendered without motion blur or depth of field so that every frame is sharp.
 - Not done yet: the draw (sword leaving the scabbard), clips downloaded from Mixamo (the folder
   for them is `assets/user/mixamo/`; `retarget.py` carries such a clip over bone by bone).
