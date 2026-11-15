@@ -169,14 +169,22 @@ class Take:
         t = Vector(to)
         return Take([moved(c, R, t) for c in self.c], self.name)
 
-    def placed(self, at, facing):
-        """Turned and moved so that the first frame's hips stand over 'at' (x, y), facing 'facing' degrees
-        (0 = toward -Y, positive to the fighter's left)."""
-        f = self.c[0]["hips_D"] @ -Y
+    def placed(self, at, facing, frame=0):
+        """Turned and moved so that the hips stand over 'at' (x, y) on the given frame, facing 'facing' degrees
+        there (0 = toward -Y, positive to the fighter's left)."""
+        f = self.c[frame]["hips_D"] @ -Y
         yaw0 = math.degrees(math.atan2(f.x, -f.y))
         R = rot(Z, facing - yaw0)
-        h = R @ self.c[0]["hips"]
-        return Take([moved(c, R, Vector((at[0] - h.x, at[1] - h.y, 0.0))) for c in self.c], self.name)
+        h = R @ self.c[frame]["hips"]
+        t = Take([moved(c, R, Vector((at[0] - h.x, at[1] - h.y, 0.0))) for c in self.c], self.name)
+        t.locks = self.locks
+        return t
+
+    def held(self, frames):
+        """The same take with its last pose held for some more frames."""
+        t = Take(self.c + [self.c[-1]] * frames, self.name)
+        t.locks = {k: v + [v[-1]] * frames for k, v in self.locks.items()}
+        return t
 
     # ---- feet on the ground
     def lock_feet(self, pp, h_in=0.022, h_out=0.04, v_in=0.35, v_out=0.7, heel_back=0.055, fade=5, verbose=False):

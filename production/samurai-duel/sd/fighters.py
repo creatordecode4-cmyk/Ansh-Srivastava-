@@ -49,13 +49,13 @@ def _frame(origin, y_axis, x_hint):
     return m
 
 
-def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
+def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False, arms_collide=False):
     """Cyber Ronin: cut Tripo body + kasa hat (whole and pre-cut halves) + two sheathed katanas on
     the back + simulated cape and waist cloth.
 
     rigged=False  a statue in the rest pose: the cloth is simulated once and frozen
-    rigged=True   an actor: skeleton, props parented to bones, cloth left live with its pins
-                  following the skeleton (the shot simulates it; see sd/shot.py)"""
+    rigged=True   an actor: skeleton, props parented to bones, cloth left live and guided by the
+                  skeleton (garments.driven); the shot simulates it (sd/actor.py)"""
     if rigged:
         R = rig.load("ronin", col)
         body, A, arm, proxy = R["body"], R["anchors"], R["arm"], R["proxy"]
@@ -110,19 +110,28 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
         soft = proxy                                 # the 90k skin: thinned to 24k it grows flipped slivers and the cloth climbs them
         if not soft.users_collection:
             sim.objects.link(soft)
-        garments.collider(soft)
         w = garments.Wearer(soft)
+        if rigged and arms_collide is False:         # an actor's hands stay out of the cloth (see garments.collider_without)
+            soft = garments.collider_without(proxy, arm, sim)
+        else:
+            garments.collider(soft)
+        if rigged:
+            soft.collision.thickness_outer = 0.004   # a moving body needs a thicker skin than a statue to catch the cloth
         rgb = A["cloth_rgb"]
         tone = [((c + 0.055) / 1.055) ** 2.4 * 1.35 for c in rgb]                 # texture mean has shading baked in: lift it back to the cloth's own tone
         skirt = garments.ronin_skirt(sim, w, garments.fabric("MAT_Ronin_Skirt", tone, 0.5, 0.8, dirt=0.75))
         tails = garments.ronin_tails(sim, w, garments.fabric("MAT_Ronin_Tails", tone, 0.15, 0.85, dirt=0.75))
-        cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), straps)
+        # a statue's cape is also pinned to the back under the scabbards; an actor's hangs from the shoulders only
+        cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), () if rigged else straps)
         sims = [cape] + skirt + tails
         lifts = None
+        hang = garments.load_drape("ronin_actor" if rigged else "ronin", sims) if rigged else None
         if rigged and os.path.exists(lift_file):
             lifts = json.load(open(lift_file))
-        if lifts is None:
+        if lifts is None or (rigged and hang is None):
             garments.settle(bpy.context.scene, sim_frames, report=40)
+            if rigged:
+                hang = garments.save_drape("ronin_actor", sims)
             # the scabbards ride on top of the cape: push each one out until it clears the cloth under it
             bpy.context.view_layer.update()
             dg = bpy.context.evaluated_depsgraph_get()
@@ -139,6 +148,7 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
                 lifts.append(need)
             with open(lift_file, "w") as fh:
                 json.dump(lifts, fh)
+            bpy.context.scene.frame_set(1)
         for ks, ss, need in zip(parts["katanas"], parts["sayas"], lifts):
             for o in (ks, ss):
                 o.matrix_world.translation.y += need
@@ -148,7 +158,7 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
                 for mod in ob.modifiers:
                     if mod.type == "SUBSURF" or mod.type == "SOLIDIFY":
                         ob.modifiers.remove(mod)
-                garments.bind(ob, arm, soft)
+                garments.driven(ob, arm, proxy, hang[ob.name])
                 sm = ob.modifiers.new("subd", "SUBSURF")          # after the cloth: smooth, then give it thickness
                 sm.levels = sm.render_levels = 1
                 sm.boundary_smooth = "ALL"

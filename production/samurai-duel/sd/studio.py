@@ -73,14 +73,27 @@ def aim(cam, target, azimuth=0.0, elevation=0.0, distance=4.0):
     return cam
 
 
-def floor(sc, z=0.0, size=40.0, color=(0.2, 0.205, 0.215)):
-    """Matte floor that catches the contact shadow."""
+def floor(sc, z=0.0, size=40.0, color=(0.2, 0.205, 0.215), grid=0.0):
+    """Matte floor that catches the contact shadow. grid > 0 draws fine lines every 'grid' metres,
+    so that a camera travelling with a fighter still shows the ground passing under the feet."""
     g = core.box("STUDIO_Floor", (size, size, 0.02), (0, 0, z - 0.01), sc.collection)
     m = bpy.data.materials.new("MAT_Studio_Floor")
     m.use_nodes = True
     b = m.node_tree.nodes["Principled BSDF"]
     b.inputs["Base Color"].default_value = (*color, 1)
     b.inputs["Roughness"].default_value = 0.85
+    if grid > 0.0:
+        nt = NT(m.node_tree)
+        geo = nt.new("ShaderNodeNewGeometry")
+        sep = nt.new("ShaderNodeSeparateXYZ")
+        nt.link(geo.outputs["Position"], sep.inputs[0])
+        line = None
+        for axis in (0, 1):
+            cell = nt.math("FRACT", nt.math("ADD", nt.math("DIVIDE", sep.outputs[axis], grid), 0.5))
+            d = nt.math("MULTIPLY", nt.math("ABSOLUTE", nt.math("SUBTRACT", cell, 0.5)), grid)        # metres from the nearest line
+            ln = nt.map_range(d, 0.004, 0.007, 1.0, 0.0)
+            line = ln if line is None else nt.math("MAXIMUM", line, ln)
+        nt.put(b.inputs["Base Color"], nt.mix(line, (*color, 1), tuple(c * 0.45 for c in color) + (1,)))
     core.set_mat(g, m)
     return g
 

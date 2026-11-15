@@ -134,6 +134,8 @@ def panel(name, rest, col, wear=None, mat=None, hold_rows=3):
     fray[:, :hold_rows] = 1.0                                        # the top is tucked away, not torn
     at = me.attributes.new("fray", "FLOAT", "POINT")
     at.data.foreach_set("value", fray.reshape(-1).astype(np.float32))
+    row = me.attributes.new("row", "FLOAT", "POINT")                 # 0 at the pinned top, 1 at the hem
+    row.data.foreach_set("value", np.tile(np.linspace(0.0, 1.0, nv), nu).astype(np.float32))
     if gone.any() or rips:
         bm = bmesh.new()
         bm.from_mesh(me)
@@ -185,6 +187,40 @@ def pin(ob, rest_pts, targets, frames=(1, 45)):
     return int(ok.sum())
 
 
+def drop_loose(ob):
+    """Remove scraps that no longer hang from a pinned vertex. A tear running up from the hem can
+    meet a hole or another tear and cut a piece off completely; left in, it falls forever."""
+    me = ob.data
+    pin = ob.vertex_groups["pin"].index
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    dl = bm.verts.layers.deform.verify()
+    seen, dead = set(), []
+    for v in bm.verts:
+        if v.index in seen:
+            continue
+        part, stack, held = [], [v], False
+        seen.add(v.index)
+        while stack:
+            u = stack.pop()
+            part.append(u)
+            held = held or u[dl].get(pin, 0.0) > 0.0
+            for e in u.link_edges:
+                o = e.other_vert(u)
+                if o.index not in seen:
+                    seen.add(o.index)
+                    stack.append(o)
+        if not held:
+            dead += part
+    n = len(dead)
+    if dead:
+        bmesh.ops.delete(bm, geom=dead, context="VERTS")
+        bm.to_mesh(me)
+    bm.free()
+    return n
+
+
 def cloth(ob, frames=300, bend=0.5, fall_speed=1.0, self_collide=False, quality=10):
     """Cloth settings for a panel on the ~12 mm grid.
 
@@ -209,7 +245,7 @@ def cloth(ob, frames=300, bend=0.5, fall_speed=1.0, self_collide=False, quality=
     s.bending_stiffness = bend
     s.tension_damping = s.compression_damping = s.shear_damping = 5.0
     s.bending_damping = 0.5
-    s.air_damping = mass * 9.81 / fall_speed          # drag at which a loose vertex falls at fall_speed m/s
+    s.air_damping = mass * 9.81 / fall_speed          # measured: a loose patch then sinks at about 2.4 x fall_speed m/s
     s.vertex_group_mass = "pin"
     s.pin_stiffness = 1.0
     c = m.collision_settings
@@ -240,6 +276,40 @@ def collider(ob, friction=2.0):
     return ob
 
 
+def collider_without(proxy, arm, col, skip=("ForeArm", "Hand"), name=None):
+    """Collision stand-in for a moving fighter: the watertight skin without the parts whose
+    strongest bone has one of the 'skip' words in its name (forearms and hands by default).
+
+    Hands swing through exactly the space where a skirt hangs. Cloth caught between a hand and
+    a thigh that move against each other is squeezed out sideways and flies like a wing; real
+    cloth just brushes past the fingers. Leaving the forearms and hands out costs an occasional
+    finger passing through a fold and keeps the cloth hanging where it belongs."""
+    me = proxy.data.copy()
+    ob = bpy.data.objects.new(name or proxy.name.replace("Proxy", "Collider"), me)
+    col.objects.link(ob)
+    if not len(ob.vertex_groups):
+        for g in proxy.vertex_groups:
+            ob.vertex_groups.new(name=g.name)
+    gname = {g.index: g.name for g in ob.vertex_groups}
+    drop = []
+    for v in me.vertices:
+        best = max(v.groups, key=lambda g: g.weight, default=None)
+        if best is not None and any(w in gname.get(best.group, "") for w in skip):
+            drop.append(v.index)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.verts[i] for i in drop], context="VERTS")
+    bm.to_mesh(me)
+    bm.free()
+    ob.parent = arm
+    m = ob.modifiers.new("Armature", "ARMATURE")
+    m.object = arm
+    ob.hide_render = True
+    ob.display_type = "WIRE"
+    return collider(ob)
+
+
 def settle(sc, frames=90, report=None):
     """Advance the scene frame by frame so every cloth in it simulates up to 'frames'."""
     sc.frame_start, sc.frame_end = 1, frames
@@ -267,30 +337,110 @@ def freeze(ob, name, col, thickness=0.0014, subdiv=1):
     return out
 
 
-def bind(ob, arm, proxy):
-    """Make a panel's pinned vertices follow the skeleton: each takes the bone weights of the
-    nearest point of the wearer's skin at its seat, and an Armature modifier ahead of the Cloth
-    modifier moves it. Everything that is not pinned stays with the simulation."""
+def drape_file(who):
+    import os
+    return os.path.join(core.ASSETS, "gen", f"{who}_drape.npz")
+
+
+def save_drape(who, panels):
+    """Store how the panels hang now (rest pose, after settling)."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    out = {}
+    for ob in panels:
+        me = ob.evaluated_get(dg).data
+        co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+        me.vertices.foreach_get("co", co)
+        out[ob.name] = co.reshape(-1, 3)
+    np.savez_compressed(drape_file(who), **out)
+    return out
+
+
+def load_drape(who, panels):
+    """The stored drape, if it fits these panels (same names, same vertex counts)."""
+    import os
+    if not os.path.exists(drape_file(who)) or os.path.getmtime(drape_file(who)) < os.path.getmtime(__file__):
+        return None
+    d = np.load(drape_file(who))
+    if any(ob.name not in d.files or len(d[ob.name]) != len(ob.data.vertices) for ob in panels):
+        return None
+    return {ob.name: d[ob.name] for ob in panels}
+
+
+def driven(ob, arm, proxy, drape, guide=((0.0, 1.0), (0.08, 0.35), (0.40, 0.02), (1.0, 0.004)), quality=14):
+    """Turn a draped panel into cloth for a moving fighter.
+
+    A panel that is only pinned at its top and otherwise left to the collision with the body
+    works for a statue. On a fighter who walks, runs and kicks it does not: at those speeds
+    the collision misses, cloth gets inside the body's skin and is then thrown out again, and a
+    cape ends up standing in the air like a flag. So the cloth is guided, the way cloth is
+    usually done for action:
+
+      - the panel starts as it hangs in the rest pose ('drape'); the flat pattern is kept as a
+        shape key and only tells the cloth how long its threads are
+      - every vertex is given the bone weights of the nearest piece of the body, so the skeleton
+        alone would carry the draped panel along like a stiff skin
+      - the cloth is tied to that carried shape by springs: rigidly at the pinned top, then
+        ever more loosely toward the hem, where it is almost free
+
+    guide  (row, strength) pairs: how strong the tie is at a given distance down the panel
+           (row 0 = top, 1 = hem; strength 1 = rigid). Blender takes the 4th power of a vertex
+           weight as the strength, so the weights written here are strength ** 0.25.
+           With 0.004 at the hem the air pushes a cape's hem back about 15 cm at a walk and
+           half a metre at a run; 0.012 holds it within 5 cm (stiff), 0.001 lets it go."""
     from scipy.spatial import cKDTree
     me = ob.data
-    key = me.shape_keys.key_blocks["Tuck"]
-    pin = ob.vertex_groups["pin"].index
-    pinned = [v.index for v in me.vertices if any(g.group == pin and g.weight > 0 for g in v.groups)]
+    n = len(me.vertices)
+    flat = np.empty(n * 3, dtype=np.float32)
+    ob.shape_key_clear()
+    me.vertices.foreach_get("co", flat)
+    me.vertices.foreach_set("co", np.asarray(drape, dtype=np.float32).reshape(-1))
+    ob.shape_key_add(name="Basis")
+    key = ob.shape_key_add(name="Flat")
+    key.data.foreach_set("co", flat)
+    key.value = 0.0
+    me.update()
+    # the body's weights for every vertex
     pco = np.empty(len(proxy.data.vertices) * 3, dtype=np.float32)
     proxy.data.vertices.foreach_get("co", pco)
-    seats = np.array([key.data[i].co[:] for i in pinned])
-    _, near = cKDTree(pco.reshape(-1, 3)).query(seats)
+    _, near = cKDTree(pco.reshape(-1, 3)).query(np.asarray(drape, dtype=np.float64).reshape(-1, 3))
     gname = {g.index: g.name for g in proxy.vertex_groups}
-    for vi, pv in zip(pinned, near):
-        for g in proxy.data.vertices[int(pv)].groups:
-            if g.weight > 0.01 and g.group in gname:
-                vg = ob.vertex_groups.get(gname[g.group]) or ob.vertex_groups.new(name=gname[g.group])
-                vg.add([vi], g.weight, "REPLACE")
+    pin = ob.vertex_groups["pin"]
+    was_pinned = np.array([any(g.group == pin.index and g.weight > 0 for g in v.groups) for v in me.vertices])
+    rows = np.empty(n, dtype=np.float32)
+    me.attributes["row"].data.foreach_get("value", rows)
+    gr, gs = np.array([g[0] for g in guide]), np.array([g[1] for g in guide])
+    strength = np.exp(np.interp(rows, gr, np.log(gs)))               # falls off smoothly between the given points
+    weight = np.where(was_pinned, 1.0, np.minimum(strength, 0.92) ** 0.25)
+    made = {}
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    dl = bm.verts.layers.deform.verify()
+    for i, v in enumerate(bm.verts):
+        dv = v[dl]
+        dv.clear()
+        dv[pin.index] = float(weight[i])
+        ws = [(g.group, g.weight) for g in proxy.data.vertices[int(near[i])].groups if g.weight > 0.01 and g.group in gname]
+        tot = sum(w for _, w in ws) or 1.0
+        for gi, w in ws:
+            name = gname[gi]
+            if name not in made:
+                made[name] = (ob.vertex_groups.get(name) or ob.vertex_groups.new(name=name)).index
+            dv[made[name]] = w / tot
+    bm.to_mesh(me)
+    bm.free()
+    key = me.shape_keys.key_blocks["Flat"]                           # the edit above rebuilt the mesh: fetch the key again
     m = ob.modifiers.new("Armature", "ARMATURE")
     m.object = arm
     ob.modifiers.move(len(ob.modifiers) - 1, 0)
     ob.parent = arm
-    return len(pinned)
+    cl = ob.modifiers["Cloth"]
+    cl.settings.rest_shape_key = key
+    cl.settings.quality = quality
+    cl.settings.pin_stiffness = 1.0
+    cl.collision_settings.collision_quality = 6
+    cl.collision_settings.distance_min = 0.004
+    return int(was_pinned.sum())
 
 
 # ----------------------------------------------------------------------------- measuring the wearer
@@ -324,7 +474,8 @@ def ronin_cape(col, wearer, mat, straps=(), seed=3):
     hangs clear of the arms in the rest pose.
 
     straps: (top, bottom) world points of each scabbard's axis. The swords are worn over the
-    cape and hold it against the back, so the cloth is pinned to the back along those lines."""
+    cape and hold it against the back, so on a statue the cloth is pinned to the back along those
+    lines. An actor's cape is given no straps: it hangs from the shoulders and is free to swing."""
     rng = np.random.default_rng(seed)
     x0, x1 = -0.17, 0.19                                # the seat, between the shoulder joints
     gather = 1.15
@@ -376,6 +527,7 @@ def ronin_cape(col, wearer, mat, straps=(), seed=3):
                     src.append(rest[i, j])
                     dst.append((x, max(near) + SEAT + 0.004, seat_z(x) - j * CELL))
     ob["pinned"] = pin(ob, src, dst)
+    ob["scraps"] = drop_loose(ob)
     cloth(ob)
     return ob
 
@@ -407,6 +559,7 @@ def _belt_panel(name, col, wearer, mat, rng, phi_a, phi_b, z_pin, length, gather
             src.append(rest[i, j])
             dst.append((math.sin(phi) * r, -math.cos(phi) * r, z))
     ob["pinned"] = pin(ob, src, dst)
+    ob["scraps"] = drop_loose(ob)
     cloth(ob)
     return ob
 
@@ -458,6 +611,7 @@ def ronin_tails(col, wearer, mat, seed=11):
                 src.append(rest[i, j])
                 dst.append((x, -math.sqrt(max(1e-6, r * r - x * x)), z))
         ob["pinned"] = pin(ob, src, dst)
+        ob["scraps"] = drop_loose(ob)
         cloth(ob, bend=0.3)
         out.append(ob)
     return out

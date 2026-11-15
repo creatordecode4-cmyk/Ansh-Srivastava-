@@ -325,14 +325,22 @@ class Puppet(Skeleton):
             sh, ua, fa, hn = tag + "Shoulder", tag + "Arm", tag + "ForeArm", tag + "Hand"
             A0 = H[sh] + Dc @ (self.H0[ua] - self.H0[sh])                 # shoulder joint before the collar bone moves
             T = ctl["pos"] if "pos" in ctl else A0 + Dc @ ctl["rel"]
-            # the collar bone helps only when the hand is far away or above the shoulder
+            # the collar bone follows the upper arm's direction by a fixed share (as the shoulder girdle does),
+            # so it moves steadily with the arm instead of twitching as the elbow bends and stretches
             c0 = Dc @ self.dir0[sh]
             to = (T - H[sh]).normalized()
-            far = (T - A0).length / (A_["L1"] + A_["L2"])
-            k = min(1.0, max(0.0, (far - 0.82) / 0.18)) * 0.30 + max(0.0, to.z) * 0.30
-            ax = c0.cross(to)
-            ang = min(c0.angle(to) * k, math.radians(26.0))
-            Dsh = (Matrix.Rotation(ang, 3, ax.normalized()) @ Dc) if (ax.length > 1e-6 and ang > 1e-5) else Dc
+            up = Dc @ Z
+            rise = math.asin(max(-1.0, min(1.0, to.dot(up))))                # arm above (+) or below (-) the shoulder line
+            fore = math.asin(max(-1.0, min(1.0, to.dot(Dc @ -Y))))           # arm in front (+) or behind (-)
+            lift = max(math.radians(-10.0), min(math.radians(24.0), rise * (0.30 if rise > 0 else 0.12)))
+            reach = max(math.radians(-8.0), min(math.radians(14.0), fore * 0.16))
+            axis_lift = c0.cross(up)
+            axis_fore = c0.cross(Dc @ -Y)
+            Dsh = Dc
+            if axis_lift.length > 1e-6:
+                Dsh = Matrix.Rotation(lift, 3, axis_lift.normalized()) @ Dsh
+            if axis_fore.length > 1e-6:
+                Dsh = Matrix.Rotation(reach, 3, axis_fore.normalized()) @ Dsh
             D[sh] = Dsh
             A = H[sh] + Dsh @ (self.H0[ua] - self.H0[sh])
             pole = c.get("elbow_" + s)
@@ -373,25 +381,42 @@ class Puppet(Skeleton):
             D[f"{tag}HandThumb{k}"] = Dp
 
     # ---- swords
-    def grip(self, tag, S, guard, along=0.06, roll=0.0, tilt=18.0, depth=0.030, up=0.37):
-        """Where the wrist must be, and how the hand is turned, to hold a sword.
+    GRIP = dict(tilt=18.0, depth=0.030, up=0.37)     # how a handle lies in the closed fist: diagonal across the palm,
+    #                                                  this far in front of the palm bones and this far up the hand
 
-        S      3x3 world rotation of the sword (columns: flat, toward the point, back of the blade)
-        guard  world position of the sword's origin (the guard)
-        along  distance of the fist's centre behind the guard
-        roll   turn of the hand round the handle, degrees (0: knuckles in line with the edge)
-        tilt   how far the handle lies diagonally across the palm
-        Returns (wrist position, hand rotation D)."""
+    def _grip_frame(self, tag):
         hd = self.hand[tag]
         a, lat, n = hd["a"], hd["lat"], hd["n"]
-        e_blade = (-lat * math.cos(math.radians(tilt)) + a * math.sin(math.radians(tilt))).normalized()    # the blade leaves the fist on the thumb side
-        e_edge = (a * math.cos(math.radians(tilt)) + lat * math.sin(math.radians(tilt))).normalized()      # the edge leads with the knuckles
+        t = math.radians(self.GRIP["tilt"])
+        e_blade = (-lat * math.cos(t) + a * math.sin(t)).normalized()      # the blade leaves the fist on the thumb side
+        e_edge = (a * math.cos(t) + lat * math.sin(t)).normalized()        # the edge leads with the knuckles
+        g0 = a * (self.GRIP["up"] * hd["Lh"]) + lat * hd["vc"] - n * self.GRIP["depth"]   # centre of the closed fist, from the wrist, at rest
+        return e_blade, e_edge, g0
+
+    def grip(self, tag, S, at, along=0.0, roll=0.0, flip=False):
+        """Where the wrist must be, and how the hand is turned, to hold a sword.
+
+        S      3x3 world rotation of the sword where the fist sits (columns: flat, toward the point, back of the blade)
+        at     world position of the handle's axis there (minus 'along' metres toward the pommel)
+        roll   turn of the hand round the handle, degrees (0: knuckles in line with the edge)
+        flip   thumb toward the pommel instead of the point (a hand resting on the scabbard, a reverse grip)
+        Returns (wrist position, hand rotation D)."""
+        e_blade, e_edge, g0 = self._grip_frame(tag)
         Ys = (S @ Y).normalized()
-        E = rot(Ys, roll) @ (S @ -Z)
-        Dhand = frame(Ys, perp(E, Ys)) @ frame(e_blade, e_edge).transposed()
-        g0 = a * (up * hd["Lh"]) + lat * hd["vc"] - n * depth            # centre of the closed fist, from the wrist, at rest
-        G = Vector(guard) - Ys * along
+        Yh = -Ys if flip else Ys
+        E = rot(Yh, roll) @ (S @ -Z)
+        Dhand = frame(Yh, perp(E, Yh)) @ frame(e_blade, e_edge).transposed()
+        G = Vector(at) - Ys * along
         return G - Dhand @ g0, Dhand
+
+    def ungrip(self, tag, wrist, Dhand, roll=0.0, flip=False):
+        """Inverse of grip(): the handle's axis position and the sword's 3x3 rotation in a closed hand."""
+        e_blade, e_edge, g0 = self._grip_frame(tag)
+        Yh = (Dhand @ e_blade).normalized()
+        E = rot(Yh, -roll) @ (Dhand @ e_edge)
+        Ys = -Yh if flip else Yh
+        Zs = -perp(E, Ys)
+        return wrist + Dhand @ g0, Matrix((Ys.cross(Zs), Ys, Zs)).transposed()
 
 
 def sword_matrix(guard, point_dir, edge_dir):
