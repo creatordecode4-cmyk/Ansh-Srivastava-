@@ -53,7 +53,7 @@ def seg_oni_walk(lib, new):
     A = new("oni")
     take, lead = _mocap(A, "walk", 1, 2, speed=0.85, widen=0.10)
     n = len(take)
-    holds = [dict(sword="main", hand="Left", f0=0, f1=n, along=-0.10, roll=200, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
+    holds = [dict(sword="main", hand="Left", f0=0, f1=n, along=-0.10, roll=180, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
     return dict(cast=[(A, take, None, holds)], lead=lead, views=[("SIDE", 90, 4), ("FRONT", 18, 4), ("BACK", 205, 6)], height=2.62, look=1.04,
                 title="ONI SAMURAI  -  walk  (motion capture + foot lock, hand on the scabbard)")
 
@@ -69,7 +69,7 @@ def seg_duo_walk(lib, new):
     A, B = new("oni"), new("ronin")
     ta, lead = _mocap(A, "walk", 1, 2.4, speed=0.9, widen=0.10, at=(0.62, 0.0))
     tb, _ = _mocap(B, "walk", 1, 2.4, speed=0.9, widen=0.02, at=(-0.62, 0.0))
-    holds = [dict(sword="main", hand="Left", f0=0, f1=len(ta), along=-0.10, roll=200, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
+    holds = [dict(sword="main", hand="Left", f0=0, f1=len(ta), along=-0.10, roll=180, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
     return dict(cast=[(A, ta, None, holds), (B, tb, None, ())], lead=lead, views=[("FRONT", 8, 5), ("BACK", 152, 7)], height=2.55, look=1.04, wide=2.5,
                 title="SIDE BY SIDE  -  both fighters walking")
 
@@ -114,11 +114,14 @@ def seg_oni_strike(lib, new):
     take = motion.Take.from_keys(A.pp, [(0, guard, "inout"), (10, guard, "inout"), (26, high, "inout"), (31, high, "inout"), (38, cut, "slow_in"),
                                         (45, sunk, "slow_out"), (58, rest, "inout"), (78, guard2, "inout"), (92, guard2, "inout")], steps, "strike")
     take.fit_hips(A.pp)
-    k_guard = A.sword_key(0, guard, (-0.02, -0.46, 1.12), (0.02, -0.92, 0.38), (0, 0, -1))
-    k_high = A.sword_key(26, high, (0.0, 0.03, 2.03), (0.0, 0.55, 0.83), (0, -0.83, 0.55))
-    k_cut = A.sword_key(38, cut, (-0.02, -0.91, 1.05), (0.0, -0.975, -0.22), (0, 0.22, -0.975), ease="slow_in")
-    track = [k_guard, dict(k_guard, f=10), k_high, dict(k_high, f=31),
-             A.sword_key(35, cut, (0.0, -0.54, 1.80), (0.0, -0.5, 0.87), (0, -0.87, -0.5), space="world", ease="slow_in"),
+    still = dict(hips=tuple(A.pp.H0["Hips"]))                    # sword places given 'as if he stood in the rest pose' travel with the chest
+    # his arms are short for his trunk: held at the navel the rear fist would be inside the belt knot, so the guard is at chest height
+    k_guard = A.sword_key(0, guard, (-0.04, -0.60, 1.33), (0.02, -0.90, 0.42), (0, -0.42, -0.90))
+    k_up = A.sword_key(19, still, (0.0, -0.58, 1.80), (0.0, -0.50, 0.87), (0, -0.87, -0.50))         # raised past the face at arm's length, not through the hair
+    k_high = A.sword_key(26, still, (0.0, -0.27, 2.10), (0.0, 0.5, 0.87), (0, -0.87, 0.5))            # hands above and in front of the forehead, blade back over the head
+    k_mid = A.sword_key(35, still, (0.0, -0.52, 1.95), (0.0, -0.42, 0.91), (0, -0.91, -0.42), ease="slow_in")   # coming down in front of the face
+    k_cut = A.sword_key(38, cut, (-0.02, -1.02, 1.12), (0.0, -0.975, -0.22), (0, 0.22, -0.975), ease="slow_in")
+    track = [k_guard, dict(k_guard, f=10), k_up, k_high, dict(k_high, f=31), k_mid,
              k_cut, dict(k_cut, f=45, ease="slow_out"), dict(k_cut, f=58), dict(k_guard, f=78), dict(k_guard, f=92)]
     n = len(take)
     holds = [dict(sword="main", hand="Right", f0=0, f1=n, along=0.058, roll=28, blend_in=0),

@@ -25,7 +25,9 @@ import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
 from . import cache, core, fighters, motion, weapons
+from . import clear as clr
 from .puppet import EASE, I3, SHAPES, Puppet, Y, ease, mix_shapes, slerp, sword_matrix, ypr
+from .skin import Skin
 
 def _ramp(f, a, b):
     """0 before a, 1 after b, smooth between."""
@@ -46,6 +48,15 @@ class Sword:
         self.rest = bone_rest.inverted() @ (ob.matrix_world @ self.flip)      # sheathed, in the bone's frame, as a standard sword (edge on -Z)
         inv = ob.matrix_world.inverted()                                    # tassels hang from the sword: where, in the sword's own space
         self.tassels = [(c, inv @ c.matrix_world.translation) for c in ob.children]
+        inv = saya.matrix_world.inverted()
+        self.saya_tassels = [(c, inv @ c.matrix_world.translation) for c in saya.children]
+        self.rest_world = arm.matrix_world.inverted() @ (saya.matrix_world @ self.flip)   # the scabbard at rest, standard axes, armature space
+        self.length = spec["blade"] + 0.02
+        self.carry = None                                                   # how the scabbard rides on the body (set by the actor)
+
+    def arc(self, s):
+        """Point on the sword's and scabbard's shared arc at distance s from the guard (standard axes)."""
+        return tuple(weapons.frame(s, self.R)[0])
 
     def slid(self, d):
         """Standard-frame offset that slides the sword d metres out of the scabbard along their shared arc."""
@@ -76,6 +87,17 @@ class Actor:
             self.cloth.append(soft.hakama(self.arm, self.body, self.proxy, J, col))
         self.start = 61
         self.frames = 0
+        # the body as a solid, and what must stay out of it
+        self.skin = Skin(self.proxy, self.pp)
+        for sw in self.swords.values():
+            sw.carry = clr.Scabbard(self.skin, sw.rest_world, sw.arc, sw.length, "hip" if who == "oni" else "back",
+                                    gap=0.022 if who == "oni" else 0.017)      # his trousers swing: more room
+        self.hat = None
+        if self.F.get("hat") is not None:
+            spec = self.F["hat_spec"]
+            self.hat = dict(pos=self.arm.matrix_world.inverted() @ self.F["hat"].matrix_world.translation, pts=clr.hat_points(spec["radius"], spec["rise"]))
+        self.arm_gap = 0.02 if who == "oni" else 0.03                        # the Ronin's hands must also clear the cloth on his hips
+        self.pre, self.poses, self.saya_local, self.report = [], [], {}, {}
 
     # ---- where the shot begins
     def place(self, at=(0.0, 0.0), facing=0.0):
@@ -110,7 +132,7 @@ class Actor:
         """Standard-frame world matrix for one track key at the body state sp."""
         space = key.get("space", "world")
         if space == "sheath":
-            return sp[sw.bone] @ sw.rest @ sw.slid(key.get("d", 0.0))
+            return sp["sheath"] @ sw.slid(key.get("d", 0.0))
         if space in ("chest", "hips"):
             return sp[space] @ key["m"]
         return key["m"]
@@ -161,7 +183,7 @@ class Actor:
         return dict(f=f, space=space, m=W, ease=ease, **more)
 
     # ---- the performance
-    def perform(self, take, swords=None, holds=(), start=61, name=None, report=True):
+    def perform(self, take, swords=None, holds=(), start=61, name=None, report=True, clear=True):
         """Bake a shot.
 
         take    body motion as world controls, one per frame (sd/motion.py)
@@ -170,22 +192,40 @@ class Actor:
         holds   [dict(sword=key, hand='Right'|'Left', f0, f1 (frames it is fully closed on the grip), blend_in, blend_out,
                 along=fist behind the guard (negative: on the scabbard side), roll=degrees round the handle,
                 flip=True for thumb toward the pommel, lead=True for the hand the sword follows,
-                plan=1.0: the sword's track leads the hand; 0.0: the hand carries the sword)]"""
-        pp = self.pp
+                plan=1.0: the sword's track leads the hand; 0.0: the hand carries the sword)]
+        clear   keep hands, scabbards, hat and tassels out of the body (sd/clear.py). False bakes the
+                motion as it comes, which is only useful to measure what the clearing changes."""
+        pp, skin = self.pp, self.skin
         n = len(take)
         self.start, self.frames = start, n
         swords = swords or {}
         Tobj = self.arm.matrix_world.copy()
+        Tinv = Tobj.inverted()
         Rinv = Tobj.to_3x3().inverted()
         tinv = -(Rinv @ Tobj.translation)
-        final, sword_m = [], {k: [None] * n for k in self.swords}
+        # 1. the body alone: where trunk and legs are on every frame
+        poses = [pp.solve(motion.moved(dict(c), Rinv, tinv)) for c in take.c]
+        posed = [skin.pose(p) for p in poses]
+        # 2. scabbards: on the back between two points of the skin, or hanging from the belt and pushed aside by the leg
+        saya = {}
+        for key, sw in self.swords.items():
+            sw.carry.prev = None
+            if clear:
+                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"]) for f in range(n)]
+            else:
+                saya[key] = [pp.bone_matrix(poses[f], sw.bone) @ sw.rest for f in range(n)]
+        self.saya_local = saya
+        # 3. swords as planned, hands onto the grips
+        final = []
         planned = {k: [None] * n for k in self.swords}
+        held = [dict(Left=False, Right=False) for _ in range(n)]
         for f in range(n):
             c = dict(take.c[f])
             sp = self._spine(c)
             for key, sw in self.swords.items():
+                sp["sheath"] = Tobj @ saya[key][f]
                 tr = swords.get(key)
-                planned[key][f] = self._track(sw, tr, f, sp) if tr else sp[sw.bone] @ sw.rest
+                planned[key][f] = self._track(sw, tr, f, sp) if tr else sp["sheath"]
             for h in holds:
                 wh = _ramp(f, h["f0"] - h.get("blend_in", 8), h["f0"]) * (1.0 - _ramp(f, h["f1"], h["f1"] + h.get("blend_out", 8)))
                 if wh <= 0.0:
@@ -194,8 +234,8 @@ class Actor:
                 sw = self.swords[h["sword"]]
                 wp = wh * h.get("plan", 1.0)
                 if wp > 0.0:
+                    held[f][tag] = True
                     wrist, Dhand = self._grip(tag, planned[h["sword"]][f], h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
-                    base = c["hand_" + s]
                     if wp < 1.0:                                         # still on the way: between where the body had the hand and the grip
                         bw = self._hand_world(c, tag, sp)
                         wrist = bw[0].lerp(wrist, wp)
@@ -207,11 +247,41 @@ class Actor:
                     c["hand_" + s] = dict(c["hand_" + s], bend=ypr(*[v * wh for v in h["bend"]]))
                 c["fingers_" + s] = mix_shapes(c["fingers_" + s], "grip", min(1.0, max(0.0, (wh - 0.55) / 0.45)))
             final.append(c)
-        # solve in the armature's own space
         local = [motion.moved(c, Rinv, tinv) for c in final]
         poses = [pp.solve(c) for c in local]
-        # swords: read back from the lead hand where one is closed on the grip, else as planned
+        # 4. the hat brim clear of shoulders and sword grips; arms out of body and hat; carried blades off the body
+        stats = dict(arm_push=0.0, elbow_turn=0.0, hat_tilt_kept=1.0, blade_left=0.0)
+        if clear:
+            brims = None
+            if self.hat:
+                grips = []
+                for f in range(n):
+                    seg = []
+                    for key, sw in self.swords.items():
+                        m = Tinv @ planned[key][f]
+                        seg.append((np.array(m.translation), np.array(m @ Vector(sw.arc(-sw.spec["grip"] - 0.02))), 0.024))
+                    grips.append(seg)
+                stats["hat_tilt_kept"] = clr.hat(pp, posed, poses, self.hat["pos"], self.hat["pts"], grips)
+                brims = [clr.brim_points(pp, p, self.hat["pos"], self.hat["pts"]) for p in poses]
+            free = [dict(Left=not held[f]["Left"], Right=not held[f]["Right"]) for f in range(n)]
+            stats["arm_push"], stats["elbow_turn"] = clr.arms(pp, skin, posed, local, poses, free, gap=self.arm_gap, brims=brims)
+            carry = {}
+            for h in holds:
+                if h.get("plan", 1.0) <= 0.0 and h.get("lead", True):
+                    carry[h["hand"]] = h
+            if carry:
+                carried = [{tag: h["sword"] for tag, h in carry.items() if h["f0"] <= f <= h["f1"]} for f in range(n)]
+
+                def blade_of(pose, tag, key):
+                    h, sw = carry[tag], self.swords[key]
+                    W = self._ungrip(tag, pp.heads(pose)[tag + "Hand"], pose["D"][tag + "Hand"], h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
+                    return np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.04, sw.spec["blade"], 10)])
+
+                stats["blade_left"] = clr.blades(pp, skin, posed, local, poses, carried, blade_of, brims=brims)
+            posed = [skin.pose(p) for p in poses]
+        # 6. swords: read back from the lead hand where one is closed on the grip, else as planned
         miss = {}
+        sword_m = {k: [None] * n for k in self.swords}
         for key, sw in self.swords.items():
             for f in range(n):
                 W = planned[key][f]
@@ -228,7 +298,7 @@ class Actor:
                     W = A
                     break
                 sword_m[key][f] = W
-        # run-up: rest pose, then into the first pose of the shot
+        # 7. run-up: rest pose, then into the first pose of the shot
         rest = dict(D={}, hips=pp.H0["Hips"].copy(), short={})
         pre = []
         for fr in range(1, start):
@@ -241,21 +311,74 @@ class Actor:
         frames = list(range(1, start)) + [start + i for i in range(n)]
         act, slot = pp.write(name or f"{self.who}_shot", frames, pre + poses)
         pp.play(act, slot)
-        self.poses, self.sword_m, self.controls = poses, sword_m, final
+        self.pre, self.poses, self.sword_m, self.controls, self.planned = pre, poses, sword_m, final, planned
+        self.posed = posed if clear else [skin.pose(p) for p in poses]
+        lead_in = start - 1
+
+        def hang(mats, at):                                             # a tassel is a weight on a cord: it hangs, swings and stops at the body
+            anchors = [Tinv @ (m @ at) for m in mats]
+            sk = [self.posed[0]] * lead_in + self.posed if clear else None
+            return [Tobj @ m for m in clr.pendulum(anchors, sk)]
+
         for key, sw in self.swords.items():
-            ob = sw.ob
-            first = Tobj @ pp.bone_matrix(pre[0], sw.bone) @ sw.rest
-            mats = [first if sword_m[key][0] is None else sword_m[key][0]] * (start - 1) + sword_m[key]
-            mats = [m @ sw.flip for m in mats]
-            _key_object(ob, frames, mats, self.arm)
-            for tassel, at in sw.tassels:                                # a tassel is a weight on a cord: it hangs and swings
-                _key_object(tassel, frames, _pendulum([m @ at for m in mats]), self.arm)
+            mats = [sword_m[key][0] @ sw.flip] * lead_in + [m @ sw.flip for m in sword_m[key]]
+            _key_object(sw.ob, frames, mats, self.arm)
+            for tassel, at in sw.tassels:
+                _key_object(tassel, frames, hang(mats, at), self.arm)
+            mats = [Tobj @ saya[key][0] @ sw.flip] * lead_in + [Tobj @ m @ sw.flip for m in saya[key]]
+            _key_object(sw.saya, frames, mats, self.arm)
+            for tassel, at in sw.saya_tassels:
+                _key_object(tassel, frames, hang(mats, at), self.arm)
+        short_f = max([v for p in poses for k, v in p["short"].items() if "Foot" in k] or [0.0])
+        short_h = max([v for p in poses for k, v in p["short"].items() if "Hand" in k] or [0.0])
+        self.report = dict(stats, legs_short=short_f, arms_short=short_h, sword_miss=dict(miss))
         if report:
-            short_f = max([v for p in poses for k, v in p["short"].items() if "Foot" in k] or [0.0])
-            short_h = max([v for p in poses for k, v in p["short"].items() if "Hand" in k] or [0.0])
             print(f"  {self.who}: {n} frames baked from {start}; legs short by {short_f * 1000:.1f} mm, arms short by {short_h * 1000:.1f} mm, "
-                  f"swords off their marks by {({k: round(v * 1000, 1) for k, v in miss.items()} or 0)} mm")
+                  f"swords off their marks by {({k: round(v * 1000, 1) for k, v in miss.items()} or 0)} mm"
+                  + (f"; hands moved out by up to {stats['arm_push'] * 100:.1f} cm, elbows turned up to {stats['elbow_turn']:.0f} deg, "
+                     f"hat kept {stats['hat_tilt_kept'] * 100:.0f} % of its tilt at worst" if clear else ""))
         return poses
+
+    def clip_report(self):
+        """What still passes through what in the baked shot (before cloth): worst overlap in millimetres
+        per kind of contact, 0 meaning clear. An overlap is how far one surface is inside the other."""
+        pp, skin, n = self.pp, self.skin, self.frames
+        Tinv = self.arm.matrix_world.inverted()
+        out = dict(arm_in_body=0.0, scabbard_in_body=0.0, hat_in_body=0.0, hat_in_grip=0.0, arm_in_hat=0.0, blade_in_body=0.0, blade_in_hat=0.0)
+        for f in range(n):
+            posed, pose = self.posed[f], self.poses[f]
+            for tag in ("Left", "Right"):
+                pts = clr.arm_points(pp, skin, pose, tag)
+                d, _, _ = posed.signed([p for _, p, _ in pts], "body")
+                out["arm_in_body"] = max(out["arm_in_body"], float((np.array([r for _, _, r in pts]) - d).max()))
+            for key, sw in self.swords.items():
+                m = self.saya_local[key][f]
+                pts = sw.carry.local @ np.array(m.to_3x3()).T + np.array(m.translation)
+                d, _, _ = posed.signed(pts[2:], "body")
+                out["scabbard_in_body"] = max(out["scabbard_in_body"], float((0.018 - d).max()))
+                W = Tinv @ self.sword_m[key][f]
+                if (W.translation - m.translation).length > 0.05:        # drawn: the blade against the fighter's own body
+                    blade = np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.05, sw.spec["blade"], 12)])
+                    d, _, _ = posed.signed(blade, "body")
+                    out["blade_in_body"] = max(out["blade_in_body"], float((0.012 - d).max()))
+                    if self.hat:
+                        B = clr.brim_points(pp, pose, self.hat["pos"], self.hat["pts"])
+                        out["blade_in_hat"] = max(out["blade_in_hat"], 0.008 - float(np.linalg.norm(blade[:, None, :] - B[None, :, :], axis=2).min()))
+            if self.hat:
+                head = np.array(pp.heads(pose)["Head"])
+                P = (self.hat["pts"] + (np.array(self.hat["pos"]) - np.array(pp.H0["Head"]))) @ np.array(pose["D"]["Head"]).T + head
+                d, _, _ = posed.signed(P, "trunk")
+                out["hat_in_body"] = max(out["hat_in_body"], float((-d).max()))
+                for tag in ("Left", "Right"):
+                    for _, q, r in clr.arm_points(pp, skin, pose, tag):
+                        out["arm_in_hat"] = max(out["arm_in_hat"], r - float(np.linalg.norm(P - np.array(q), axis=1).min()))
+                for key, sw in self.swords.items():
+                    W = Tinv @ self.planned[key][f]
+                    a, b = np.array(W.translation), np.array(W @ Vector(sw.arc(-sw.spec["grip"] - 0.02)))
+                    ab = b - a
+                    t = np.clip(((P - a) @ ab) / float(ab @ ab), 0.0, 1.0)
+                    out["hat_in_grip"] = max(out["hat_in_grip"], float((0.024 - np.linalg.norm(P - (a + t[:, None] * ab), axis=1)).max()))
+        return {k: round(max(0.0, v) * 1000, 1) for k, v in out.items()}
 
     def _hand_world(self, c, tag, sp):
         """World wrist position (and hand rotation if given) of a body-driven hand control."""
@@ -317,29 +440,6 @@ def simulate(sc, actors, folder, end=None, report=40):
     for a in actors:
         a.body.hide_viewport = hidden[a.who]
     return files
-
-
-def _pendulum(anchors, length=0.11, fps=24.0, sub=6, drag=0.035):
-    """World matrices of something hanging from a moving point: a weight on a cord of the given
-    length (to its centre of mass), swung by the point's motion and settling under gravity.
-    The object's own -Z is taken as 'down the cord'."""
-    out = []
-    p = anchors[0] + Vector((0, 0, -length))
-    prev = p.copy()
-    dt = 1.0 / (fps * sub)
-    last = anchors[0]
-    for a in anchors:
-        for k in range(sub):
-            at = last.lerp(a, (k + 1) / sub)
-            nxt = p + (p - prev) * (1.0 - drag) + Vector((0, 0, -9.81)) * dt * dt
-            prev, p = p, nxt
-            d = p - at
-            p = at + d.normalized() * length if d.length > 1e-9 else at + Vector((0, 0, -length))
-        last = a
-        m = Vector((0, 0, -1)).rotation_difference((p - a).normalized()).to_matrix().to_4x4()
-        m.translation = a
-        out.append(m)
-    return out
 
 
 def _key_object(ob, frames, mats, arm):
