@@ -468,14 +468,16 @@ class Wearer:
 
 
 # ----------------------------------------------------------------------------- the Ronin's cloth
-def ronin_cape(col, wearer, mat, straps=(), seed=3):
+def ronin_cape(col, wearer, mat, straps=(), seed=3, strap_floor=None):
     """Long tattered cape (BACK VIEW of the sheet), seated across the back of the shoulders on
     top of the cowl and falling to the knees. It is kept between the shoulder joints so that it
     hangs clear of the arms in the rest pose.
 
     straps: (top, bottom) world points of each scabbard's axis. The swords are worn over the
-    cape and hold it against the back, so on a statue the cloth is pinned to the back along those
-    lines. An actor's cape is given no straps: it hangs from the shoulders and is free to swing."""
+    cape and hold it against the back, so the cloth is pinned to the back along those lines: it
+    must stay between the back and the scabbards, never pass through them.
+    strap_floor: lowest height at which it is pinned that way. A statue is pinned all the way
+    down; an actor only on the torso, so that nothing is pinned to skin that follows a thigh."""
     rng = np.random.default_rng(seed)
     x0, x1 = -0.17, 0.19                                # the seat, between the shoulder joints
     gather = 1.15
@@ -517,6 +519,8 @@ def ronin_cape(col, wearer, mat, straps=(), seed=3):
             i0 = int(round((p.x - x0) / dx))
             j = int(round((seat_z(p.x) - p.z) / CELL))
             if j < 4 or j >= nv or wearer.back(p.x, p.z) is None:        # above the seat, below the hem, or off the body
+                continue
+            if strap_floor is not None and p.z < strap_floor:
                 continue
             for i in (i0 - 1, i0, i0 + 1):
                 x = x0 + i * dx

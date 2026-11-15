@@ -378,6 +378,17 @@ class Actor:
                     ab = b - a
                     t = np.clip(((P - a) @ ab) / float(ab @ ab), 0.0, 1.0)
                     out["hat_in_grip"] = max(out["hat_in_grip"], float((0.024 - np.linalg.norm(P - (a + t[:, None] * ab), axis=1)).max()))
+        # one leg of the trousers inside the other
+        L, R = np.flatnonzero(skin.region["left_leg"])[::6], np.flatnonzero(skin.region["right_leg"])[::6]
+        legs = 0.0
+        for f in range(0, n, 2):
+            posed = self.posed[f]
+            for mine, other in ((L, "right_leg"), (R, "left_leg")):
+                d, _, _ = posed.signed(posed.P[mine], other)
+                d = d[d < 0.9]
+                if len(d):
+                    legs = max(legs, float((-d).max()))
+        out["leg_in_leg"] = legs
         return {k: round(max(0.0, v) * 1000, 1) for k, v in out.items()}
 
     def _hand_world(self, c, tag, sp):
@@ -397,7 +408,7 @@ class Actor:
         return simulate(sc, [self], folder, end, report)
 
 
-def simulate(sc, actors, folder, end=None, report=40):
+def simulate(sc, actors, folder, end=None, report=40, clear=True):
     """Run the cloth of all actors from frame 1 through the shot and store the shot's frames on disk (PC2).
     Afterwards the panels play back from those files and no longer simulate.
 
@@ -431,6 +442,54 @@ def simulate(sc, actors, folder, end=None, report=40):
                 rec[ob.name].append(co)
         if report and f % report == 0:
             print(f"    cloth frame {f}/{end + 1}", flush=True)
+    # trousers that are part of the body: the two legs may press together but not pass through each other
+    for a in actors:
+        for ob in a.cloth:
+            if "Cage" not in ob.name or not a.poses or not clear:
+                continue
+            rest = np.empty(len(ob.data.vertices) * 3, dtype=np.float32)
+            ob.data.vertices.foreach_get("co", rest)
+            rest = rest.reshape(-1, 3).astype(np.float64)
+            moved = 0
+            for i, fr in enumerate(range(first, end + 2)):
+                k = fr - a.start
+                pose = a.pre[-1] if k < 0 else a.poses[min(a.frames - 1, k)]
+                X = rec[ob.name][i].reshape(-1, 3).astype(np.float64)
+                moved += clr.part_legs(X, rest, pose, a.pp)
+                rec[ob.name][i] = X.astype(np.float32).reshape(-1)
+            a.report["trouser_legs_parted"] = moved
+            print(f"  {a.who} trousers: {moved} cage points over the shot were through the other leg and were put back on their own side", flush=True)
+    # whatever the collision let through is put back: no cloth inside the body, none through a scabbard
+    for a in actors:
+        mine = [ob for ob in a.cloth if "Cage" not in ob.name]
+        if not mine or not a.poses or not clear:
+            continue
+        before, deepest, left = 0, 0.0, 0
+        total = sum(len(rec[ob.name][0]) // 3 for ob in mine) * len(rec[mine[0].name])
+        for i, fr in enumerate(range(first, end + 2)):
+            k = fr - a.start
+            pose = a.pre[-1] if k < 0 else a.poses[min(a.frames - 1, k)]
+            posed = a.skin.pose(pose)
+            segs = []
+            if k >= 0:
+                kk = min(a.frames - 1, k)
+                for key, sw in a.swords.items():
+                    m = a.saya_local[key][kk]
+                    pts = sw.carry.local @ np.array(m.to_3x3()).T + np.array(m.translation)
+                    segs += [(pts[j], pts[j + 1], 0.019) for j in range(len(pts) - 1)]
+            for ob in mine:
+                X = rec[ob.name][i].reshape(-1, 3).astype(np.float64)
+                n_bad, deep = clr.depenetrate(X, posed, gap=0.004)
+                before += n_bad
+                deepest = max(deepest, deep)
+                if segs:
+                    clr.out_of_capsules(X, segs)
+                    clr.depenetrate(X, posed, gap=0.004)
+                d, _, _ = posed.signed(X, "all")
+                left += int((d < -0.001).sum())
+                rec[ob.name][i] = X.astype(np.float32).reshape(-1)
+        a.report["cloth"] = dict(points=total, inside_before=before, deepest_mm=round(deepest * 1000, 1), inside_after=left)
+        print(f"  {a.who} cloth: {before} of {total} points were inside the body or too close (deepest {deepest * 1000:.0f} mm); after putting them back: {left}", flush=True)
     files = []
     for ob in panels:
         path = os.path.join(folder, f"{ob.name}.pc2")

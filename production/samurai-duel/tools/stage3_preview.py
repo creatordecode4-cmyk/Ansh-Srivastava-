@@ -51,7 +51,7 @@ def _mocap(A, clip_name, lead, show, speed=1.0, widen=0.0, at=(0.0, 0.0), facing
 
 def seg_oni_walk(lib, new):
     A = new("oni")
-    take, lead = _mocap(A, "walk", 1, 2, speed=0.85, widen=0.10)
+    take, lead = _mocap(A, "walk", 1, 2, speed=0.85, widen=0.12)
     n = len(take)
     holds = [dict(sword="main", hand="Left", f0=0, f1=n, along=-0.10, roll=180, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
     return dict(cast=[(A, take, None, holds)], lead=lead, views=[("SIDE", 90, 4), ("FRONT", 18, 4), ("BACK", 205, 6)], height=2.62, look=1.04,
@@ -60,15 +60,15 @@ def seg_oni_walk(lib, new):
 
 def seg_ronin_walk(lib, new):
     A = new("ronin")
-    take, lead = _mocap(A, "walk", 1, 2, widen=0.02)
+    take, lead = _mocap(A, "walk", 1, 2, widen=0.03)
     return dict(cast=[(A, take, None, ())], lead=lead, views=[("SIDE", 90, 4), ("FRONT", 18, 4), ("BACK", 205, 6)], height=2.5, look=1.0,
                 title="CYBER RONIN  -  walk  (cape, waist cloth and tails are simulated)")
 
 
 def seg_duo_walk(lib, new):
     A, B = new("oni"), new("ronin")
-    ta, lead = _mocap(A, "walk", 1, 2.4, speed=0.9, widen=0.10, at=(0.62, 0.0))
-    tb, _ = _mocap(B, "walk", 1, 2.4, speed=0.9, widen=0.02, at=(-0.62, 0.0))
+    ta, lead = _mocap(A, "walk", 1, 2.4, speed=0.9, widen=0.12, at=(0.62, 0.0))
+    tb, _ = _mocap(B, "walk", 1, 2.4, speed=0.9, widen=0.03, at=(-0.62, 0.0))
     holds = [dict(sword="main", hand="Left", f0=0, f1=len(ta), along=-0.10, roll=180, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
     return dict(cast=[(A, ta, None, holds), (B, tb, None, ())], lead=lead, views=[("FRONT", 8, 5), ("BACK", 152, 7)], height=2.55, look=1.04, wide=2.5,
                 title="SIDE BY SIDE  -  both fighters walking")
@@ -76,7 +76,7 @@ def seg_duo_walk(lib, new):
 
 def seg_ronin_run(lib, new):
     A = new("ronin")
-    take, lead = _mocap(A, "run", 2, 3)
+    take, lead = _mocap(A, "run", 2, 3, widen=0.012)
     return dict(cast=[(A, take, None, ())], lead=lead, views=[("SIDE", 90, 4), ("FRONT", 25, 5)], height=2.45, look=1.0, wide=2.3,
                 title="CYBER RONIN  -  dash  (cloth streaming behind)")
 

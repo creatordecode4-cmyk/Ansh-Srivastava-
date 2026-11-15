@@ -427,3 +427,25 @@ def out_of_capsules(X, segs, gap=0.003):
             X[bad] = c[bad] + v[bad] / np.maximum(dist[bad], 1e-9)[:, None] * (r + gap)
             moved += int(bad.sum())
     return moved
+
+
+def part_legs(X, rest, pose, pp, crotch=0.72, gap=0.010):
+    """Keep the two legs of a pair of trousers on their own sides. Skinned to legs that pass close,
+    the left leg's cloth ends up inside the right one; real cloth presses together and flattens.
+    X: (n, 3) cage positions in the armature's space (changed in place); rest: the same vertices at
+    rest. A vertex that belongs to the left leg may not cross the plane between the legs (the
+    pelvis's own middle plane), nor a right one the other way. Returns how many were moved."""
+    left = (rest[:, 0] > 0.02) & (rest[:, 2] < crotch)
+    right = (rest[:, 0] < -0.02) & (rest[:, 2] < crotch)
+    D = np.array(pose["D"]["Hips"])
+    head = np.array(pose["hips"])
+    h0 = np.array(pp.H0["Hips"])
+    Xh = (X - head) @ D + h0                                          # as if the pelvis stood in the rest pose
+    bad_l = left & (Xh[:, 0] < gap)
+    bad_r = right & (Xh[:, 0] > -gap)
+    Xh[bad_l, 0] = gap
+    Xh[bad_r, 0] = -gap
+    if bad_l.any() or bad_r.any():
+        X[:] = (Xh - h0) @ D.T + head
+    return int(bad_l.sum() + bad_r.sum())
+

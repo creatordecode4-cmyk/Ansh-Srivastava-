@@ -121,8 +121,9 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False, arms
         tone = [((c + 0.055) / 1.055) ** 2.4 * 1.35 for c in rgb]                 # texture mean has shading baked in: lift it back to the cloth's own tone
         skirt = garments.ronin_skirt(sim, w, garments.fabric("MAT_Ronin_Skirt", tone, 0.5, 0.8, dirt=0.75))
         tails = garments.ronin_tails(sim, w, garments.fabric("MAT_Ronin_Tails", tone, 0.15, 0.85, dirt=0.75))
-        # a statue's cape is also pinned to the back under the scabbards; an actor's hangs from the shoulders only
-        cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), () if rigged else straps)
+        # the cape is pinned to the back under the scabbards (an actor's only on the torso), so it stays between back and swords
+        cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), straps,
+                                   strap_floor=1.12 if rigged else None)
         sims = [cape] + skirt + tails
         lifts = None
         hang = garments.load_drape("ronin_actor" if rigged else "ronin", sims) if rigged else None
