@@ -70,7 +70,7 @@ def seg_duo_walk(lib, new):
     ta, lead = _mocap(A, "walk", 1, 2.4, speed=0.9, widen=0.10, at=(0.62, 0.0))
     tb, _ = _mocap(B, "walk", 1, 2.4, speed=0.9, widen=0.02, at=(-0.62, 0.0))
     holds = [dict(sword="main", hand="Left", f0=0, f1=len(ta), along=-0.10, roll=200, flip=True, lead=False, blend_in=0, elbow=(0.9, 0.5, -0.2))]
-    return dict(cast=[(A, ta, None, holds), (B, tb, None, ())], lead=lead, views=[("FRONT", 12, 5), ("SIDE", 78, 5)], height=2.5, look=1.02, wide=1.9,
+    return dict(cast=[(A, ta, None, holds), (B, tb, None, ())], lead=lead, views=[("FRONT", 8, 5), ("BACK", 152, 7)], height=2.55, look=1.04, wide=2.5,
                 title="SIDE BY SIDE  -  both fighters walking")
 
 

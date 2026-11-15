@@ -44,7 +44,8 @@ class Sword:
         arm = actor.arm
         bone_rest = arm.matrix_world @ arm.data.bones["mixamorig:" + bone].matrix_local
         self.rest = bone_rest.inverted() @ (ob.matrix_world @ self.flip)      # sheathed, in the bone's frame, as a standard sword (edge on -Z)
-        self.tassels = [c for c in ob.children]
+        inv = ob.matrix_world.inverted()                                    # tassels hang from the sword: where, in the sword's own space
+        self.tassels = [(c, inv @ c.matrix_world.translation) for c in ob.children]
 
     def slid(self, d):
         """Standard-frame offset that slides the sword d metres out of the scabbard along their shared arc."""
@@ -245,7 +246,10 @@ class Actor:
             ob = sw.ob
             first = Tobj @ pp.bone_matrix(pre[0], sw.bone) @ sw.rest
             mats = [first if sword_m[key][0] is None else sword_m[key][0]] * (start - 1) + sword_m[key]
-            _key_object(ob, frames, [m @ sw.flip for m in mats], self.arm)
+            mats = [m @ sw.flip for m in mats]
+            _key_object(ob, frames, mats, self.arm)
+            for tassel, at in sw.tassels:                                # a tassel is a weight on a cord: it hangs and swings
+                _key_object(tassel, frames, _pendulum([m @ at for m in mats]), self.arm)
         if report:
             short_f = max([v for p in poses for k, v in p["short"].items() if "Foot" in k] or [0.0])
             short_h = max([v for p in poses for k, v in p["short"].items() if "Hand" in k] or [0.0])
@@ -313,6 +317,29 @@ def simulate(sc, actors, folder, end=None, report=40):
     for a in actors:
         a.body.hide_viewport = hidden[a.who]
     return files
+
+
+def _pendulum(anchors, length=0.11, fps=24.0, sub=6, drag=0.035):
+    """World matrices of something hanging from a moving point: a weight on a cord of the given
+    length (to its centre of mass), swung by the point's motion and settling under gravity.
+    The object's own -Z is taken as 'down the cord'."""
+    out = []
+    p = anchors[0] + Vector((0, 0, -length))
+    prev = p.copy()
+    dt = 1.0 / (fps * sub)
+    last = anchors[0]
+    for a in anchors:
+        for k in range(sub):
+            at = last.lerp(a, (k + 1) / sub)
+            nxt = p + (p - prev) * (1.0 - drag) + Vector((0, 0, -9.81)) * dt * dt
+            prev, p = p, nxt
+            d = p - at
+            p = at + d.normalized() * length if d.length > 1e-9 else at + Vector((0, 0, -length))
+        last = a
+        m = Vector((0, 0, -1)).rotation_difference((p - a).normalized()).to_matrix().to_4x4()
+        m.translation = a
+        out.append(m)
+    return out
 
 
 def _key_object(ob, frames, mats, arm):
