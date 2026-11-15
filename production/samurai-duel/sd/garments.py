@@ -267,6 +267,32 @@ def freeze(ob, name, col, thickness=0.0014, subdiv=1):
     return out
 
 
+def bind(ob, arm, proxy):
+    """Make a panel's pinned vertices follow the skeleton: each takes the bone weights of the
+    nearest point of the wearer's skin at its seat, and an Armature modifier ahead of the Cloth
+    modifier moves it. Everything that is not pinned stays with the simulation."""
+    from scipy.spatial import cKDTree
+    me = ob.data
+    key = me.shape_keys.key_blocks["Tuck"]
+    pin = ob.vertex_groups["pin"].index
+    pinned = [v.index for v in me.vertices if any(g.group == pin and g.weight > 0 for g in v.groups)]
+    pco = np.empty(len(proxy.data.vertices) * 3, dtype=np.float32)
+    proxy.data.vertices.foreach_get("co", pco)
+    seats = np.array([key.data[i].co[:] for i in pinned])
+    _, near = cKDTree(pco.reshape(-1, 3)).query(seats)
+    gname = {g.index: g.name for g in proxy.vertex_groups}
+    for vi, pv in zip(pinned, near):
+        for g in proxy.data.vertices[int(pv)].groups:
+            if g.weight > 0.01 and g.group in gname:
+                vg = ob.vertex_groups.get(gname[g.group]) or ob.vertex_groups.new(name=gname[g.group])
+                vg.add([vi], g.weight, "REPLACE")
+    m = ob.modifiers.new("Armature", "ARMATURE")
+    m.object = arm
+    ob.modifiers.move(len(ob.modifiers) - 1, 0)
+    ob.parent = arm
+    return len(pinned)
+
+
 # ----------------------------------------------------------------------------- measuring the wearer
 class Wearer:
     """Ray-cast helper around the body's collision stand-in."""

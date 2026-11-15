@@ -379,6 +379,36 @@ def pose(arm, rotations):
     bpy.context.view_layer.update()
 
 
+def hold_rest(arm, name, yaw=0.0):
+    """Pose a bone so that it keeps its rest orientation (turned by yaw degrees about the vertical),
+    whatever its parents are doing. Used to keep feet flat on the ground and heads level."""
+    bpy.context.view_layer.update()
+    pb = arm.pose.bones[P + name]
+    pb.rotation_mode = "QUATERNION"
+    rest = pb.bone.matrix_local.to_3x3()
+    carried = pb.parent.matrix.to_3x3() @ pb.parent.bone.matrix_local.to_3x3().inverted() @ rest
+    want = Matrix.Rotation(math.radians(yaw), 3, "Z") @ rest
+    pb.rotation_quaternion = (carried.inverted() @ want).to_quaternion()
+    bpy.context.view_layer.update()
+
+
+def ground(arm, feet=("LeftFoot", "RightFoot")):
+    """Move the hips straight down or up until the lower ankle is back at its rest height."""
+    bpy.context.view_layer.update()
+    lift = min(arm.pose.bones[P + f].head.z - arm.data.bones[P + f].head_local.z for f in feet)
+    hips = arm.pose.bones[P + "Hips"]
+    hips.location = Vector(hips.location) + hips.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, -lift))
+    bpy.context.view_layer.update()
+    return lift
+
+
+def key_pose(arm, frame):
+    """Keyframe every bone's rotation and the hips' position."""
+    for pb in arm.pose.bones:
+        pb.keyframe_insert("rotation_quaternion", frame=frame)
+    arm.pose.bones[P + "Hips"].keyframe_insert("location", frame=frame)
+
+
 def rest_pose(arm):
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"

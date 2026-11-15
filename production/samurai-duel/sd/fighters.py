@@ -7,9 +7,23 @@ import bpy
 from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
-from . import core, garments, kasa, weapons
+import json
+import os
+
+from . import core, garments, kasa, rig, weapons
 from . import oni as oni_src
 from . import ronin as ronin_src
+
+
+def _attach(ob, arm, bone):
+    """Parent an object to a bone without moving it."""
+    bpy.context.view_layer.update()
+    mw = ob.matrix_world.copy()
+    ob.parent = arm
+    ob.parent_type = "BONE"
+    ob.parent_bone = rig.P + bone
+    bpy.context.view_layer.update()
+    ob.matrix_world = mw
 
 
 def _mirrored_copy(ob, name, lib, axis=(0, 0, 1)):
@@ -35,11 +49,20 @@ def _frame(origin, y_axis, x_hint):
     return m
 
 
-def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220):
+def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220, rigged=False):
     """Cyber Ronin: cut Tripo body + kasa hat (whole and pre-cut halves) + two sheathed katanas on
-    the back + simulated cape and waist tails (draped here in the rest pose)."""
-    body, A = ronin_src.load_body(col)
-    parts = {"body": body, "anchors": A}
+    the back + simulated cape and waist cloth.
+
+    rigged=False  a statue in the rest pose: the cloth is simulated once and frozen
+    rigged=True   an actor: skeleton, props parented to bones, cloth left live with its pins
+                  following the skeleton (the shot simulates it; see sd/shot.py)"""
+    if rigged:
+        R = rig.load("ronin", col)
+        body, A, arm, proxy = R["body"], R["anchors"], R["arm"], R["proxy"]
+    else:
+        body, A = ronin_src.load_body(col)
+        arm, proxy = None, bpy.data.objects[A["proxy"]]
+    parts = {"body": body, "anchors": A, "arm": arm, "proxy": proxy}
 
     # --- hat: same brim radius and position as the one that was cut away, lifted 2 cm to clear the crown
     R = max(A["hat_radius"], 0.26)                 # the generator shrank the hat; the sheet's brim is about 0.55 m across
@@ -78,11 +101,13 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220):
         straps.append((mouth, mouth - d * (spec_k["blade"] + 0.02)))
 
     # --- cloth: the panels drape themselves over a collision stand-in of the body
-    drapes = []
+    drapes, sims = [], []
+    lift_file = os.path.join(core.ASSETS, "gen", "ronin_saya_lift.json")
     if cloth:
-        sim = core.collection(name + "_SIM", hide_render=True)
-        soft = bpy.data.objects[A["proxy"]]         # the 90k skin: thinned to 24k it grows flipped slivers and the cloth climbs them
-        sim.objects.link(soft)
+        sim = core.collection(name + "_SIM", hide_render=not rigged)
+        soft = proxy                                 # the 90k skin: thinned to 24k it grows flipped slivers and the cloth climbs them
+        if not soft.users_collection:
+            sim.objects.link(soft)
         garments.collider(soft)
         w = garments.Wearer(soft)
         rgb = A["cloth_rgb"]
@@ -91,35 +116,72 @@ def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220):
         tails = garments.ronin_tails(sim, w, garments.fabric("MAT_Ronin_Tails", tone, 0.15, 0.85, dirt=0.75))
         cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), straps)
         sims = [cape] + skirt + tails
-        garments.settle(bpy.context.scene, sim_frames, report=40)
-        for ob in sims:
-            drapes.append(garments.freeze(ob, ob.name.replace("_sim", ""), col))
-        parts.update(cape=drapes[0], skirt=drapes[1:3], tails=drapes[3:], sim=sims, collider=soft)
-        # the scabbards ride on top of the cape: push each one out until it clears the cloth under it
-        bpy.context.view_layer.update()
-        bvh = BVHTree.FromObject(drapes[0], bpy.context.evaluated_depsgraph_get())
-        for ks, ss in zip(parts["katanas"], parts["sayas"]):
-            need = 0.0
-            m = ss.matrix_world
-            for t in [i / 24 for i in range(25)]:
-                p = m @ Vector((0, t * 0.75, 0))
-                hit = bvh.ray_cast(Vector((p.x, 2.0, p.z)), Vector((0, -1, 0)), 4.0)
-                if hit[0] is not None:
-                    need = max(need, hit[0].y + 0.021 - p.y)
+        lifts = None
+        if rigged and os.path.exists(lift_file):
+            lifts = json.load(open(lift_file))
+        if lifts is None:
+            garments.settle(bpy.context.scene, sim_frames, report=40)
+            # the scabbards ride on top of the cape: push each one out until it clears the cloth under it
+            bpy.context.view_layer.update()
+            dg = bpy.context.evaluated_depsgraph_get()
+            bvh = BVHTree.FromObject(cape, dg)
+            lifts = []
+            for ss in parts["sayas"]:
+                need = 0.0
+                m = ss.matrix_world
+                for t in [i / 24 for i in range(25)]:
+                    p = m @ Vector((0, t * 0.75, 0))
+                    hit = bvh.ray_cast(Vector((p.x, 2.0, p.z)), Vector((0, -1, 0)), 4.0)
+                    if hit[0] is not None:
+                        need = max(need, hit[0].y + 0.021 - p.y)
+                lifts.append(need)
+            with open(lift_file, "w") as fh:
+                json.dump(lifts, fh)
+        for ks, ss, need in zip(parts["katanas"], parts["sayas"], lifts):
             for o in (ks, ss):
                 o.matrix_world.translation.y += need
-            parts.setdefault("saya_lift", []).append(need)
+        parts["saya_lift"] = lifts
+        if rigged:
+            for ob in sims:
+                for mod in ob.modifiers:
+                    if mod.type == "SUBSURF" or mod.type == "SOLIDIFY":
+                        ob.modifiers.remove(mod)
+                garments.bind(ob, arm, soft)
+                sm = ob.modifiers.new("subd", "SUBSURF")          # after the cloth: smooth, then give it thickness
+                sm.levels = sm.render_levels = 1
+                sm.boundary_smooth = "ALL"
+                so = ob.modifiers.new("solid", "SOLIDIFY")
+                so.thickness, so.offset = 0.0014, 0.0
+                ob.name = ob.name.replace("_sim", "")
+            parts.update(cape=cape, skirt=skirt, tails=tails, sim=sims, collider=soft)
+        else:
+            for ob in sims:
+                drapes.append(garments.freeze(ob, ob.name.replace("_sim", ""), col))
+            parts.update(cape=drapes[0], skirt=drapes[1:3], tails=drapes[3:], sim=sims, collider=soft)
 
-    root = core.group(name, col, [body, whole] + halves + parts["katanas"] + parts["sayas"] + drapes)
-    parts["root"] = root
+    if rigged:
+        _attach(whole, arm, "Head")
+        for h in halves:
+            _attach(h, arm, "Head")
+        for o in parts["katanas"] + parts["sayas"]:
+            _attach(o, arm, "Spine2")
+        arm.name = name
+        parts["root"] = arm
+    else:
+        parts["root"] = core.group(name, col, [body, whole] + halves + parts["katanas"] + parts["sayas"] + drapes)
     return parts
 
 
-def oni(lib, col, name="ONI"):
+def oni(lib, col, name="ONI", rigged=False):
     """Oni Samurai: cut Tripo body + katana in its scabbard at the left hip, worn edge up, with
-    the red cords and tassels as their own objects."""
-    body, A = oni_src.load_body(col)
-    parts = {"body": body, "anchors": A}
+    the red cords and tassels as their own objects. rigged=True returns an actor (see ronin())."""
+    if rigged:
+        R = rig.load("oni", col)
+        body, A, arm, proxy = R["body"], R["anchors"], R["arm"], R["proxy"]
+    else:
+        body, A = oni_src.load_body(col)
+        arm, proxy = None, bpy.data.objects[A["proxy"]]
+    parts = {"body": body, "anchors": A, "arm": arm, "proxy": proxy}
     spec = weapons.ONI
     sword, ki = weapons.katana(lib, "PROP_Katana_Oni", spec)
     saya, si = weapons.scabbard(lib, "PROP_Saya_Oni", spec)
@@ -131,9 +193,9 @@ def oni(lib, col, name="ONI"):
     mouth = pommel - d * (spec["grip"] + 0.012)
     m = _frame(mouth, -d, (-1, 0, 0))                            # +Y toward the tip, cutting edge up
     # the hip was rebuilt after the sword was removed: move the scabbard out until it clears the body
-    sim = core.collection(name + "_SIM", hide_render=True)
-    px = bpy.data.objects[A["proxy"]]
-    sim.objects.link(px)
+    px = proxy
+    if not px.users_collection:
+        core.collection(name + "_SIM", hide_render=True).objects.link(px)
     bpy.context.view_layer.update()
     bvh = BVHTree.FromObject(px, bpy.context.evaluated_depsgraph_get())
     need = 0.0
@@ -155,5 +217,11 @@ def oni(lib, col, name="ONI"):
         ti = core.instance(t, "Oni_" + nm.replace("PROP_", ""), col, m @ local)
         tassels.append(ti)
     parts.update(katana=ks, saya=ss, tassels=tassels, saya_shift=need, collider=px)
-    parts["root"] = core.group(name, col, [body, ks, ss] + tassels)
+    if rigged:
+        for o in [ks, ss] + tassels:               # the scabbard is tied to the belt; the sword leaves it when drawn
+            _attach(o, arm, "Hips")
+        arm.name = name
+        parts["root"] = arm
+    else:
+        parts["root"] = core.group(name, col, [body, ks, ss] + tassels)
     return parts
