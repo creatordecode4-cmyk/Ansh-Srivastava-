@@ -81,10 +81,12 @@ def arm_chain(pp, skin, pose, tag, upper=False):
 HAT_GAP = 0.012
 
 
-def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, hat=None, way=None):
+def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, hat=None, way=None, near=False):
     """How far the arm is short of its clearance from the body (metres; <= 0 is clear), and the way out.
-    parts limits the test to some of the arm's points; hat = the fighter's Hat: the arm must also
-    stay out of the hat and of the space over it (Hat.funnel), leaving along 'way' (Hat.way)."""
+    parts limits the test to some of the arm's points. hat = the fighter's Hat: the arm must also
+    stay out of the hat and of the space over it. near=True: the arm only brushes the hat, and is
+    moved the shortest way off it (Hat.above); otherwise it is steered out sideways along 'way'
+    (Hat.funnel, Hat.way)."""
     pts = [q for q in arm_points(pp, skin, pose, tag) if parts is None or q[0] in parts]
     if parts is not None and "elbow" in parts:
         pts.append(("elbow", pp.heads(pose)[tag + "ForeArm"], skin.limb_radius["forearm"] * 0.9))
@@ -100,19 +102,63 @@ def arm_lack(pp, skin, posed, pose, tag, gap, parts=None, hat=None, way=None):
             chain = [q for q in chain if q[0] in parts or q[0] == "upper"]
         if chain:
             at = hat.at(pose)
-            if way is None:
-                way = hat.way(at, pose, tag)
-            far = hat.funnel(hat.local(at, [p for _, p, _ in chain]), [r for _, _, r in chain], way)
-            j = int(np.argmax(far))
+            L = hat.local(at, [p for _, p, _ in chain])
+            if near:
+                sd, g = hat.above(L)
+                far = np.array([r for _, _, r in chain]) + HAT_GAP - sd
+                j = int(np.argmax(far))
+                out = g[j]
+            else:
+                if way is None:
+                    way = hat.way(at, pose, tag)
+                far = hat.funnel(L, [r for _, _, r in chain], way)
+                j = int(np.argmax(far))
+                out = (way[0], way[1], 0.0)
             if far[j] > max(best[0], 1e-9):
-                best = (float(far[j]), hat.out(at, (way[0], way[1], 0.0)), "hat")
+                best = (float(far[j]), hat.out(at, out), "hat")
     return best
 
 
-def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, hat=None, way=None):
+def hat_ways(pp, skin, hat, poses, tag):
+    """How one arm is kept off the hat through a shot: for every frame, the sideways way out
+    (eased over time) and whether the arm only brushes the hat there.
+
+    An arm that merely comes close - a fist pumping up under the brim in a run - is moved the
+    shortest way off the hat. An arm that the motion puts into the hat or over it is steered out
+    round the rim instead. The choice is made once for each stretch of frames in which the arm is
+    near the hat, never inside one: switching between the two half-way is what makes a hand jump."""
+    n = len(poses)
+    w = _smooth(np.array([hat.way(hat.at(p), p, tag) for p in poses]), 9)
+    ways = list(w / np.maximum(np.linalg.norm(w, axis=1, keepdims=True), 1e-9))
+    active, deep = np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
+    for f, p in enumerate(poses):
+        chain = arm_chain(pp, skin, p, tag, upper=True)
+        L = hat.local(hat.at(p), [q for _, q, _ in chain])
+        rad = np.array([r for _, _, r in chain])
+        sd, _ = hat.above(L)
+        active[f] = hat.funnel(L, rad, ways[f]).max() > 0.0 or (rad + HAT_GAP - sd).max() > 0.0
+        deep[f] = (sd < 0.01).any()
+    near = [False] * n
+    f = 0
+    while f < n:
+        if not active[f]:
+            f += 1
+            continue
+        g = f
+        while g + 1 < n and active[g + 1:g + 4].any():                # a gap of a frame or two does not end the stretch
+            g += 1
+        while not active[g]:
+            g -= 1
+        if not deep[f:g + 1].any():
+            near[f:g + 1] = [True] * (g + 1 - f)
+        f = g + 1
+    return ways, near
+
+
+def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, hat=None, way=None, near=False):
     """Turn the elbow round the line from shoulder to wrist until forearm and elbow clear the body.
     Returns (angle in degrees, changed controls, pose) or None if they are clear as they are."""
-    lack, _, _ = arm_lack(pp, skin, posed, pose, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way)
+    lack, _, _ = arm_lack(pp, skin, posed, pose, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way, near=near)
     if lack <= 1e-4 and abs(prefer) < 1.0:
         return None
     H = pp.heads(pose)
@@ -128,7 +174,7 @@ def _swivel(pp, skin, posed, c, pose, tag, gap, prefer=0.0, hat=None, way=None):
         c2 = dict(c)
         c2[key] = Matrix.Rotation(math.radians(ang), 3, n) @ b0
         p2 = pp.solve(c2)
-        lk, _, _ = arm_lack(pp, skin, posed, p2, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way)
+        lk, _, _ = arm_lack(pp, skin, posed, p2, tag, gap, parts=("forearm", "elbow"), hat=hat, way=way, near=near)
         if best is None or lk < best[0] - 1e-4:
             best = (lk, ang, c2, p2)
         if lk <= 1e-4:
@@ -147,17 +193,16 @@ def arms(pp, skin, posed, controls, poses, free, gap=0.012, hat=None):
     for tag in ("Left", "Right"):
         s = tag[0]
         reach = (pp.arm_[tag]["L1"] + pp.arm_[tag]["L2"]) * 0.97       # a pushed hand never asks for a locked-straight arm
-        ways = [None] * n
-        if hat is not None:                                            # which way this arm leaves the hat's space: settled once, and eased over time
-            w = _smooth(np.array([hat.way(hat.at(poses[f]), poses[f], tag) for f in range(n)]), 9)
-            ways = list(w / np.maximum(np.linalg.norm(w, axis=1, keepdims=True), 1e-9))
+        ways, near = [None] * n, [False] * n
+        if hat is not None:                                            # how this arm is kept off the hat: settled once, before anything is moved
+            ways, near = hat_ways(pp, skin, hat, poses, tag)
         # free hands first: push them out; the first push is eased in and out over time
         total = np.zeros((n, 3))
         for rnd in range(8):
             need = np.zeros((n, 3))
             for f in range(n):
                 if free[f][tag]:
-                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f])
+                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
                     if lack > 1e-4:
                         need[f] = nrm * lack
             if not need.any():
@@ -185,7 +230,7 @@ def arms(pp, skin, posed, controls, poses, free, gap=0.012, hat=None):
         # then elbows: turn them out of the way, following on from the frame before
         prev = 0.0
         for f in range(n):
-            got = _swivel(pp, skin, posed[f], controls[f], poses[f], tag, gap * 0.5, prev, hat, ways[f])
+            got = _swivel(pp, skin, posed[f], controls[f], poses[f], tag, gap * 0.5, prev, hat, ways[f], near[f])
             if got is None:
                 prev *= 0.7
                 continue

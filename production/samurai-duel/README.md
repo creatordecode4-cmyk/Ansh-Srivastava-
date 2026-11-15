@@ -153,7 +153,9 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   - the hat is a solid (`clear.Hat`), not a ring of points: a thin blade slips between points.
     A free arm is kept out of the cylinder that stands on the rim (the shoulder is under the brim,
     so a hand over the hat means a forearm through it). Each arm has one sideways way out, eased
-    over time, so a hand rising past the head swings out round the rim instead of jumping
+    over time, so a hand rising past the head swings out round the rim instead of jumping. An arm
+    that only brushes the hat (a fist pumping up under the brim in the dash) is moved the shortest
+    way off it instead; which of the two applies is settled once per stretch of frames
   - a hand closed on a planned sword cannot be moved: there the choreography has to be clean
     (the Oni's guard is at chest height because his arms are short for his trunk; the Ronin's two
     blades in the spinning kick keep the captured rhythm of his wrists but stay beside the body
