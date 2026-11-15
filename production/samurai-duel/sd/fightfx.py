@@ -90,7 +90,7 @@ def flame_mat(name="MAT_Flame"):
     mid.color = (1.0, 0.10, 0.015, 1)
     link(v, ramp.inputs["Fac"])
     young = math("SUBTRACT", 1.0, v)
-    strength = math("MULTIPLY_ADD", math("POWER", young, 2.0), 14.0, 1.2, name="gain")
+    strength = math("MULTIPLY_ADD", math("POWER", young, 2.0), 20.0, 1.6, name="gain")
     em = nt.nodes.new("ShaderNodeEmission")
     link(ramp.outputs["Color"], em.inputs["Color"])
     link(strength, em.inputs["Strength"])
@@ -102,8 +102,8 @@ def flame_mat(name="MAT_Flame"):
     noise.inputs["Scale"].default_value = 1.0
     noise.inputs["Detail"].default_value = 3.0
     link(scale.outputs[0], noise.inputs["Vector"])
-    streak = math("MINIMUM", math("MAXIMUM", math("MULTIPLY_ADD", noise.outputs["Fac"], 2.4, -0.62), 0.0), 1.0)
-    alpha = math("MULTIPLY", math("MULTIPLY", math("POWER", young, 1.6), math("MULTIPLY_ADD", u, 0.75, 0.25)), streak)
+    streak = math("MINIMUM", math("MAXIMUM", math("MULTIPLY_ADD", noise.outputs["Fac"], 2.6, -0.50), 0.0), 1.0)
+    alpha = math("MULTIPLY", math("MULTIPLY", math("POWER", young, 1.2), math("MULTIPLY_ADD", u, 0.65, 0.35)), streak)
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     mix = nt.nodes.new("ShaderNodeMixShader")
     link(alpha, mix.inputs["Fac"])
@@ -202,9 +202,9 @@ class FightFX:
         me.uv_layers[0].data.foreach_get("uv", uv)
         uv = uv.reshape(-1, 2)
         gone = []
-        for p in me.polygons:                                        # the lower corner on his left, cut off on a slant
+        for p in me.polygons:                                        # one straight cut from the hem up to his left side: the long corner comes away
             u, v = uv[list(p.loop_indices)].mean(axis=0)
-            if u > 0.36 and v > 0.58 + 0.34 * (1.0 - u):
+            if u > 0.25 and v > 0.92 - (u - 0.25) * (0.50 / 0.75):
                 gone.append(p.index)
         if not gone:
             return
@@ -236,8 +236,8 @@ class FightFX:
         A = self.cast["oni"]
         sw = A.swords["main"]
         tip = lambda fr: A.sword_m["main"][min(A.frames - 1, fr)] @ Vector(sw.arc(sw.spec["blade"]))
-        v0 = (tip(f + 1) - tip(f - 1)) * (hits.FPS / 2.0)            # the blade's point carries it along
-        v0 = v0.normalized() * min(v0.length, 3.2) * 0.8 + Z * 0.9
+        v0 = (tip(f + 1) - tip(f - 1)) * (hits.FPS / 2.0)            # the blade's point carries it along and up
+        v0 = Vector((v0.x, v0.y, 0.0)).normalized() * 2.2 + Z * 1.9
         r = np.random.default_rng(seed)
         axis = Vector(r.normal(size=3)).normalized()
         self.scrap = dict(ob=scrap, c0=c0, v0=v0, axis=axis, f=f)
@@ -245,13 +245,13 @@ class FightFX:
     def _scrap_at(self, t):
         S = self.scrap
         a = (t - S["f"]) / hits.FPS
-        k = 5.5                                                      # cloth: the air stops it almost at once, then it sinks
+        k = 4.0                                                      # cloth: the air stops it almost at once, then it sinks slowly, a metre a second
         e = (1.0 - math.exp(-k * a)) / k
         p = S["c0"] + S["v0"] * e
-        p.z -= 9.81 * (a - e) / k
+        p.z -= 4.4 * (a - e) / k
         p.x += 0.07 * math.sin(6.5 * a) * min(1.0, a * 2.0)
         p.y += 0.05 * math.sin(4.7 * a + 1.0) * min(1.0, a * 2.0)
-        angle = 5.0 * a + 0.5 * math.sin(6.0 * a)
+        angle = 3.4 * a + 0.5 * math.sin(6.0 * a)
         if p.z < 0.02:                                               # on the floor: flat, where it came down
             p.z = 0.02
             return Matrix.Translation(p) @ Matrix.Rotation(math.radians(90.0), 4, "X")
@@ -400,31 +400,47 @@ class FightFX:
 
         verts, faces, uvs = [], [], []
         N, dt = 14, 0.16                                             # a trail a little over two take frames long
-        rows = [(M @ Vector(sw.arc(0.10)), M @ Vector(sw.arc(L - 0.005))) for M in (blade(t - k * dt) for k in range(N + 1))]
+        mats = [blade(t - k * dt) for k in range(N + 1)]
+        rows = [(M @ Vector(sw.arc(0.10)), M @ Vector(sw.arc(L - 0.005))) for M in mats]
+        swung = [False] * (N + 1)
         for k in range(N):
             (a0, b0), (a1, b1) = rows[k], rows[k + 1]
-            if (b1 - b0).length < 0.004:                             # the blade is still: no trail
+            if (b1 - b0).length < 0.045:                             # only a blade that is swung leaves a trail (its point at 7 m/s or more)
                 continue
+            swung[k] = swung[k + 1] = True
             i = len(verts)
             verts += [tuple(a0), tuple(b0), tuple(b1), tuple(a1)]
             faces.append((i, i + 1, i + 2, i + 3))
             v0, v1 = 0.12 + 0.88 * k / N, 0.12 + 0.88 * (k + 1) / N
             uvs += [(0.0, v0), (1.0, v0), (1.0, v1), (0.0, v1)]
-        M = blade(t)
-        for j in range(20):                                          # tongues of flame standing on the blade
-            s = 0.08 + j * (L - 0.10) / 19.0
-            p = M @ Vector(sw.arc(s))
-            along = (M @ Vector(sw.arc(s + 0.02)) - p).normalized()
-            h = env * (0.045 + 0.085 * (0.5 + 0.5 * math.sin(t * 2.3 + j * 1.9)) * (0.6 + 0.4 * math.sin(t * 1.13 + j * 0.7)))
-            lean = along * (0.012 * math.sin(t * 1.7 + j * 2.3))
-            i = len(verts)
-            verts += [tuple(p - along * 0.024), tuple(p + along * 0.024), tuple(p + Z * h + lean)]
-            faces.append((i, i + 1, i + 2))
-            uu = 0.3 + 0.7 * j / 19.0
-            uvs += [(uu - 0.03, 0.0), (uu + 0.03, 0.0), (uu, 1.0)]
+
+        def tongue(p, along, h, v_base, uu, lean):
+            """A flame standing on a point: two crossed triangles, so that it shows from every side."""
+            side = Z.cross(along)
+            side = side.normalized() if side.length > 1e-6 else Vector((1.0, 0.0, 0.0))
+            top = p + Z * h + lean
+            for w in (along * 0.024, side * 0.018):
+                i = len(verts)
+                verts.extend([tuple(p - w), tuple(p + w), tuple(top)])
+                faces.append((i, i + 1, i + 2))
+                uvs.extend([(uu - 0.03, v_base), (uu + 0.03, v_base), (uu, 1.0)])
+
+        for k in range(0, N + 1, 2):                                 # flames on the blade (k = 0) and, where it was swung, standing along the path it took
+            if k and not swung[k]:
+                continue
+            age = k / N
+            M = mats[k]
+            for j in range(0, 20, 1 if k == 0 else 2):
+                s_ = 0.08 + j * (L - 0.10) / 19.0
+                p = M @ Vector(sw.arc(s_))
+                along = (M @ Vector(sw.arc(s_ + 0.02)) - p).normalized()
+                flick = (0.5 + 0.5 * math.sin(t * 2.3 + j * 1.9 + k * 0.8)) * (0.6 + 0.4 * math.sin(t * 1.13 + j * 0.7 + k * 1.7))
+                h = env * (0.045 + 0.085 * flick) * (1.0 + 2.2 * age) * (1.0 - 0.55 * age)
+                tongue(p, along, h, 0.10 + 0.62 * age, 0.3 + 0.7 * j / 19.0, along * (0.012 * math.sin(t * 1.7 + j * 2.3)))
+        M = mats[0]
         _fill(self.flame, verts, faces, uvs)
         self.flame_light.location = M @ Vector(sw.arc(L * 0.55))
         self.flame_light.data.energy = 260.0 * env
         gain = flame_mat().node_tree.nodes.get("gain")
         if gain is not None:
-            gain.inputs[1].default_value = 14.0 * (0.4 + 0.6 * env)
+            gain.inputs[1].default_value = 20.0 * (0.4 + 0.6 * env)
