@@ -64,9 +64,12 @@ python3 -I tools/stage4_film.py render 1 118 --preset look --cloth-to 240       
 python3 -I tools/stage4_film.py render 119 240 --preset look --reuse-cloth         # second half, cloth played back from the first run
 python3 -I tools/stage4_film.py assemble --out previews/stage4_intro.mp4
 python3 -I tools/stage3_preview.py render s4_oni --proxy --samples 8 --step 3      # one fighter's part in clay on the studio floor
+python3 -I tools/stage4_film.py render 241 360 --preset block --step 4 --no-cloth --fight   # the fight: both whole parts, effects, camera shake
 ```
-One render job here may run for two hours at most, and all jobs share 15 GB of memory: a film
-render (about 9 GB) and a second Blender process with both fighters do not fit side by side.
+One render job here may run for two hours at most, and all jobs share 15 GB of memory. A film
+render holds 4 to 5 GB after an hour; three fit side by side, with nothing else running.
+Two or three jobs on the same four cores do not finish sooner in total (about 2 frames a minute
+at the look preset either way); they are only a way to stay inside the two-hour limit.
 
 ## Folders
 - `refs/` — the 7 reference sheets (characters, arena, props).
@@ -92,6 +95,7 @@ render (about 9 GB) and a second Blender process with both fighters do not fit s
   - `skin.py`, `clear.py` — the body as a solid; keeping hands, scabbards, hat, blades and cloth out of it
   - `retarget.py` — bone-by-bone carry-over of a downloaded FBX clip (for Mixamo files)
   - `film.py` — Stage 4: the time map (film frames against take frames), each fighter's part, the shots' cameras
+  - `hits.py`, `fightfx.py` — sparks and spray as projectiles with a formula; the fight's effects per film frame
 - `tools/` — prop test stage, preview sheets, image-to-3D crop tool.
 - `previews/` — preview images shown at each stage.
 - `assets/`, `out/` — downloads and renders. Not in git; re-created by the scripts.
@@ -223,3 +227,26 @@ render (about 9 GB) and a second Blender process with both fighters do not fit s
 - Cost on 4 CPU cores with both fighters in the arena: about 5 microseconds per sample and pixel.
   640x360 / 6 samples without fog: 10 s per frame. 960x540 / 8 samples with fog and bloom:
   35-45 s. 1080p / 128 samples: 20-25 min, which for 720 frames is not a job for this machine.
+- The fight, 10-30 s, is written beat by beat in `film.fight()`; each beat carries both parts on
+  from where the last left them: the dash and clash (slowed to a quarter), three overhead cuts
+  stopped on crossed blades (held, driven back skidding, driven down), the Ronin's slip, spin and
+  kick with the Oni thrown back across the floor, a three-blow exchange, the Oni's one-handed
+  level cut with the Ronin leaping back, the crossing, and the still ending.
+- Blades meet by construction, not by eye. One sword is placed from its own fighter's body (in
+  his chest's frame, at places measured clear of his armour); the other is laid on a point of
+  that blade, held from a fist placed in the second fighter's chest frame, and that fighter is
+  stood where the reach is right. Measured at every clash: blade centre lines 1-7 mm apart.
+- The Oni's sword work is built from the stations of the Stage 3 overhead cut and one-handed
+  sweeps; with arms of 54 cm in front of a deep chest, two hands on the grip only work before the
+  breastbone and above.
+- Running: the clip's strides are stretched or shortened to cover exactly the distance to the
+  mark, and a run is stopped over two steps (the last stride lands under the body, the other
+  foot swings through and lands ahead), so that a fighter stops with his weight between his feet.
+- A skid is the one case where a foot on the ground is meant to travel (`slide=True` steps).
+- The crossing is seen from the side, where the two pass through one line; in depth they are a
+  sword's length apart, and the blades meet between them.
+- A blow that lands is held for 3 film frames (rows with rate 0 in the time map); the camera's
+  jolt runs in film frames and so carries on through the hold.
+- Blocking status: every beat is measured in clay with the scratch tool described in the commit
+  log (overlaps on shown frames, reach, blade distances, nearest approach between the fighters).
+  Cameras and effects for the fight are written but not yet checked in the arena.

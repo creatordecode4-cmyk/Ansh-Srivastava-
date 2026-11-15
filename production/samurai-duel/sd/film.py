@@ -1112,6 +1112,13 @@ def shots(cast):
     oni, ronin = cast["oni"], cast["ronin"]
     out = []
 
+    def facing(A, ff):                                               # the way a fighter's chest faces on a film frame, in degrees
+        f = min(A.frames - 1, max(0, int(round(take_time(ff)))))
+        d = (A.arm.matrix_world.to_3x3() @ A.poses[f]["D"]["Spine2"]) @ Vector((0.0, -1.0, 0.0))
+        return math.degrees(math.atan2(d.x, -d.y))
+
+    oni_face, ronin_face = (lambda ff: facing(oni, ff)), (lambda ff: facing(ronin, ff))
+
     def add(name, first, last, cam, note=""):
         out.append(dict(name=name, first=first, last=last, cam=cam, note=note))
 
@@ -1160,6 +1167,123 @@ def shots(cast):
         u = _smooth((ff - 225) / 15.0)
         return dict(pos=_mix((7.5, 2.0, 0.50), (7.2, 2.0, 0.52), u), look=(-0.6, 2.05, 1.55), lens=24.0)
     add("S03d standoff", 225, 240, standoff)
+
+    # ------------------------------------------------------------------ the fight
+    hips = lambda A, ff: joint(A, "Hips", ff)
+    head = lambda A, ff: joint(A, "Head", ff)
+    both = lambda ff: (hips(oni, ff) + hips(ronin, ff)) * 0.5
+    flat = lambda v, z: Vector((v.x, v.y, z))
+
+    def polar(centre, azimuth, radius, height):                      # azimuth as for the studio cameras: 0 = from the south, 90 = from the east
+        a = math.radians(azimuth)
+        return Vector((centre.x + math.sin(a) * radius, centre.y - math.cos(a) * radius, height))
+
+    # 10 s: the dash. Each is followed low and from the side for a few strides, then the clash side on, slowed down
+    def dash_oni(ff):
+        h = hips(oni, ff)
+        return dict(pos=flat(h, 0.0) + Vector((3.1, 1.5, 0.55)), look=flat(h, 1.15) + Vector((0, 0.4, 0)), lens=32.0, hand=0.012)
+    add("S04a the Oni runs", 241, 251, dash_oni)
+
+    def dash_ronin(ff):
+        h = hips(ronin, ff)
+        return dict(pos=flat(h, 0.0) + Vector((-2.9, -1.6, 0.60)), look=flat(h, 1.10) + Vector((0, -0.4, 0)), lens=32.0, hand=0.012)
+    add("S04b the Ronin runs", 252, 262, dash_ronin)
+
+    def clash(ff):
+        u = _smooth((ff - 263) / 25.0)
+        return dict(pos=_mix((3.5, 1.85, 0.95), (2.9, 1.95, 1.12), u), look=(-0.05, 2.05, 1.42), lens=35.0)
+    add("S04c the clash", 263, 288, clash)
+
+    # 12 s: the three cuts, the camera circling from the east round behind the Oni's shoulder
+    def orbit(ff):
+        u = (ff - 289) / 71.0
+        c = both(ff)
+        return dict(pos=polar(c, 90.0 - 68.0 * _smooth(u), 4.3 - 0.6 * u, 1.55 - 0.40 * u), look=flat(c, 1.30), lens=32.0, hand=0.006)
+    add("S05 three cuts", 289, 360, orbit)
+
+    # 15 s: the slip, the spin and the kick from the south-west; then low behind the Oni as he is thrown back toward the lens
+    def spin(ff):
+        u = (ff - 361) / 37.0
+        c = both(ff)
+        return dict(pos=polar(c, -62.0 - 14.0 * u, 4.0, 1.25), look=flat(c, 1.25), lens=35.0, hand=0.008)
+    add("S06a spin and kick", 361, 398, spin)
+
+    def thrown(ff):
+        end = hips(oni, 432)
+        return dict(pos=Vector((end.x + 1.5, end.y - 2.7, 0.34)), look=flat(both(ff), 0.95), lens=28.0)
+    add("S06b thrown back", 399, 432, thrown)
+
+    # 18 s: the exchange, hand-held, a new angle for every blow
+    def trade_a(ff):
+        o = hips(oni, ff)
+        return dict(pos=flat(o, 0.0) + Vector((1.5, -1.7, 1.50)), look=flat(both(ff), 1.40), lens=38.0, hand=0.022)
+    add("S07a first blow", 433, 445, trade_a)
+
+    def trade_b(ff):
+        c = both(ff)
+        return dict(pos=flat(c, 0.0) + Vector((-3.1, 0.4, 0.85)), look=flat(c, 1.40), lens=42.0, hand=0.022)
+    add("S07b second blow", 446, 465, trade_b)
+
+    def trade_c(ff):
+        r = hips(ronin, ff)
+        return dict(pos=flat(r, 0.0) + Vector((1.3, 1.9, 1.55)), look=flat(both(ff), 1.20), lens=38.0, hand=0.022)
+    add("S07c third blow", 466, 485, trade_c)
+
+    def trade_d(ff):
+        c = both(ff)
+        return dict(pos=Vector((5.4, c.y, 1.0)), look=flat(c, 1.15), lens=30.0, hand=0.012)
+    add("S07d apart", 486, 504, trade_d)
+
+    # 21 s: the Oni winds up, seen low from in front; the cut from the side; then over the Ronin's shoulder
+    def wind(ff):
+        u = _smooth((ff - 505) / 23.0)
+        o = hips(oni, ff)
+        return dict(pos=flat(o, 0.0) + _mix((1.5, 2.6, 0.50), (1.2, 2.1, 0.58), u), look=flat(o, 1.35), lens=40.0)
+    add("S08a the Oni winds up", 505, 528, wind)
+
+    def great(ff):
+        c = both(ff)
+        o = hips(oni, ff)
+        return dict(pos=Vector((5.2, c.y, 1.05)), look=flat(_mix(o, c, 0.6), 1.15), lens=28.0, hand=0.008)
+    add("S08b the great cut", 529, 549, great)
+
+    def torn(ff):
+        r = hips(ronin, ff)
+        return dict(pos=flat(r, 0.0) + Vector((-1.5, 1.9, 1.60)), look=flat(_mix(r, hips(oni, ff), 0.5), 1.15), lens=35.0, hand=0.006)
+    add("S08c the cape", 550, 576, torn)
+
+    # 24 s: the last pass, side on and wide; at the crossing nearer and slowed down; then both still, back to back
+    def last_a(ff):
+        c = both(ff)
+        return dict(pos=Vector((7.2, c.y, 0.80)), look=flat(c, 1.20), lens=30.0)
+    add("S09a they set themselves", 577, 595, last_a)
+
+    def last_b(ff):
+        c = both(604)
+        u = _smooth((ff - 596) / 27.0)
+        return dict(pos=_mix((5.2, c.y, 0.95), (4.7, c.y, 1.0), u), look=flat(c, 1.20), lens=35.0)
+    add("S09b the crossing", 596, 623, last_b)
+
+    def last_c(ff):
+        c = both(648)
+        u = _smooth((ff - 624) / 24.0)
+        return dict(pos=_mix((6.6, c.y, 0.62), (6.9, c.y, 0.60), u), look=flat(c, 1.25), lens=28.0)
+    add("S09c back to back", 624, 648, last_c)
+
+    # 27 s: the Ronin's hat, seen from in front of him with the moon behind; the Oni's mask; black
+    def hat_falls(ff):
+        h = head(ronin, 660)
+        f_ = _along(ronin_face(660))
+        u = _smooth((ff - 649) / 35.0)
+        return dict(pos=h + f_ * (1.75 - 0.15 * u) + Vector((-f_.y, f_.x, 0.0)) * 0.45 + Vector((0, 0, -0.22)), look=h + Vector((0, 0, 0.04)), lens=58.0)
+    add("S10a the hat", 649, 684, hat_falls)
+
+    def mask_cracks(ff):
+        h = head(oni, 700)
+        f_ = _along(oni_face(700))
+        u = _smooth((ff - 685) / 35.0)
+        return dict(pos=h + f_ * (1.25 - 0.12 * u) + Vector((-f_.y, f_.x, 0.0)) * -0.38 + Vector((0, 0, -0.05)), look=h + Vector((0, 0, 0.02)), lens=80.0)
+    add("S10b the mask", 685, 720, mask_cracks)
     return out
 
 
@@ -1172,6 +1296,38 @@ def shot_at(shots_, film_frame):
 
 # when each fighter is in the film at all: before that he is not rendered (he waits where a camera could see him)
 ENTERS = dict(oni=73, ronin=145)
+
+
+def film_of(take_frame):
+    """The first film frame that shows a take frame."""
+    for a, b, t0, rate in TIME:
+        if rate > 0.0 and t0 <= take_frame <= t0 + (b - a) * rate + 1e-6:
+            return a + int(math.ceil((take_frame - t0) / rate - 1e-6))
+        if rate == 0.0 and abs(t0 - take_frame) < 1e-6:
+            return a
+    return TIME[-1][1]
+
+
+def _wobble(t, seed):
+    return (math.sin(t * 1.7 + seed * 12.9) + 0.6 * math.sin(t * 3.1 + seed * 7.3) + 0.35 * math.sin(t * 5.3 + seed * 3.7)) / 1.95
+
+
+def shake(film_frame, hand=0.0):
+    """How far the camera and the point it looks at are off their marks on a film frame (two vectors,
+    metres): the drift of a hand-held camera, and a jolt from every blow that has just landed. It
+    runs in film frames, so the jolt goes on through the frames a blow is held for."""
+    t = film_frame / 24.0
+    pos = Vector((_wobble(t * 5.0, 1), _wobble(t * 5.0, 2), _wobble(t * 5.0, 3))) * hand
+    look = Vector((_wobble(t * 6.3, 4), _wobble(t * 6.3, 5), _wobble(t * 6.3, 6))) * hand * 1.6
+    for ev in EVENTS:
+        if ev["kind"] not in ("clash", "kick"):
+            continue
+        age = film_frame - film_of(ev["f"])
+        if 0 <= age < 12:
+            k = 0.030 * ev.get("power", 1.0) * math.exp(-age / 2.6)
+            pos += Vector((_wobble(film_frame * 2.3, 7), _wobble(film_frame * 2.9, 8), _wobble(film_frame * 3.7, 9))) * k
+            look += Vector((_wobble(film_frame * 3.1, 10), _wobble(film_frame * 2.7, 11), _wobble(film_frame * 4.1, 12))) * k * 1.5
+    return pos, look
 
 
 def visor_glint(cast, film_frame, peak=209, width=2.6):

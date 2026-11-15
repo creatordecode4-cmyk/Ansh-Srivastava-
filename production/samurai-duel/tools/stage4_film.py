@@ -1,8 +1,11 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
-    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME]
-    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME] [--out previews/stage4_intro.mp4]
-    python3 -I tools/stage4_film.py shots                       # the shot list
+    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
+    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
+
+--fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
+fight's effects and camera shake; without it only the intro is built, as it was rendered for the
+intro preview. The two keep separate cloth caches (out/cache/stage4 and out/cache/stage4_fight).
 
 Presets (4 CPU cores):
     block   640x360, 6 samples, light arena, no fog            about 10 s per frame: staging and timing
@@ -38,28 +41,30 @@ def out_dir(preset, tag):
     return os.path.join(HERE, "out", "stage4", preset + tag)
 
 
-def build(preset, cloth=True, last=240):
-    """Arena, both fighters performing, cloth run and cached. Returns (scene, cast, shots)."""
+def build(preset, cloth=True, last=240, fight=False):
+    """Arena, both fighters performing, cloth run and cached. Returns (scene, cast, shots, cloth folder)."""
     import bpy
     from sd import actor, arena, core, film
     P = PRESETS[preset]
     t0 = time.time()
     sc, cams = arena.build(detail=P["detail"], particles=True, verbose=False)
     lib = bpy.data.collections["PROPS_LIB"]
-    cast = {}
-    for who, part in (("oni", film.oni_intro), ("ronin", film.ronin_intro)):
-        A = actor.Actor(who, lib, core.collection(who.upper() + "_C"), cloth=cloth)
-        take, swords, holds, steer = part(A)
+    cast = {who: actor.Actor(who, lib, core.collection(who.upper() + "_C"), cloth=cloth) for who in ("oni", "ronin")}
+    if fight:
+        parts, notes = film.fight(cast)
+    else:
+        parts = dict(oni=film.oni_intro(cast["oni"]), ronin=film.ronin_intro(cast["ronin"]))
+    for who, A in cast.items():
+        take, swords, holds, steer = parts[who]
         h = take.c[0]["hips"]
         A.place((h.x, h.y), 0.0)
         A.perform(take, swords=swords, holds=holds, start=film.LEAD + 1, steer=steer, report=False)
         seen = A.clip_report(film.shown(max(1, film.ENTERS[who]), last))
         print(f"  {who}: {len(take)} take frames; on the frames the film shows: {dict((k, v) for k, v in seen.items() if v > 0.0) or 'nothing overlaps'}", flush=True)
-        cast[who] = A
     end = int(math.ceil(film.scene_time(last))) + 1
     print(f"BUILD {time.time() - t0:.1f}s", flush=True)
     t0 = time.time()
-    folder = os.path.join(HERE, "out", "cache", "stage4")
+    folder = os.path.join(HERE, "out", "cache", "stage4_fight" if fight else "stage4")
     if cloth and "--reuse-cloth" in sys.argv and actor.replay(list(cast.values()), folder):
         cloth = False                                                # played back from the last run's files
         print("cloth played back from", folder, flush=True)
@@ -74,7 +79,7 @@ def build(preset, cloth=True, last=240):
         for A in cast.values():
             A.body.hide_viewport = hidden[A.who]
     print(f"CLOTH {time.time() - t0:.1f}s (scene frames 1-{end})", flush=True)
-    return sc, cast, film.shots(cast)
+    return sc, cast, film.shots(cast), folder
 
 
 def render():
@@ -90,7 +95,8 @@ def render():
     i = sys.argv.index("render")
     first, last = int(sys.argv[i + 1]), int(sys.argv[i + 2])
     step = arg("--step", 1, cast=int)
-    sc, cast, shots = build(preset, cloth="--no-cloth" not in sys.argv, last=max(last, arg("--cloth-to", last, cast=int)))
+    fight = "--fight" in sys.argv
+    sc, cast, shots, folder = build(preset, cloth="--no-cloth" not in sys.argv, last=max(last, arg("--cloth-to", last, cast=int)), fight=fight)
     W, H = P["size"]
     rnd.setup(sc, W, H, P["samples"], 0.03)
     sc.cycles.adaptive_min_samples = P["samples"]
@@ -126,6 +132,10 @@ def render():
     glint.data.materials.append(gm)
     glint.visible_shadow = False
     glint.hide_render = True
+    fx = None
+    if fight:
+        from sd import fightfx
+        fx = fightfx.FightFX(sc, cast, core.collection("FIGHT_FX"), folder if "--no-cloth" not in sys.argv else None)
     out = out_dir(preset, tag)
     os.makedirs(out, exist_ok=True)
     font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(11, H // 34))
@@ -141,9 +151,13 @@ def render():
                     o.hide_render = hide
         sh = film.shot_at(shots, ff)
         c = sh["cam"](ff)
-        cam.location = Vector(c["pos"])
-        core.look_at(cam, Vector(c["look"]))
+        d_pos, d_look = film.shake(ff, c.get("hand", 0.0)) if fight else (Vector(), Vector())
+        cam.location = Vector(c["pos"]) + d_pos
+        core.look_at(cam, Vector(c["look"]) + d_look)
         cd.lens = c["lens"]
+        if fx is not None:
+            bpy.context.view_layer.update()
+            fx.update(ff, cam)
         g = film.visor_glint(cast, ff) if sh["name"].startswith("S03b") else None
         glint.hide_render = g is None
         if g is not None:
@@ -153,6 +167,11 @@ def render():
             glint.scale = (g[1], g[1], g[1])
         path = os.path.join(out, f"f_{ff:04d}.png")
         rnd.still(sc, path, cam)
+        dark = min(1.0, max(0.0, (ff - 708) / 12.0))                   # the last half second goes to black
+        if dark > 0.0:
+            im = Image.open(path).convert("RGB")
+            im = Image.eval(im, lambda v, k=1.0 - dark: int(v * k))
+            im.save(path)
         if P["label"]:
             im = Image.open(path).convert("RGB")
             d = ImageDraw.Draw(im)
@@ -167,7 +186,8 @@ def render():
 def assemble():
     preset, tag = arg("--preset", "look"), arg("--tag", "")
     d = out_dir(preset, tag)
-    frames = sorted(f for f in os.listdir(d) if f.startswith("f_") and f.endswith(".png"))
+    lo, hi = arg("--from", 1, cast=int), arg("--to", 10 ** 6, cast=int)
+    frames = sorted(f for f in os.listdir(d) if f.startswith("f_") and f.endswith(".png") and lo <= int(f[2:6]) <= hi)
     film_path = os.path.join(HERE, arg("--out", "previews/stage4_intro.mp4"))
     lst = os.path.join(d, "frames.txt")
     nums = [int(f[2:6]) for f in frames]
