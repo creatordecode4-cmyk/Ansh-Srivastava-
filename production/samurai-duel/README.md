@@ -250,3 +250,12 @@ at the look preset either way); they are only a way to stay inside the two-hour 
 - Blocking status: every beat is measured in clay with the scratch tool described in the commit
   log (overlaps on shown frames, reach, blade distances, nearest approach between the fighters).
   Cameras and effects for the fight are written but not yet checked in the arena.
+- Intro preview (`previews/stage4_intro.mp4`, stills in `previews/stage4_intro.jpg`): 240 frames at
+  the look preset. On the frames it shows, the takes measure: Oni's hand on his scabbard 10.5 mm
+  (it rests there), his trouser legs 45 mm into each other at the crotch as he walks (the cloth
+  cage is then put back on its own side, 30018 points over the shot), the Ronin's fingers on the
+  brim 45 mm into the space kept clear round the hat (they hold it); cloth: 17801 of 2.1 million
+  points inside the body, 0 after they are put back, no blade through cloth.
+- The camera's near clip is 30 cm: a snowflake drifting past the lens filled a corner of the last
+  frame of the standoff until it was.
+

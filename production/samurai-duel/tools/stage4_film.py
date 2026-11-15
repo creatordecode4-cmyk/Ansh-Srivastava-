@@ -1,6 +1,7 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
     python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
+                                           [--only F,F,...] [--skip-done]
     python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
 
 --fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
@@ -95,6 +96,8 @@ def render():
     i = sys.argv.index("render")
     first, last = int(sys.argv[i + 1]), int(sys.argv[i + 2])
     step = arg("--step", 1, cast=int)
+    only = [int(v) for v in arg("--only", "").split(",") if v]       # --only 115,116,214: just these film frames, in this order (FIRST LAST still bound the cloth)
+    skip = "--skip-done" in sys.argv                                 # leave alone frames that are already on disk (several jobs can then share a range)
     fight = "--fight" in sys.argv
     sc, cast, shots, folder = build(preset, cloth="--no-cloth" not in sys.argv, last=max(last, arg("--cloth-to", last, cast=int)), fight=fight)
     W, H = P["size"]
@@ -107,7 +110,7 @@ def render():
     if P["bloom"]:
         rnd.bloom(sc)
     cd = bpy.data.cameras.new("CAM_Film")
-    cd.sensor_width, cd.clip_start, cd.clip_end = 36.0, 0.05, 3000.0
+    cd.sensor_width, cd.clip_start, cd.clip_end = 36.0, 0.30, 3000.0   # nothing nearer than 30 cm is drawn: a snowflake that drifts past the lens would fill the frame
     cam = bpy.data.objects.new("CAM_Film", cd)
     sc.collection.objects.link(cam)
     sc.camera = cam
@@ -140,7 +143,9 @@ def render():
     os.makedirs(out, exist_ok=True)
     font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(11, H // 34))
     t_all = time.time()
-    for ff in range(first, last + 1, step):
+    for ff in (only or range(first, last + 1, step)):
+        if skip and os.path.exists(os.path.join(out, f"f_{ff:04d}.png")):
+            continue
         t1 = time.time()
         st = film.scene_time(ff)
         sc.frame_set(int(math.floor(st)), subframe=st - math.floor(st))
