@@ -19,7 +19,15 @@ from . import core
 from .mats import NT, _new, get
 
 SPEC = dict(radius=0.235, rise=0.105, thick=0.006, seams=36, rings=(0.36, 0.60, 0.83), cap_r=0.060, cap_h=0.050,
-            band_r=0.094, band_h=0.050, strap_x=0.090, strap_drop=0.17, cut_yaw=math.radians(8.0), cut_offset=0.012)
+            band_r=0.094, band_h=0.050, strap_x=0.090, strap_drop=0.17, strap_out=(1.0, 1.03, 1.0, 0.9),
+            cut_yaw=math.radians(8.0), cut_offset=0.012)
+LENGTHS = ("radius", "rise", "thick", "cap_r", "cap_h", "band_r", "band_h", "strap_x", "strap_drop", "cut_offset")
+
+
+def scaled(radius, **over):
+    """SPEC resized to a given brim radius, with overrides applied afterwards."""
+    f = radius / SPEC["radius"]
+    return dict({k: (v * f if k in LENGTHS else v) for k, v in SPEC.items()}, **over)
 
 
 def _panel_mat(name, base, rough, seams, rings, radius, ribs=False):
@@ -111,8 +119,9 @@ def _fittings(name, S, col):
     for sx in (-1, 1):                                             # strap arms hanging from the band, silver tipped
         bb = core.BoxBatch()
         x0 = sx * S["strap_x"]
-        pts = [Vector((x0, 0.0, zb - bh + 0.012)), Vector((x0 * 1.03, -0.006, zb - bh - 0.04)), Vector((x0 * 1.0, -0.016, zb - bh - 0.09)),
-               Vector((x0 * 0.9, -0.03, zb - bh - S["strap_drop"] + 0.03))]
+        o = S["strap_out"]
+        pts = [Vector((x0 * o[0], 0.0, zb - bh + 0.012)), Vector((x0 * o[1], -0.006, zb - bh - 0.04)), Vector((x0 * o[2], -0.016, zb - bh - 0.09)),
+               Vector((x0 * o[3], -0.03, zb - bh - S["strap_drop"] + 0.03))]
         for a, c in zip(pts[:-1], pts[1:]):
             bb.beam(a, c, 0.024, 0.0065, bevel=0.002)
         arm = bb.to_object(name + "_strap", col, cm.black_steel())

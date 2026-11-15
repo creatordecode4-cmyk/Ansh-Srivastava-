@@ -46,7 +46,7 @@ P = dict(
     hat_z=0.925,
     sword_radius=0.024, sword_extend=0.03,
     waist=0.645,                              # below this height (top of the waist wrap) the right side is rebuilt from the left
-    crown=0.030,                              # height of the helmet crown above the cut rim
+    crown=0.014,                              # height of the helmet crown above the cut rim (it must fit inside the hat)
     patch_sides=900,
 )
 
@@ -141,9 +141,12 @@ def _labels(s, verbose=True):
     for k in hits:
         if area[k] < 0.012:
             strand |= lab == k
+    bc = s.texture("basecolor")
+    cloth_rgb = [float(v) for v in np.average(bc[cloth & ~sheet], axis=0, weights=s.farea[cloth & ~sheet])]
     if verbose:
+        print(f"  cloth colour (sRGB texture mean) {np.round(cloth_rgb, 3)}")
         print(f"  labels: cloth {cloth.mean():.2f} sheet {sheet.mean():.2f} hat {hat.mean():.3f} swords {sword.mean():.3f} strands {strand.mean():.4f} of faces; hat radius {hat_r:.3f}")
-    return dict(cloth=cloth, sheet=sheet, hat=hat, sword=sword, strand=strand, thick=thick, hat_centre=hc, hat_radius=hat_r, lines=lines)
+    return dict(cloth=cloth, sheet=sheet, hat=hat, sword=sword, strand=strand, thick=thick, hat_centre=hc, hat_radius=hat_r, lines=lines, cloth_rgb=cloth_rgb)
 
 
 # ----------------------------------------------------------------------------- cutting
@@ -378,7 +381,7 @@ def build_body(verbose=True):
     bpy.data.objects.remove(s.ob)
     anchors = dict(
         hat_centre=[float(v) for v in L["hat_centre"]], hat_radius=L["hat_radius"], hat_z=[float(z[L["hat"]].min()), float(z[L["hat"]].max())],
-        helmet_rim=rim_z, helmet_top=top or rim_z,
+        helmet_rim=rim_z, helmet_top=top or rim_z, helmet_radius=float(fit["r"]) if fit else 0.04, cloth_rgb=L["cloth_rgb"],
         swords=[dict(centre=[float(v) for v in c], dir=[float(v) for v in d], t=[a, b]) for c, d, a, b in L["lines"]],
     )
     if verbose:
@@ -389,7 +392,7 @@ def build_body(verbose=True):
 def _scaled(a, k):
     return dict(
         scale=k, hat_centre=[v * k for v in a["hat_centre"]], hat_radius=a["hat_radius"] * k, hat_z=[v * k for v in a["hat_z"]],
-        helmet_rim=a["helmet_rim"] * k, helmet_top=a["helmet_top"] * k,
+        helmet_rim=a["helmet_rim"] * k, helmet_top=a["helmet_top"] * k, helmet_radius=a["helmet_radius"] * k, cloth_rgb=a["cloth_rgb"],
         swords=[dict(centre=[v * k for v in s_["centre"]], dir=s_["dir"], t=[v * k for v in s_["t"]]) for s_ in a["swords"]],
     )
 
