@@ -177,7 +177,9 @@ class Take:
             steps = [(foot 'Left'|'Right', first frame, last frame, dict(pos=, yaw=, pitch=), lift)]
         A step with a new 'pos' leaves the ground heel first, travels in an arc 'lift' metres high
         and lands heel first. A step without 'pos' keeps the ball of the foot planted and only
-        changes yaw or pitch (rising onto the ball, pivoting)."""
+        changes yaw or pitch (rising onto the ball, pivoting). A step with slide=True is a skid:
+        the foot stays on the ground and travels to 'pos' losing speed all the way (the one case
+        where a foot on the ground is meant to move; its frames are marked 'slide', not planted)."""
         keys = sorted(((f, pp.canon(c), e) for f, c, e in keys), key=lambda k: k[0])
         n = keys[-1][0] + 1
         frames = []
@@ -204,17 +206,18 @@ class Take:
                 p1 = Vector(to["pos"]) if "pos" in to else pos
                 y1, t1 = to.get("yaw", yaw), to.get("pitch", pitch)
                 travels = (p1 - pos).length > 1e-6
+                slide = bool(to.get("slide"))                           # skidding over the wet floor: the sole stays down and loses speed
                 for f in range(a + 1, min(b, n)):
                     u = (f - a) / (b - a)
-                    g = u * u * (3 - 2 * u)
+                    g = 1.0 - (1.0 - u) ** 2 if slide else u * u * (3 - 2 * u)
                     q = pos.lerp(p1, g)
                     tilt = pitch + (t1 - pitch) * g
                     toe = None
-                    if travels:
+                    if travels and not slide:
                         q.z += lift * math.sin(math.pi * u)
                         tilt += 16.0 * math.sin(math.pi * min(1.0, u / 0.5)) if u < 0.5 else -9.0 * math.sin(math.pi * (u - 0.5) / 0.5)
                         toe = 0.0 if u > 0.3 else None
-                    track[f] = (q, yaw + (y1 - yaw) * g, tilt, toe, None if travels else "ball")
+                    track[f] = (q, yaw + (y1 - yaw) * g, tilt, toe, "slide" if slide else (None if travels else "ball"))
                 pos, yaw, pitch = p1.copy(), y1, t1
                 for f in range(min(b, n), n):
                     track[f] = (pos.copy(), yaw, pitch, None, "flat" if abs(pitch) < 1.0 else "ball")

@@ -138,44 +138,11 @@ def seg_ronin_blades(lib, new):
     are planned and the hands follow them: each wrist keeps the rhythm it was captured with, but
     is held to the space beside the body and below the brim, and the blade points out and back
     from there - clear of head, hat and the kicking legs, which pass in front."""
-    import numpy as np
-    from mathutils import Vector
-    from sd import clear as clr
-    from sd.puppet import perp, sword_matrix
+    from sd import film
     A = new("ronin")
-    pp = A.pp
     take, lead = _mocap(A, "spinkick", 1, 1.6)
     n = len(take)
-    tracks = {}
-    for key, tag, sgn in (("R", "Right", -1.0), ("L", "Left", 1.0)):
-        sh = pp.H0[tag + "Arm"]                                     # the shoulder, in the chest's own (rest pose) coordinates
-        reach = (pp.arm_[tag]["L1"] + pp.arm_[tag]["L2"]) * 0.90
-        W = []
-        for f in range(n):
-            c = take.c[f]
-            sp = A._spine(c)
-            w = sp["chest"].inverted() @ A._hand_world(c, tag, sp)[0]                  # the captured wrist, seen from the chest
-            w = Vector((sgn * max(sgn * w.x, 0.34), min(w.y, 0.15), min(w.z, sh.z + 0.02)))   # beside the body, no higher than the shoulder
-            v = w - sh
-            w = sh + v.normalized() * min(v.length, reach)
-            near = 0.32 ** 2 - (w.y - sh.y) ** 2 - (w.z - sh.z) ** 2                   # ...and not folded up against his own shoulder plate
-            if near > 0.0:
-                w.x = sgn * max(sgn * w.x, sgn * sh.x + math.sqrt(near))
-            W.append(w)
-        W = clr._smooth(np.array(W), 7)
-        keys = []
-        for f in range(n):
-            w = Vector(W[f])
-            arm = (w - sh).normalized()
-            t = min(1.0, max(0.0, (w.z - (sh.z - 0.45)) / 0.40))
-            lift = t * t * (3.0 - 2.0 * t)                           # 0 with the hand low, 1 with it at shoulder height
-            point = Vector((sgn * 0.80, 0.35, -0.45 + 0.60 * lift)).normalized()
-            if point.angle(arm) < math.radians(40.0):                # a blade in line with the forearm would break the wrist
-                point = (arm * math.cos(math.radians(40.0)) + perp(point, arm) * math.sin(math.radians(40.0))).normalized()
-            M = sword_matrix(w, point, arm)                          # knuckles, and so the edge, face the way the forearm runs
-            M.translation = w + (w - A._grip(tag, M, 0.058, 0.0, A.swords[key].R)[0])   # so that the wrist comes to w
-            keys.append(dict(f=f, space="chest", m=M))
-        tracks[key] = keys
+    tracks = {key: [dict(f=f, space="chest", m=M) for f, M in enumerate(mats)] for key, mats in film.blades_beside(A, take).items()}
     holds = [dict(sword=k, hand=h, f0=0, f1=n, blend_in=0) for k, h in (("R", "Right"), ("L", "Left"))]
     return dict(cast=[(A, take, tracks, holds)], lead=lead, views=[("SIDE", 100, 4), ("FRONT", 30, 5)], height=3.0, look=1.2, wide=3.0,
                 title="CYBER RONIN  -  spinning kick with both blades drawn")
@@ -204,8 +171,8 @@ def seg_s4_fight(lib, new):
     """Stage 4 check: both fighters' parts from the standoff on, side on."""
     from sd import film
     A, B = new("oni"), new("ronin")
-    ta, sa, ha, steer = film.oni_fight(A)
-    tb, sb, hb, _ = film.ronin_fight(B)
+    parts, _ = film.fight(dict(oni=A, ronin=B))
+    (ta, sa, ha, steer), (tb, sb, hb, _) = parts["oni"], parts["ronin"]
     lead = film.tf(236)
     return dict(cast=[(A, ta, sa, ha), (B, tb, sb, hb)], steer=steer, lead=lead, views=[("FROM THE EAST", 90, 3), ("FROM ABOVE", 90, 62)], height=3.2, look=1.2, wide=9.5,
                 title="STAGE 4 CHECK  -  the fight, take frames from the standoff")

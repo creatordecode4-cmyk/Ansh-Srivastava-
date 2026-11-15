@@ -195,7 +195,8 @@ class Actor:
                 along=fist behind the guard (negative: on the scabbard side), roll=degrees round the handle,
                 flip=True for thumb toward the pommel, lead=True for the hand the sword follows,
                 plan=1.0: the sword's track leads the hand; 0.0: the hand carries the sword,
-                on='saya': the hand holds the scabbard, and stays on it when the sword is drawn)]
+                on='saya': the hand holds the scabbard, and stays on it when the sword is drawn,
+                free_blend=True: on its way to and from the grip the hand is kept out of the body like a free hand)]
                 A hold without 'sword' puts a hand on the hat: dict(hat=(x, y, z) of the wrist in the hat's
                 space, hand=, f0, f1, blend_in, blend_out, fingers=(x, y, z) the way the fingers point and
                 back=(x, y, z) the way the back of the hand faces, both in the hat's space, shape=hand shape)
@@ -267,7 +268,7 @@ class Actor:
                 sw = self.swords[h["sword"]]
                 wp = wh * h.get("plan", 1.0)
                 if wp > 0.0:
-                    held[f][tag] = True
+                    held[f][tag] = held[f][tag] or wp >= 0.999 or not h.get("free_blend")
                     target = sheath[h["sword"]] if h.get("on") == "saya" else planned[h["sword"]][f]
                     wrist, Dhand = self._grip(tag, target, h.get("along", 0.058), h.get("roll", 0.0), sw.R, h.get("flip", False))
                     if wp < 1.0:                                         # still on the way: between where the body had the hand and the grip
