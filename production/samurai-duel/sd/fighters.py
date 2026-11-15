@@ -8,7 +8,9 @@ import math
 import bpy
 from mathutils import Matrix, Vector
 
-from . import core, kasa, weapons
+from mathutils.bvhtree import BVHTree
+
+from . import core, garments, kasa, weapons
 from . import ronin as ronin_src
 
 
@@ -34,13 +36,14 @@ def _frame(origin, y_axis, x_hint):
     return m
 
 
-def ronin(lib, col, name="RONIN"):
-    """Cyber Ronin: cut Tripo body + kasa hat (whole and pre-cut halves) + two sheathed katanas on the back."""
+def ronin(lib, col, name="RONIN", cloth=True, sim_frames=220):
+    """Cyber Ronin: cut Tripo body + kasa hat (whole and pre-cut halves) + two sheathed katanas on
+    the back + simulated cape and waist tails (draped here in the rest pose)."""
     body, A = ronin_src.load_body(col)
     parts = {"body": body, "anchors": A}
 
     # --- hat: same brim radius and position as the one that was cut away, lifted 2 cm to clear the crown
-    R = A["hat_radius"]
+    R = max(A["hat_radius"], 0.26)                 # the generator shrank the hat; the sheet's brim is about 0.55 m across
     hr = A["helmet_radius"]
     spec = kasa.scaled(R, band_r=hr + 0.034, band_h=0.026, strap_x=hr + 0.036, strap_drop=0.15, strap_out=(1.0, 1.1, 1.24, 1.32))
     k = kasa.build(lib, "PROP_Kasa", spec)
@@ -58,6 +61,7 @@ def ronin(lib, col, name="RONIN"):
     sword_m = _mirrored_copy(sword, "PROP_Katana_Ronin_L", lib)
     saya_m = _mirrored_copy(saya, "PROP_Saya_Ronin_L", lib)
     parts["katanas"], parts["sayas"] = [], []
+    straps = []
     grip_len = spec_k["grip"] + 0.012
     for i, sw in enumerate(A["swords"]):
         c, d = Vector(sw["centre"]), Vector(sw["dir"])
@@ -72,7 +76,41 @@ def ronin(lib, col, name="RONIN"):
         ss.matrix_world = m
         parts["katanas"].append(ks)
         parts["sayas"].append(ss)
+        straps.append((mouth, mouth - d * (spec_k["blade"] + 0.02)))
 
-    root = core.group(name, col, [body, whole] + halves + parts["katanas"] + parts["sayas"])
+    # --- cloth: the panels drape themselves over a collision stand-in of the body
+    drapes = []
+    if cloth:
+        sim = core.collection(name + "_SIM", hide_render=True)
+        soft = bpy.data.objects[A["proxy"]]         # the 90k skin: thinned to 24k it grows flipped slivers and the cloth climbs them
+        sim.objects.link(soft)
+        garments.collider(soft)
+        w = garments.Wearer(soft)
+        rgb = A["cloth_rgb"]
+        tone = [((c + 0.055) / 1.055) ** 2.4 * 1.35 for c in rgb]                 # texture mean has shading baked in: lift it back to the cloth's own tone
+        skirt = garments.ronin_skirt(sim, w, garments.fabric("MAT_Ronin_Skirt", tone, 0.5, 0.8, dirt=0.75))
+        tails = garments.ronin_tails(sim, w, garments.fabric("MAT_Ronin_Tails", tone, 0.15, 0.85, dirt=0.75))
+        cape = garments.ronin_cape(sim, w, garments.fabric("MAT_Ronin_Cape", tone, 0.72, 1.12, dirt=0.7), straps)
+        sims = [cape] + skirt + tails
+        garments.settle(bpy.context.scene, sim_frames, report=40)
+        for ob in sims:
+            drapes.append(garments.freeze(ob, ob.name.replace("_sim", ""), col))
+        parts.update(cape=drapes[0], skirt=drapes[1:3], tails=drapes[3:], sim=sims, collider=soft)
+        # the scabbards ride on top of the cape: push each one out until it clears the cloth under it
+        bpy.context.view_layer.update()
+        bvh = BVHTree.FromObject(drapes[0], bpy.context.evaluated_depsgraph_get())
+        for ks, ss in zip(parts["katanas"], parts["sayas"]):
+            need = 0.0
+            m = ss.matrix_world
+            for t in [i / 24 for i in range(25)]:
+                p = m @ Vector((0, t * 0.75, 0))
+                hit = bvh.ray_cast(Vector((p.x, 2.0, p.z)), Vector((0, -1, 0)), 4.0)
+                if hit[0] is not None:
+                    need = max(need, hit[0].y + 0.021 - p.y)
+            for o in (ks, ss):
+                o.matrix_world.translation.y += need
+            parts.setdefault("saya_lift", []).append(need)
+
+    root = core.group(name, col, [body, whole] + halves + parts["katanas"] + parts["sayas"] + drapes)
     parts["root"] = root
     return parts

@@ -85,7 +85,8 @@ def floor(sc, z=0.0, size=40.0, color=(0.2, 0.205, 0.215)):
     return g
 
 
-def turnaround(sc, path, target, height, azimuths=(0, 45, 90, 180, 270), size=(440, 720), samples=32, lens=85.0, elevation=4.0, margin=1.22, width=None):
+def turnaround(sc, path, target, height, azimuths=(0, 45, 90, 180, 270), size=(440, 720), samples=32, lens=85.0, elevation=4.0, margin=1.22, width=None,
+               exposure=-0.7):
     """Render the subject from several sides and paste the frames into one strip.
     height / width: the subject's extent in metres that must fit the frame."""
     import os
@@ -95,7 +96,7 @@ def turnaround(sc, path, target, height, azimuths=(0, 45, 90, 180, 270), size=(4
     from . import render
     W, H = size
     render.setup(sc, W, H, samples, 0.04)
-    sc.view_settings.exposure = 0.0
+    sc.view_settings.exposure = exposure
     half_v, half_h = (18.0, 18.0 * W / H) if H >= W else (18.0 * H / W, 18.0)      # the 36 mm sensor side follows the longer image side
     dist = max(height * margin / 2 * lens / half_v, (width or 0.0) * margin / 2 * lens / half_h)
     cam = bpy.data.objects.get("CAM_Turn") or camera(sc, target, 0, elevation, dist, lens, name="CAM_Turn")

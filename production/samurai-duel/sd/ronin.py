@@ -150,8 +150,9 @@ def _labels(s, verbose=True):
 
 
 # ----------------------------------------------------------------------------- cutting
-def _mesh(s, keep, name):
-    """New welded mesh from the kept faces (UVs stay per corner, so the texture still fits)."""
+def _mesh(s, keep, name, cloth=None):
+    """New welded mesh from the kept faces (UVs stay per corner, so the texture still fits).
+    cloth: per-face flag stored as the integer face attribute 'cloth'."""
     used, inv = np.unique(s.wtri[keep].reshape(-1), return_inverse=True)
     wco = np.zeros((s.nw, 3))
     wco[s.widx] = s.co
@@ -167,6 +168,9 @@ def _mesh(s, keep, name):
     me.update(calc_edges=True)
     me.uv_layers.new(name="UVMap").data.foreach_set("uv", s.uv[keep].reshape(-1))
     me.polygons.foreach_set("use_smooth", np.ones(len(tri), dtype=bool))
+    if cloth is not None:
+        at = me.attributes.new("cloth", "INT", "FACE")
+        at.data.foreach_set("value", cloth[keep].astype(np.int32))
     return me
 
 
@@ -336,8 +340,19 @@ def _patch(bm, mat_index, sides, verbose=True):
         f.material_index = mat_index
         f.smooth = True
     bmesh.ops.triangulate(bm, faces=new)
+    # the wounds the swords left in the back plates are not clean loops (their rims touch
+    # themselves), so the simple fill skips them: close what is left open on the upper back
+    back = [e for e in bm.edges if e.is_boundary and all(v.co.y > 0.05 and 0.66 < v.co.z < 0.84 and abs(v.co.x) < 0.14 for v in e.verts)]
+    n1 = len(bm.faces)
+    if back:
+        bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=back)
+        bm.faces.ensure_lookup_table()
+        for f in bm.faces[n1:]:
+            f.material_index = mat_index
+            f.smooth = True
     if verbose:
-        print(f"  patch: {len(border)} border edges, filled {len(new)} holes, {sum(1 for e in bm.edges if e.is_boundary)} border edges left open")
+        print(f"  patch: {len(border)} border edges, filled {len(new)} holes and {len(bm.faces) - n1} back-plate triangles, "
+              f"{sum(1 for e in bm.edges if e.is_boundary)} border edges left open")
 
 
 def _simple_mat(name, color, metallic, rough):
@@ -361,7 +376,7 @@ def build_body(verbose=True):
     keep = ~(L["hat"] | L["sword"] | L["sheet"] | L["strand"])
     lab, area = s.components(keep)
     keep &= lab == 0                                         # loose scraps go; the right foot's separate sole goes with the mirror
-    me = _mesh(s, keep, "RoninBody")
+    me = _mesh(s, keep, "RoninBody", L["cloth"])
     me.materials.append(s.me.materials[0])
     me.materials.append(_simple_mat("MAT_Ronin_Patch", (0.03, 0.03, 0.033), 1.0, 0.45))
     me.materials.append(_simple_mat("MAT_Ronin_Crown", (0.62, 0.63, 0.65), 0.85, 0.3))
@@ -389,6 +404,19 @@ def build_body(verbose=True):
     return ob, anchors
 
 
+def _proxy(ob, verbose=True):
+    """Stand-ins for the body in metres: a watertight outer skin 5 mm outside the surface (what
+    cloth collides with, and what the auto-rigger is given) at two densities."""
+    from . import envelope
+    full = envelope.build(ob.data, voxel=0.005, offset=0.005, name="RoninSkin", verbose=verbose)
+    low = envelope.simplify(full, faces=24000, smooth=2, name="RoninCollider")
+    mid = envelope.simplify(full, faces=90000, smooth=1, name="RoninProxy")
+    bpy.data.meshes.remove(full)
+    if verbose:
+        print(f"  stand-ins: proxy {len(mid.polygons)} faces, collider {len(low.polygons)} faces")
+    return bpy.data.objects.new("RoninProxy", mid), bpy.data.objects.new("RoninCollider", low)
+
+
 def _scaled(a, k):
     return dict(
         scale=k, hat_centre=[v * k for v in a["hat_centre"]], hat_radius=a["hat_radius"] * k, hat_z=[v * k for v in a["hat_z"]],
@@ -405,15 +433,20 @@ def load_body(col=None, rebuild=False, verbose=True):
         k = HEIGHT / anchors["helmet_top"]
         ob.data.transform(Matrix.Scale(k, 4))
         anchors = _scaled(anchors, k)
+        px, cl = _proxy(ob, verbose=verbose)
         os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-        bpy.data.libraries.write(CACHE, {ob}, fake_user=True)
+        bpy.data.libraries.write(CACHE, {ob, px, cl}, fake_user=True)
         with open(meta, "w") as fh:
             json.dump(anchors, fh, indent=1)
-        bpy.data.objects.remove(ob)
+        for o in (ob, px, cl):
+            bpy.data.objects.remove(o)
     with bpy.data.libraries.load(CACHE) as (src, dst):
-        dst.objects = [n for n in src.objects if n == "RoninBody"]
-    ob = dst.objects[0]
+        dst.objects = [n for n in src.objects if n in ("RoninBody", "RoninProxy", "RoninCollider")]
+    obs = {o.name.split(".")[0]: o for o in dst.objects}
+    ob = obs["RoninBody"]
     (col or bpy.context.scene.collection).objects.link(ob)
     with open(meta) as fh:
         anchors = json.load(fh)
+    anchors["proxy"] = obs["RoninProxy"].name       # closed skin, 90k faces (for the auto-rigger); not linked to a collection yet
+    anchors["collider"] = obs["RoninCollider"].name   # the same skin at 24k faces (for cloth); not linked either
     return ob, anchors
