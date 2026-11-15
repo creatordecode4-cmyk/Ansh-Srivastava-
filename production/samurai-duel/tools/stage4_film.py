@@ -10,8 +10,15 @@ intro preview. The two keep separate cloth caches (out/cache/stage4 and out/cach
 
 Presets (4 CPU cores):
     block   640x360, 6 samples, light arena, no fog            about 10 s per frame: staging and timing
-    look    960x540, 8 samples, fog and bloom                   about 35 s per frame: the preview that is shown
+    look    960x540, 8 samples, fog and bloom                   about 35 s per frame: the preview that is shown (sharp: no blur)
+    half    960x540, 24 samples, motion blur, depth of field    the finished picture at half size
     final   1920x1080, 96 samples, motion blur, depth of field  not for this machine (see README)
+--blur and --dof switch motion blur and depth of field on for any preset.
+
+Motion blur follows the time map: the shutter is open for half a film frame, which is half a take
+frame at full speed, an eighth in quarter-speed slow motion and nothing while a blow is held. The
+camera is placed by a formula per film frame; so that it blurs as well, it is keyed for the frame
+before, this frame and the frame after, at the scene times those have.
 
 Frames go to out/stage4/<preset><tag>/f_####.png (numbered by film frame). Every frame is rendered at
 the scene time the film's time map gives it (sd/film.py), with the camera of the shot it belongs to.
@@ -27,7 +34,8 @@ sys.path.insert(0, HERE)
 
 PRESETS = dict(block=dict(size=(640, 360), samples=6, fog=False, detail=False, bloom=False, label=True),
                look=dict(size=(960, 540), samples=8, fog=True, detail=True, bloom=True, label=True),
-               final=dict(size=(1920, 1080), samples=96, fog=True, detail=True, bloom=True, label=False))
+               half=dict(size=(960, 540), samples=24, fog=True, detail=True, bloom=True, label=False, blur=True, dof=True),
+               final=dict(size=(1920, 1080), samples=96, fog=True, detail=True, bloom=True, label=False, blur=True, dof=True))
 
 
 def arg(flag, default, n=1, cast=str):
@@ -114,6 +122,29 @@ def render():
     cam = bpy.data.objects.new("CAM_Film", cd)
     sc.collection.objects.link(cam)
     sc.camera = cam
+    blur = bool(P.get("blur")) or "--blur" in sys.argv
+    dof = bool(P.get("dof")) or "--dof" in sys.argv
+    curves = None
+    if blur:                                                        # the camera's place over one film frame either side, as animation Cycles can sample
+        sc.render.motion_blur_position = "CENTER"
+        cam.rotation_mode = "XYZ"
+        ad = cam.animation_data_create()
+        act = bpy.data.actions.new("CAM_Film_blur")
+        slot = act.slots.new(id_type="OBJECT", name="CAM_Film")
+        bag = act.layers.new("Layer").strips.new(type="KEYFRAME").channelbag(slot, ensure=True)
+        curves = [bag.fcurves.new("location", index=i) for i in range(3)] + [bag.fcurves.new("rotation_euler", index=i) for i in range(3)]
+        for fc in curves:
+            fc.keyframe_points.add(3)
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+        ad.action, ad.action_slot = act, slot
+
+    def place(sh, g):
+        """Where the camera is and looks on film frame g of a shot (held to the shot's own frames)."""
+        g = min(max(g, sh["first"]), sh["last"])
+        c = sh["cam"](g)
+        d_pos, d_look = film.shake(g, c.get("hand", 0.0)) if fight else (Vector(), Vector())
+        return c, Vector(c["pos"]) + d_pos, Vector(c["look"]) + d_look
     parts = {who: [A.body] + list(A.cloth) + [o for sw in A.swords.values() for o in (sw.ob, sw.saya)]
              + [t for sw in A.swords.values() for t, _ in list(sw.tassels) + list(sw.saya_tassels)] for who, A in cast.items()}
     for who, A in cast.items():                                     # everything else that belongs to him (hat, straps...) rides on the armature
@@ -155,11 +186,29 @@ def render():
                 if o.hide_render != hide and o.name in bpy.data.objects:
                     o.hide_render = hide
         sh = film.shot_at(shots, ff)
-        c = sh["cam"](ff)
-        d_pos, d_look = film.shake(ff, c.get("hand", 0.0)) if fight else (Vector(), Vector())
-        cam.location = Vector(c["pos"]) + d_pos
-        core.look_at(cam, Vector(c["look"]) + d_look)
+        c, pos, look = place(sh, ff)
+        rate = film.rate_at(ff)
+        if curves is not None:
+            sc.render.use_motion_blur = rate > 0.0
+            sc.render.motion_blur_shutter = 0.5 * rate
+            keys = []
+            for k in (-1, 0, 1):
+                _, p_k, l_k = place(sh, ff + k)
+                cam.location = p_k
+                core.look_at(cam, l_k)
+                keys.append((st + k * max(rate, 1e-3), tuple(cam.location), tuple(cam.rotation_euler)))
+            for i, fc in enumerate(curves):
+                for kp, (t, loc, eul) in zip(fc.keyframe_points, keys):
+                    kp.co = (t, (loc + eul)[i])
+                    kp.handle_left = kp.handle_right = kp.co
+                fc.update()
+        cam.location = pos
+        core.look_at(cam, look)
         cd.lens = c["lens"]
+        cd.dof.use_dof = dof
+        if dof:                                                     # focus on what the shot looks at; long lenses are opened up
+            cd.dof.focus_distance = (Vector(c.get("focus", look)) - pos).length
+            cd.dof.aperture_fstop = c.get("fstop", 2.0 if c["lens"] >= 70 else 2.8 if c["lens"] >= 45 else 4.0)
         if fx is not None:
             bpy.context.view_layer.update()
             fx.update(ff, cam)

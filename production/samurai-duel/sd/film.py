@@ -83,6 +83,14 @@ def take_time(film_frame):
     return t0 + (film_frame - a) * rate
 
 
+def rate_at(film_frame):
+    """Take frames per film frame on a film frame: 1 at full speed, less in slow motion, 0 while a blow is held."""
+    for a, b, t0, rate in TIME:
+        if a <= film_frame <= b:
+            return rate
+    return TIME[-1][3]
+
+
 def tf(film_frame):
     """Whole take frame of a film frame (for placing keys)."""
     return int(round(take_time(film_frame)))
@@ -408,7 +416,8 @@ def _oni_stations(A):
                 pass1=K(still, (-0.04, -0.40, 1.42), (0.92, -0.25, 0.10), (-0.25, -0.92, 0.0)),
                 pass2=K(still, (-0.46, -0.36, 1.44), (-0.70, -0.71, 0.05), (-0.71, 0.70, 0.0)),
                 pass2b=K(still, (-0.52, -0.26, 1.50), (-0.72, -0.35, 0.60), (-0.35, 0.72, 0.0)),      # just after the blades meet: up and over the other's arm
-                pass3=K(still, (-0.60, -0.08, 1.50), (-0.80, 0.45, 0.40), (0.45, 0.80, 0.0)))
+                pass3=K(still, (-0.60, -0.08, 1.50), (-0.80, 0.45, 0.40), (0.45, 0.80, 0.0)),
+                held=K(still, (-0.58, -0.10, 1.38), (-0.80, 0.26, -0.54), (0.3, 0.9, -0.1)))             # the cut finished and held: arm long, point low and out to his right
 
 
 def _ronin_stations(A):
@@ -1007,20 +1016,20 @@ def _crossing(O, R):
         P.note[f"crossing: {who} stride"] = runs[who][1]
         here = lambda pose, to=to, face=face, pp=pp: to_world(pp, pose, (to.x, to.y), face)
         if who == "oni":
-            stop = dict(hips=(0.0, -0.62, 0.88), hips_rot=(-12, 12, 0), chest_rot=(-24, 16, 0), head_rot=(-6, 10, 0), hand_L=dict(rel=(0.26, 0.10, -0.38)))
-            P.keyed([(PLANT + 6, here(stop), "slow_out"), (HOLD, here(dict(stop, hips=(0.0, -0.64, 0.87))), "inout"), (J0, here(dict(stop, hips=(0.0, -0.64, 0.87))), "inout")],
+            stop = dict(hips=(0.0, -0.62, 0.84), hips_rot=(-12, 13, 0), chest_rot=(-24, 20, 0), head_rot=(-6, 12, 0), hand_L=dict(rel=(0.26, 0.10, -0.38)))
+            P.keyed([(PLANT + 6, here(stop), "slow_out"), (HOLD, here(dict(stop, hips=(0.0, -0.64, 0.83))), "inout"), (J0, here(dict(stop, hips=(0.0, -0.64, 0.83))), "inout")],
                     [("Right", PLANT, PLANT + 5, dict(pos=tuple(here(dict(stop, foot_R=dict(pos=(-0.13, -0.90, 0.0))))["foot_R"]["pos"]), yaw=face, pitch=0), 0.05),
                      ("Left", PLANT + 3, PLANT + 7, dict(pitch=24), 0.0)], "oni_stops")
         else:
-            stop = dict(hips=(0.0, -0.56, 0.82), hips_rot=(10, 12, 0), chest_rot=(20, 16, 0), head_rot=(4, 10, 0))
-            P.keyed([(PLANT + 6, here(stop), "slow_out"), (HOLD, here(dict(stop, hips=(0.0, -0.58, 0.81))), "inout"), (J0, here(dict(stop, hips=(0.0, -0.58, 0.81))), "inout")],
+            stop = dict(hips=(0.0, -0.52, 0.76), hips_rot=(10, 14, 0), chest_rot=(20, 23, 0), head_rot=(6, 15, 0))       # low over the front knee, head bowed under the hat
+            P.keyed([(PLANT + 6, here(stop), "slow_out"), (HOLD, here(dict(stop, hips=(0.0, -0.54, 0.75))), "inout"), (J0, here(dict(stop, hips=(0.0, -0.54, 0.75))), "inout")],
                     [("Left", PLANT, PLANT + 5, dict(pos=tuple(here(dict(stop, foot_L=dict(pos=(0.12, -0.84, 0.0))))["foot_L"]["pos"]), yaw=face, pitch=0), 0.05),
                      ("Right", PLANT + 3, PLANT + 7, dict(pitch=24), 0.0)], "ronin_stops")
         P.spot, P.face = (to.x, to.y), face
     # swords: the Oni's leads, the Ronin's right blade is laid on it at the crossing
     K, RK = O.K, R.K
     for f, name, e in ((G0 + 9, "pass1", "inout"), (CROSS - 3, "pass1", "inout"), (CROSS, "pass2", "slow_in"), (CROSS + 1, "pass2b", "linear"), (CROSS + 4, "pass3", "slow_out"),
-                       (J0, "pass3", "inout")):
+                       (PLANT + 2, "pass3", "inout"), (HOLD, "held", "inout"), (J0, "held", "inout")):
         O.at("main", f, K[name], ease=e)
     for h in O.holds:
         if h["hand"] == "Left" and h.get("on") != "saya" and h["f1"] >= G0:
