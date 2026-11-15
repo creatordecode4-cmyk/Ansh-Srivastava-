@@ -198,34 +198,42 @@ def arms(pp, skin, posed, controls, poses, free, gap=0.012, hat=None):
             ways, near = hat_ways(pp, skin, hat, poses, tag)
         # free hands first: push them out; the first push is eased in and out over time
         total = np.zeros((n, 3))
-        for rnd in range(8):
-            need = np.zeros((n, 3))
-            for f in range(n):
-                if free[f][tag]:
-                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
-                    if lack > 1e-4:
-                        need[f] = nrm * lack
-            if not need.any():
-                break
-            add = need
-            if rnd == 0:
-                sm = _smooth(need, 7)
-                add = np.where(np.linalg.norm(need, axis=1, keepdims=True) > np.linalg.norm(sm, axis=1, keepdims=True), need, sm)
+
+        def push(f, by):
+            c = controls[f]
+            h = dict(c["hand_" + s])
+            H = pp.heads(poses[f])
+            A = H[tag + "Arm"]
+            T = H[tag + "Hand"] + _vec(by)                             # from where the wrist is now, not from where it was asked to be
+            if (T - A).length > reach:
+                T = A + (T - A).normalized() * reach                   # further out means higher: the arm swings away from the side
+            h.pop("rel", None)
+            h["pos"] = T
+            c["hand_" + s] = h
+            poses[f] = pp.solve(c)
+
+        need = np.zeros((n, 3))
+        for f in range(n):
+            if free[f][tag]:
+                lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
+                if lack > 1e-4:
+                    need[f] = nrm * lack
+        if need.any():
+            sm = _smooth(need, 7)
+            add = np.where(np.linalg.norm(need, axis=1, keepdims=True) > np.linalg.norm(sm, axis=1, keepdims=True), need, sm)
             total += add
             for f in range(n):
-                if not free[f][tag] or not add[f].any():
+                if free[f][tag] and add[f].any():
+                    push(f, add[f])
+            for f in range(n):                                         # what that left is settled frame by frame (a frame's skin is asked for in one go)
+                if not free[f][tag]:
                     continue
-                c = controls[f]
-                h = dict(c["hand_" + s])
-                H = pp.heads(poses[f])
-                A = H[tag + "Arm"]
-                T = H[tag + "Hand"] + _vec(add[f])                     # from where the wrist is now, not from where it was asked to be
-                if (T - A).length > reach:
-                    T = A + (T - A).normalized() * reach               # further out means higher: the arm swings away from the side
-                h.pop("rel", None)
-                h["pos"] = T
-                c["hand_" + s] = h
-                poses[f] = pp.solve(c)
+                for _ in range(7):
+                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
+                    if lack <= 1e-4:
+                        break
+                    total[f] += nrm * lack
+                    push(f, nrm * lack)
         worst = max(worst, float(np.linalg.norm(total, axis=1).max()))
         # then elbows: turn them out of the way, following on from the frame before
         prev = 0.0

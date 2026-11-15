@@ -213,7 +213,7 @@ class Actor:
         tinv = -(Rinv @ Tobj.translation)
         # 1. the body alone: where trunk and legs are on every frame
         poses = [pp.solve(motion.moved(dict(c), Rinv, tinv)) for c in take.c]
-        posed = [skin.pose(p) for p in poses]
+        posed = skin.frames(list(poses))                                # the body before the arms are touched (the list is kept as it is now)
         # 2. scabbards: on the back between two points of the skin, or hanging from the belt and pushed aside by the leg
         saya = {}
 
@@ -311,7 +311,7 @@ class Actor:
                     return np.array([W @ Vector(sw.arc(t)) for t in np.linspace(0.04, sw.spec["blade"], 10)])
 
                 stats["blade_left"] = clr.blades(pp, skin, posed, local, poses, carried, blade_of, hat=hat)
-            posed = [skin.pose(p) for p in poses]
+            posed = skin.frames(poses)
             # 5. the scabbards once more: moving the arms moved the shoulders they lie on
             for key, sw in self.swords.items():
                 sw.carry.prev = None
@@ -355,12 +355,12 @@ class Actor:
         act, slot = pp.write(name or f"{self.who}_shot", frames, pre + poses)
         pp.play(act, slot)
         self.pre, self.poses, self.sword_m, self.controls, self.planned = pre, poses, sword_m, final, planned
-        self.posed = posed if clear else [skin.pose(p) for p in poses]
+        self.posed = posed if clear else skin.frames(poses)
         lead_in = start - 1
 
         def hang(mats, at):                                             # a tassel is a weight on a cord: it hangs, swings and stops at the body
             anchors = [Tinv @ (m @ at) for m in mats]
-            sk = [self.posed[0]] * lead_in + self.posed if clear else None
+            sk = skin.frames([poses[0]] * lead_in + poses) if clear else None
             return [Tobj @ m for m in clr.pendulum(anchors, sk)]
 
         for key, sw in self.swords.items():

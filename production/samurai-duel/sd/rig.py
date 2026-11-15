@@ -436,8 +436,12 @@ def build(who, col, verbose=True):
     return dict(arm=arm, body=body, proxy=px, joints=J, hands=hands, anchors=A)
 
 
+LIGHT = False        # True: load skeleton and collision skin only (no body mesh, no textures) - enough to bake and measure a performance
+
+
 def load(who, col=None, rebuild=False, verbose=True):
-    """The rigged fighter, from assets/gen/<who>_rig.blend when that is up to date."""
+    """The rigged fighter, from assets/gen/<who>_rig.blend when that is up to date.
+    With rig.LIGHT set the heavy body is left in the file and the collision skin stands in for it."""
     import json
     import os
     import time
@@ -469,8 +473,9 @@ def load(who, col=None, rebuild=False, verbose=True):
         bpy.data.collections.remove(tmp)
         if verbose:
             print(f"  rig cached: {os.path.getsize(cache) / 1e6:.0f} MB, {time.time() - t0:.1f}s")
+    wanted = [n for n in names if not (LIGHT and n == names[1])]
     with bpy.data.libraries.load(cache) as (lib_src, lib_dst):
-        lib_dst.objects = [n for n in lib_src.objects if n in names]
+        lib_dst.objects = [n for n in lib_src.objects if n in wanted]
     obs = {o.name.split(".")[0]: o for o in lib_dst.objects}
     for o in obs.values():
         col.objects.link(o)
@@ -478,4 +483,4 @@ def load(who, col=None, rebuild=False, verbose=True):
         M = json.load(fh)
     px = obs[names[2]]
     px.hide_render = True
-    return dict(arm=obs[names[0]], body=obs[names[1]], proxy=px, joints=M["joints"], hands=M["hands"], anchors=M["anchors"])
+    return dict(arm=obs[names[0]], body=obs.get(names[1], px), proxy=px, joints=M["joints"], hands=M["hands"], anchors=M["anchors"])

@@ -76,6 +76,10 @@ class Skin:
         hand = float(np.mean(rad["hand"])) if rad["hand"] else 0.045
         self.limb_radius = dict(forearm=fore, wrist=0.5 * (fore + hand) * 0.9, hand=hand)
 
+    def frames(self, poses, keep=6):
+        """posed[f] for a list of poses (see Frames)."""
+        return Frames(self, poses, keep)
+
     def pose(self, pose, world=None):
         """The skin in a solved pose (armature space, or world if the armature object's matrix is given)."""
         pp = self.pp
@@ -109,6 +113,29 @@ class Skin:
             Rv = np.einsum("ij,vjk->vik", Rw, Rv)
         Nn /= np.maximum(np.linalg.norm(Nn, axis=1, keepdims=True), 1e-9)
         return Posed(self, Pn, Nn, Rv)
+
+
+class Frames:
+    """The skin on every frame of a shot: posed[f]. A posed skin with its search trees is some
+    tens of megabytes, and a film is hundreds of frames for each fighter, so a frame's skin is
+    worked out when it is asked for and only the last few are kept. The passes that use it go
+    through the frames in order and ask for one frame many times in a row."""
+
+    def __init__(self, skin, poses, keep=6):
+        self.skin, self.poses, self.keep = skin, poses, keep
+        self._have = {}
+
+    def __len__(self):
+        return len(self.poses)
+
+    def __getitem__(self, f):
+        got = self._have.pop(f, None)
+        if got is None or got[0] is not self.poses[f]:                # a frame's pose can be replaced after it was last asked for
+            got = (self.poses[f], self.skin.pose(self.poses[f]))
+        self._have[f] = got                                           # most recently used last
+        while len(self._have) > self.keep:
+            self._have.pop(next(iter(self._have)))
+        return got[1]
 
 
 class Posed:
