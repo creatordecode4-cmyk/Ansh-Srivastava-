@@ -25,6 +25,7 @@ class Scan:
     def __init__(self, path, verbose=True):
         t0 = time.time()
         before = set(bpy.data.objects)
+        old_images = set(bpy.data.images)
         bpy.ops.import_scene.gltf(filepath=path)
         new = [o for o in bpy.data.objects if o not in before]
         meshes = [o for o in new if o.type == "MESH"]
@@ -64,7 +65,9 @@ class Scan:
         self.fnorm = n / np.maximum(ln, 1e-20)[:, None]
         self.nf = nf
         self._adj = None
-        self.images = {im.name: im for im in bpy.data.images if im.size[0]}
+        # only this model's own maps: another fighter's textures may be loaded in the same session,
+        # and reading features from those gave the Ronin a brown "cloth colour" once
+        self.images = {im.name: im for im in bpy.data.images if im not in old_images and im.size[0]}
         if verbose:
             lo, hi = self.co.min(0), self.co.max(0)
             print(f"SCAN {os.path.basename(path)}: {nf} tris, {self.nw} welded verts, bounds {np.round(lo, 3)} .. {np.round(hi, 3)}, {time.time() - t0:.1f}s")

@@ -27,7 +27,7 @@ import time
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix
 from scipy import sparse
 from scipy.sparse import csgraph
 

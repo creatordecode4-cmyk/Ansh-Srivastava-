@@ -10,10 +10,10 @@ import os
 
 import bpy
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageFilter
 
 from . import core
-from .mats import NT, _new, get
+from .mats import _new, get
 
 GEN = os.path.join(core.ASSETS, "gen")
 

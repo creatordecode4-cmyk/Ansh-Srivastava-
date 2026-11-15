@@ -18,7 +18,7 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 from . import core
-from .mats import NT, _new, get
+from .mats import _new, get
 
 CELL = 0.0125          # grid spacing in metres
 

@@ -12,11 +12,11 @@ import math
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Vector
 
 from . import charmats as cm
 from . import core
-from .mats import NT, _new, get
+from .mats import _new, get
 
 SPEC = dict(radius=0.235, rise=0.105, thick=0.006, seams=36, rings=(0.36, 0.60, 0.83), cap_r=0.060, cap_h=0.050,
             band_r=0.094, band_h=0.050, strap_x=0.090, strap_drop=0.17, strap_out=(1.0, 1.03, 1.0, 0.9),

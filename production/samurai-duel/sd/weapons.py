@@ -11,7 +11,6 @@ radius R (centre at z = +R), so drawing the sword is a pure rotation about that 
 import math
 
 import bmesh
-import bpy
 import numpy as np
 from mathutils import Vector
 

@@ -3,11 +3,8 @@
 Each fighter is a root empty with separate child objects: body, weapons, scabbards, hat, cloth.
 Everything stands in the rest pose (T-pose), feet on z = 0, facing -Y, in metres.
 """
-import math
-
 import bpy
 from mathutils import Matrix, Vector
-
 from mathutils.bvhtree import BVHTree
 
 from . import core, garments, kasa, weapons
