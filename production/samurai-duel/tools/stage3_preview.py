@@ -271,10 +271,11 @@ def assemble(names):
             for path in seq:
                 fh.write(f"file '{path}'\nduration {1 / 24:.6f}\n")
             total += len(seq)
-    os.makedirs(os.path.dirname(FILM), exist_ok=True)
+    film = arg("--out", FILM, 1, str)                        # --out writes somewhere else (a part of the film, for an early look)
+    os.makedirs(os.path.dirname(film), exist_ok=True)
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24", "-c:v", "libx264", "-crf", "16",
-                    "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", FILM], check=True)
-    print("FILM", FILM, f"{os.path.getsize(FILM) / 1e6:.1f} MB, {total} frames, {total / 24:.1f} s", names)
+                    "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", film], check=True)
+    print("FILM", film, f"{os.path.getsize(film) / 1e6:.1f} MB, {total} frames, {total / 24:.1f} s", names)
 
 
 if __name__ == "__main__":
@@ -284,4 +285,5 @@ if __name__ == "__main__":
     elif cmd == "render":
         render(sys.argv[2])
     elif cmd == "assemble":
-        assemble([a for a in sys.argv[2:] if not a.startswith("--")])
+        skip = sys.argv.index("--out") + 1 if "--out" in sys.argv else -1
+        assemble([a for i, a in enumerate(sys.argv[2:], 2) if not a.startswith("--") and i != skip])
