@@ -385,7 +385,7 @@ class Actor:
             posed = self.posed[f]
             for mine, other in ((L, "right_leg"), (R, "left_leg")):
                 d, _, _ = posed.signed(posed.P[mine], other)
-                d = d[d < 0.9]
+                d = d[(d < 0.9) & (d > -0.08)]                        # only near the other leg: the side test means nothing for points far away
                 if len(d):
                     legs = max(legs, float((-d).max()))
         out["leg_in_leg"] = legs
