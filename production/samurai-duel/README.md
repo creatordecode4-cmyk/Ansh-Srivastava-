@@ -56,6 +56,18 @@ python3 -I tools/rig_test.py oni                      # skeleton and skin weight
 The first actor build of the Ronin drapes his cloth once (about 90 s) and stores it in
 `assets/gen/ronin_actor_drape.npz`; after that an actor is ready in 2 to 3 seconds.
 
+## The film (Stage 4)
+```bash
+python3 -I tools/stage4_film.py shots                                   # usage and presets
+python3 -I tools/stage4_film.py render 1 240 --preset block --step 8 --no-cloth    # staging check: every 8th frame, about 10 s each
+python3 -I tools/stage4_film.py render 1 118 --preset look --cloth-to 240          # preview frames; the cloth is run once for the whole intro
+python3 -I tools/stage4_film.py render 119 240 --preset look --reuse-cloth         # second half, cloth played back from the first run
+python3 -I tools/stage4_film.py assemble --out previews/stage4_intro.mp4
+python3 -I tools/stage3_preview.py render s4_oni --proxy --samples 8 --step 3      # one fighter's part in clay on the studio floor
+```
+One render job here may run for two hours at most, and all jobs share 15 GB of memory: a film
+render (about 9 GB) and a second Blender process with both fighters do not fit side by side.
+
 ## Folders
 - `refs/` — the 7 reference sheets (characters, arena, props).
 - `sd/` — the scene builder:
@@ -79,6 +91,7 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
   - `soft.py`, `cache.py` — soft cage for the Oni's trousers; cloth stored on disk (PC2) for rendering
   - `skin.py`, `clear.py` — the body as a solid; keeping hands, scabbards, hat, blades and cloth out of it
   - `retarget.py` — bone-by-bone carry-over of a downloaded FBX clip (for Mixamo files)
+  - `film.py` — Stage 4: the time map (film frames against take frames), each fighter's part, the shots' cameras
 - `tools/` — prop test stage, preview sheets, image-to-3D crop tool.
 - `previews/` — preview images shown at each stage.
 - `assets/`, `out/` — downloads and renders. Not in git; re-created by the scripts.
@@ -186,3 +199,27 @@ The first actor build of the Ronin drapes his cloth once (about 90 s) and stores
 - The preview is rendered without motion blur or depth of field so that every frame is sharp.
 - Not done yet: the draw (sword leaving the scabbard), clips downloaded from Mixamo (the folder
   for them is `assets/user/mixamo/`; `retarget.py` carries such a clip over bone by bone).
+
+## Stage 4 notes
+- The film is 720 frames at 24 fps. Each fighter's part is one unbroken take (`film.oni_intro`,
+  `film.ronin_intro`, later the fight); the film shows it through a time map (`film.TIME`): a cut
+  may skip a stretch, a beat may be shown slowed down. Frames are rendered one by one at the
+  scene time the map gives them, with the camera of the shot they belong to, so slow motion and
+  cuts need no re-timing of the animation.
+- Intro, 0-10 s: drone push-in with a tilt up to the torii and the moon; the Oni walks in (low
+  angle, the mask, the hand on the katana); over his shoulder the Ronin comes out of the mist in
+  front of the torii; from below, two fingers lift the brim and the visor glints against the moon;
+  the Oni's thumb pushes the guard; side on, both blades come out.
+- The draws are cut, not shown whole. Reaching across to the left hip, the Oni's right forearm
+  passes 7-12 cm into his belt whatever grip is tried (arms 54 cm, belt knot 27 cm out in front),
+  and a 73 cm blade drawn over the Ronin's shoulder needs 78 cm of reach from a 54 cm arm. The
+  film shows the start (thumb on the guard) and the end (blades clear) and skips 8 take frames
+  between them. On the frames it shows, the takes measure clean.
+- A walk captured from a performer is joined to a keyed stop on the frame where the front foot
+  has just come down: the keyed part starts from the captured feet, and the place he stands is
+  taken from the planted foot, which then only has to turn.
+- A hand can hold the scabbard itself (`on='saya'`) while the sword leaves it, turn a belt-worn
+  scabbard toward the other hand (`steer`), or rest on the hat (placed in the hat's own space).
+- Cost on 4 CPU cores with both fighters in the arena: about 5 microseconds per sample and pixel.
+  640x360 / 6 samples without fog: 10 s per frame. 960x540 / 8 samples with fog and bloom:
+  35-45 s. 1080p / 128 samples: 20-25 min, which for 720 frames is not a job for this machine.
