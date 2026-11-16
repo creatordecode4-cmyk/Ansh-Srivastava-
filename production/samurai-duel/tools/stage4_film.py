@@ -307,7 +307,7 @@ def assemble():
             im = Image.open(found[n]).convert("RGB")
             if size and im.size != size:
                 im = im.resize(size, Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.2, percent=35, threshold=2))
-            post.finish(im, n).save(p)
+            post.finish(im, n, keep_label=PRESETS[preset]["label"]).save(p)
             found[n] = p
         size = None                                                 # the finished frames have it already
     with open(lst, "w") as fh:

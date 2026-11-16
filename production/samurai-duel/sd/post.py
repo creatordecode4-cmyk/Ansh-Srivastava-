@@ -67,19 +67,30 @@ def impact_frame(im, kind, matte):
 ASPECT = 2.1            # the picture inside the black bars, width to height (the frame itself stays 16:9)
 
 
-def finish(im, ff, label=None, aspect=ASPECT, seed=0):
+def finish(im, ff, label=None, aspect=ASPECT, seed=0, keep_label=True):
     """The film look, laid on a finished frame when the film is put together: a grade (deeper
     blacks that stay open, a little contrast in the middle, cool shadows and warm highlights),
     film grain that changes every frame, a soft vignette, and black bars to a wide screen. An
     impact frame keeps its own colours and only gets the grain and the bars. A preview frame's
-    label (white on a black box, lower left) is kept on top of the lower bar; 'label' writes one."""
+    label (light grey on a black box, lower left) is kept on top of the lower bar; frames rendered
+    without one should pass keep_label=False. 'label' writes one."""
     raw = im.convert("RGB")
     x = np.asarray(raw, dtype=np.float32) / 255.0
     H, W = x.shape[:2]
     y0 = H - (max(11, H // 34) + 10)                                     # where a preview label's box starts
-    dark = np.flatnonzero(x[y0].max(axis=1) > 0.02)
-    box = int(dark[0]) if len(dark) else W
-    box = box if 40 < box < W else 0
+    box = 0
+    if keep_label:
+        dark = np.flatnonzero(x[y0].max(axis=1) > 0.02)
+        box = int(dark[0]) if len(dark) else W
+        box = box if 40 < box < W else 0
+        if box:                                                         # the box ends 8 px after its text: the frame may be dark beyond it as well
+            rows = x[y0 + 4:H - 3, :box]                                # the text is pure grey on black, one run of letters from x = 8;
+            cols = np.flatnonzero(((rows.min(axis=2) > 0.45) & (np.ptp(rows, axis=2) < 0.02)).any(axis=0))
+            if len(cols) and cols[0] <= 20:                             # whatever comes after a wide gap is the picture
+                gaps = np.flatnonzero(np.diff(cols) > 30)
+                box = min(box, int(cols[gaps[0]] if len(gaps) else cols[-1]) + 9)
+            else:
+                box = 0
     if not impact(ff):
         x = np.interp(x, [0.0, 0.06, 0.25, 0.5, 0.75, 0.94, 1.0], [0.012, 0.05, 0.215, 0.5, 0.79, 0.955, 0.985]).astype(np.float32)
         L = (0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2])[..., None]
