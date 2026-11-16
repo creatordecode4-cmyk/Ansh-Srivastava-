@@ -258,7 +258,8 @@ def assemble():
             hold = (nums[k + 1] - n) if k + 1 < len(nums) else 1
             fh.write(f"file '{found[n]}'\nduration {hold / 24.0:.6f}\n")
         fh.write(f"file '{found[nums[-1]]}'\n")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24,format=yuv420p", "-c:v", "libx264",
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24,format=yuv420p",
+                    "-frames:v", str(nums[-1] - nums[0] + 1), "-c:v", "libx264",                # the list's closing entry would add a frame
                     "-crf", "17", "-preset", "slow", "-movflags", "+faststart", film_path], check=True)
     print(f"FILM {film_path} {os.path.getsize(film_path) / 1e6:.1f} MB from {len(nums)} frames ({nums[0]}-{nums[-1]})")
 
