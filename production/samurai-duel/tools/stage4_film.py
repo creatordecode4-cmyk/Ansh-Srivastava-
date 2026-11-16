@@ -3,6 +3,7 @@
     python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|half|hd|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
                                            [--only F,F,...] [--skip-done] [--cache NAME] [--no-trails] [--no-anime]
     python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME] [--finish]
+                                             [--size WxH]
 
 --fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
 fight's effects and camera shake; without it only the intro is built, as it was rendered for the
@@ -23,6 +24,11 @@ before, this frame and the frame after, at the scene times those have.
 
 Frames go to out/stage4/<preset><tag>/f_####.png (numbered by film frame). Every frame is rendered at
 the scene time the film's time map gives it (sd/film.py), with the camera of the shot it belongs to.
+
+assemble --size WxH scales every frame to that size as the film is put together (Lanczos, then a
+light sharpening), e.g. --size 1920x1080 for the 720p render (hd) shown at 1080p. With --finish the
+scaling comes first, so the grain is laid at the full size; the finished frames then go to
+finished_WxH, next to the unscaled ones.
 """
 import math
 import os
@@ -285,22 +291,29 @@ def assemble():
     nums = sorted(found)
     film_path = os.path.join(HERE, arg("--out", "previews/stage4_intro.mp4"))
     lst = os.path.join(out_dir(preset, tags[0]), "frames.txt")
+    size = arg("--size", "")
+    size = tuple(int(v) for v in size.lower().split("x")) if size else None
     if "--finish" in sys.argv:                                      # the film look (sd/post.py finish): grade, grain, vignette, wide-screen bars
         import bpy  # noqa: F401  (mathutils for sd.film)
-        from PIL import Image
+        from PIL import Image, ImageFilter
         from sd import post
-        fin = os.path.join(out_dir(preset, tags[0]), "finished")
+        fin = os.path.join(out_dir(preset, tags[0]), "finished" + (f"_{size[0]}x{size[1]}" if size else ""))
         os.makedirs(fin, exist_ok=True)
         for n in nums:
             p = os.path.join(fin, f"f_{n:04d}.png")
-            post.finish(Image.open(found[n]), n).save(p)
+            im = Image.open(found[n]).convert("RGB")
+            if size and im.size != size:
+                im = im.resize(size, Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.2, percent=35, threshold=2))
+            post.finish(im, n).save(p)
             found[n] = p
+        size = None                                                 # the finished frames have it already
     with open(lst, "w") as fh:
         for k, n in enumerate(nums):                                # a frame that was not rendered (step > 1) is held
             hold = (nums[k + 1] - n) if k + 1 < len(nums) else 1
             fh.write(f"file '{found[n]}'\nduration {hold / 24.0:.6f}\n")
         fh.write(f"file '{found[nums[-1]]}'\n")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24,format=yuv420p",
+    vf = "fps=24" + (f",scale={size[0]}:{size[1]}:flags=lanczos,unsharp=5:5:0.35" if size else "") + ",format=yuv420p"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", vf,
                     "-frames:v", str(nums[-1] - nums[0] + 1), "-c:v", "libx264",                # the list's closing entry would add a frame
                     "-crf", "17", "-preset", "slow", "-movflags", "+faststart", film_path], check=True)
     print(f"FILM {film_path} {os.path.getsize(film_path) / 1e6:.1f} MB from {len(nums)} frames ({nums[0]}-{nums[-1]})")
