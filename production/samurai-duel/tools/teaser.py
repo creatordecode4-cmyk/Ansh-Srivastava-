@@ -1,7 +1,7 @@
 """The teaser: about ten seconds of the film's strongest moments, cut hard, then a title card. It
 shows the build-up and the blows but nothing of the ending (the hat falling, the mask cracking).
 
-    python3 -I tools/teaser.py [--preset look] [--tag _v3] [--out previews/stage4_teaser_v3]
+    python3 -I tools/teaser.py [--preset look] [--tag _v3] [--out previews/stage4_teaser_v3] [--crf 20]
 
 Writes <out>_vertical.mp4 (1080x1920, for phones: Reels, Shorts) and <out>_wide.mp4 (1920x1080).
 Every film frame gets the film look (sd/post.py finish) and is cut to the wide picture (2.1:1)
@@ -201,7 +201,7 @@ def main():
             frame.save(os.path.join(tmp, f"t_{j:05d}.png"))
         path = f"{out}_{shape}.mp4"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "24", "-i", os.path.join(tmp, "t_%05d.png"), "-vf", "format=yuv420p",
-                        "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-movflags", "+faststart", path], check=True)
+                        "-c:v", "libx264", "-crf", arg("--crf", "20"), "-preset", "slow", "-movflags", "+faststart", path], check=True)
         shutil.rmtree(tmp)
         print(f"TEASER {path} {os.path.getsize(path) / 1e6:.1f} MB, {len(seq)} frames ({len(seq) / 24.0:.1f} s), {W}x{H}")
 
