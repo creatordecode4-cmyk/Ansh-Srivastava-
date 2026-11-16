@@ -22,6 +22,8 @@ def _heaviest():
     for e in film.EVENTS:
         if e["kind"] == "kick" or (e["kind"] == "clash" and (e["f"] in (film.HIT, film.CROSS) or e.get("power", 1.0) >= 1.5)):
             out.append(film.film_of(e["f"]))
+    if not film.EVENTS:                                              # without the fight built (putting the film together): the same four blows
+        out = [film.film_of(f) for f in (film.HIT, film.HAMMER[2], film.KICK, film.CROSS)]
     return sorted(set(out))
 
 
@@ -60,6 +62,50 @@ def impact_frame(im, kind, matte):
         figure = lit[..., None] * np.array([0.30, 0.02, 0.02])
     rgb = rgb * (1.0 - fig[..., None]) + figure * fig[..., None]
     return Image.fromarray((np.clip(rgb, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8))
+
+
+ASPECT = 2.1            # the picture inside the black bars, width to height (the frame itself stays 16:9)
+
+
+def finish(im, ff, label=None, aspect=ASPECT, seed=0):
+    """The film look, laid on a finished frame when the film is put together: a grade (deeper
+    blacks that stay open, a little contrast in the middle, cool shadows and warm highlights),
+    film grain that changes every frame, a soft vignette, and black bars to a wide screen. An
+    impact frame keeps its own colours and only gets the grain and the bars. A preview frame's
+    label (white on a black box, lower left) is kept on top of the lower bar; 'label' writes one."""
+    raw = im.convert("RGB")
+    x = np.asarray(raw, dtype=np.float32) / 255.0
+    H, W = x.shape[:2]
+    y0 = H - (max(11, H // 34) + 10)                                     # where a preview label's box starts
+    dark = np.flatnonzero(x[y0].max(axis=1) > 0.02)
+    box = int(dark[0]) if len(dark) else W
+    box = box if 40 < box < W else 0
+    if not impact(ff):
+        x = np.interp(x, [0.0, 0.06, 0.25, 0.5, 0.75, 0.94, 1.0], [0.012, 0.05, 0.215, 0.5, 0.79, 0.955, 0.985]).astype(np.float32)
+        L = (0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2])[..., None]
+        x = L + (x - L) * 1.06                                          # a touch more colour
+        x += (1.0 - L) ** 2 * np.array([-0.012, 0.004, 0.018]) + L ** 2 * np.array([0.020, 0.008, -0.012])
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        r = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2) / math.sqrt(2.0)
+        x *= (1.0 - 0.30 * r ** 2.2)[..., None]
+    rng = np.random.default_rng(seed * 7919 + ff)
+    g = rng.normal(0.0, 1.0, (H, W)).astype(np.float32)
+    g = np.asarray(Image.fromarray(np.clip(g * 40 + 128, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.55)), dtype=np.float32) / 40.0 - 3.2
+    L = (0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2])[..., None]
+    x += g[..., None] * 0.020 * (0.35 + 0.65 * (1.0 - np.abs(L * 2.0 - 1.0)))   # grain shows most in the middle tones
+    bar = max(0, int(round((H - W / aspect) / 2.0)))
+    out = Image.fromarray((np.clip(x, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8))
+    if bar:
+        d = ImageDraw.Draw(out)
+        d.rectangle((0, 0, W, bar - 1), fill=(0, 0, 0))
+        d.rectangle((0, H - bar, W, H), fill=(0, 0, 0))
+        if label:
+            from PIL import ImageFont
+            font = ImageFont.truetype("DejaVuSans.ttf", max(10, bar // 3))
+            d.text((10, H - bar + (bar - font.size) // 2), label, font=font, fill=(150, 150, 150))
+    if box:
+        out.paste(raw.crop((0, y0, box, H)), (0, y0))
+    return out
 
 
 # speed lines: (first film frame, last film frame, who they close in on)

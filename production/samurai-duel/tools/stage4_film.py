@@ -2,7 +2,7 @@
 
     python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|half|hd|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
                                            [--only F,F,...] [--skip-done] [--cache NAME] [--no-trails] [--no-anime]
-    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
+    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME] [--finish]
 
 --fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
 fight's effects and camera shake; without it only the intro is built, as it was rendered for the
@@ -283,6 +283,16 @@ def assemble():
     nums = sorted(found)
     film_path = os.path.join(HERE, arg("--out", "previews/stage4_intro.mp4"))
     lst = os.path.join(out_dir(preset, tags[0]), "frames.txt")
+    if "--finish" in sys.argv:                                      # the film look (sd/post.py finish): grade, grain, vignette, wide-screen bars
+        import bpy  # noqa: F401  (mathutils for sd.film)
+        from PIL import Image
+        from sd import post
+        fin = os.path.join(out_dir(preset, tags[0]), "finished")
+        os.makedirs(fin, exist_ok=True)
+        for n in nums:
+            p = os.path.join(fin, f"f_{n:04d}.png")
+            post.finish(Image.open(found[n]), n).save(p)
+            found[n] = p
     with open(lst, "w") as fh:
         for k, n in enumerate(nums):                                # a frame that was not rendered (step > 1) is held
             hold = (nums[k + 1] - n) if k + 1 < len(nums) else 1

@@ -113,6 +113,75 @@ def flame_mat(name="MAT_Flame"):
     return m
 
 
+def ring_mat(name, color, strength):
+    """A soft band of light: v runs across the band (0 inside, 1 outside); its 'fade' value is set per frame."""
+    m = bpy.data.materials.get(name)
+    if m is not None:
+        return m
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    link = nt.links.new
+    uv = nt.nodes.new("ShaderNodeUVMap")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    link(uv.outputs["UV"], sep.inputs[0])
+    fade = nt.nodes.new("ShaderNodeValue")
+    fade.name = "fade"
+    fade.outputs[0].default_value = 1.0
+
+    def op(kind, a, b):
+        n = nt.nodes.new("ShaderNodeMath")
+        n.operation = kind
+        for i, v in enumerate((a, b)):
+            if isinstance(v, (int, float)):
+                n.inputs[i].default_value = v
+            else:
+                link(v, n.inputs[i])
+        return n.outputs[0]
+
+    band = op("POWER", op("SUBTRACT", 1.0, op("ABSOLUTE", op("SUBTRACT", op("MULTIPLY", sep.outputs["Y"], 2.0), 1.0), 0.0)), 2.0)
+    alpha = op("MULTIPLY", band, fade.outputs[0])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*color, 1.0)
+    link(op("MULTIPLY", alpha, strength), em.inputs["Strength"])
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    link(alpha, mix.inputs["Fac"])
+    link(tr.outputs[0], mix.inputs[1])
+    link(em.outputs[0], mix.inputs[2])
+    link(mix.outputs[0], nt.nodes.new("ShaderNodeOutputMaterial").inputs["Surface"])
+    return m
+
+
+def petal_mat(name="MAT_PetalBurst"):
+    m = bpy.data.materials.get(name)
+    if m is None:
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        b = m.node_tree.nodes["Principled BSDF"]
+        b.inputs["Base Color"].default_value = (0.95, 0.55, 0.66, 1)
+        b.inputs["Roughness"].default_value = 0.55
+        b.inputs["Emission Color"].default_value = (1.0, 0.62, 0.72, 1)
+        b.inputs["Emission Strength"].default_value = 0.5
+    return m
+
+
+def _annulus(centre, a, b, r, w, n=72):
+    """A flat ring round 'centre' in the plane of unit vectors a and b: (verts, faces, uvs)."""
+    verts, faces, uvs = [], [], []
+    for j in range(n):
+        th = 2.0 * math.pi * j / n
+        d = a * math.cos(th) + b * math.sin(th)
+        verts += [tuple(centre + d * max(0.0, r - 0.5 * w)), tuple(centre + d * (r + 0.5 * w))]
+    for j in range(n):
+        k, k1 = 2 * j, 2 * ((j + 1) % n)
+        faces.append((k, k1, k1 + 1, k + 1))
+        uvs += [(0.0, 0.0), (0.0, 0.0), (0.0, 1.0), (0.0, 1.0)]
+    return verts, faces, uvs
+
+
 def crack_mat(name="MAT_Crack"):
     m = bpy.data.materials.get(name)
     if m is None:
@@ -146,6 +215,17 @@ class FightFX:
         self.flash.visible_shadow = False
         self.flash.hide_render = True
         self.blows = [(film.film_of(ev["f"]), Vector(ev["at"]), ev.get("power", 1.0)) for ev in E if ev["kind"] == "clash"]
+        # --- the heaviest blows throw out a ring of light through the air and a ripple over the wet
+        # floor; both run in film frames, so they spread while the blow is held. The first clash and
+        # the crossing blow the petals about.
+        heavy = [ev for ev in E if ev["kind"] == "kick" or (ev["kind"] == "clash" and (ev.get("power", 1.0) >= 1.2 or ev["f"] in (film.HIT, film.CROSS)))]
+        self.shocks = [(film.film_of(ev["f"]), Vector(ev["at"]), ev.get("power", 1.0)) for ev in heavy]
+        self.shock = hits.holder("FX_Shock", col, ring_mat("MAT_Shock", (1.0, 0.86, 0.66), 9.0))
+        self.ripple = hits.holder("FX_Ripple", col, ring_mat("MAT_Ripple", (0.72, 0.84, 1.0), 2.2))
+        self.petals = hits.holder("FX_PetalBurst", col, petal_mat())
+        self.petal_bursts = [hits.Burst(tuple(ev["at"]), ev["f"], toward=(0.0, 0.0, 1.0), count=110, speed=(1.2, 4.2), spread=88.0, life=(1.4, 2.4), gravity=1.1,
+                                        drag=1.2, width=0.011, streak=0.010, seed=900 + i)
+                             for i, ev in enumerate(e for e in E if e["kind"] == "clash" and e["f"] in (film.HIT, film.CROSS))]
         # --- water: feet that stamp or skid on the wet floor
         self.spray = hits.holder("FX_Spray", col, hits.spray_mat())
         self.water = []
@@ -354,6 +434,8 @@ class FightFX:
                 self.flash.location = at + (cam.location - at).normalized() * 0.03
                 self.flash.rotation_euler = cam.rotation_euler
                 self.flash.scale = (k, k, k)
+        self._shock(ff, cam)
+        hits.fill(self.petals, [b for b in self.petal_bursts if -0.5 < t - b.frame < 60.0], t)
         if self.flame_ev:
             self._flame(t)
         if self.tear_mask is not None:
@@ -382,6 +464,39 @@ class FightFX:
                     me.clear_geometry()
                     me.from_pydata(C["verts"], [], C["quads"][:n])
                     me.update()
+
+    def _shock(self, ff, cam):
+        """Rings of light square to the lens, and ripples on the floor, from the heaviest blows."""
+        R = cam.matrix_world.to_3x3()
+        right, up = (R @ Vector((1.0, 0.0, 0.0))).normalized(), (R @ Vector((0.0, 1.0, 0.0))).normalized()
+        air, floor = ([], [], []), ([], [], [])
+        k_air = k_floor = 0.0
+        for at_ff, at, power in self.shocks:
+            age = ff - at_ff
+            if 0 <= age < 10:                                        # through the air: fast out, slowing, thinning
+                u = age / 10.0
+                r = (0.12 + 1.5 * (1.0 - (1.0 - u) ** 2)) * math.sqrt(power)
+                v, f, uv = _annulus(at, right, up, r, 0.16 * (1.0 - u) ** 1.4 + 0.012)
+                n = len(air[0])
+                air[0].extend(v)
+                air[1].extend(tuple(i + n for i in q) for q in f)
+                air[2].extend(uv)
+                k_air = max(k_air, (1.0 - u) ** 1.3)
+            if 0 <= age < 18:                                        # over the water on the stones
+                u = age / 18.0
+                r = (0.2 + 2.8 * (1.0 - (1.0 - u) ** 2)) * math.sqrt(power)
+                v, f, uv = _annulus(Vector((at.x, at.y, 0.008)), Vector((1.0, 0.0, 0.0)), Vector((0.0, 1.0, 0.0)), r, 0.22 * (1.0 - u) + 0.03)
+                n = len(floor[0])
+                floor[0].extend(v)
+                floor[1].extend(tuple(i + n for i in q) for q in f)
+                floor[2].extend(uv)
+                k_floor = max(k_floor, (1.0 - u) ** 1.5)
+        for ob, (v, f, uv), k in ((self.shock, air, k_air), (self.ripple, floor, k_floor)):
+            _fill(ob, v, f, uv if v else None)
+            ob.hide_render = not v
+            node = ob.data.materials[0].node_tree.nodes.get("fade")
+            if node is not None:
+                node.outputs[0].default_value = k
 
     def _flame(self, t):
         ev, A = self.flame_ev, self.cast["oni"]

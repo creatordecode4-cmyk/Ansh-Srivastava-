@@ -322,6 +322,21 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   past its point - water for the Ronin's two swords, fire for the Oni's - banded colour, a pale
   crest, an ink line round it; crests curl along a water trail's edge, tongues lick from a fire
   trail's; drops or embers fly from the fastest moments, and each trail lights the scene a little.
+- Cut as a drawn fight is cut (after "not like a game: a cinematic fight, every side"): the fight
+  is now 26 shots instead of 16, most of a second or two. The three overhead cuts become four
+  shots (low as the first lands; close on the blades grinding; the mask from below as he raises the
+  third; over the Ronin's shoulder as it lands); the counter becomes the spin, the kick from the
+  stones, his skidding feet, the throw; the great cut opens on his hands as the fire wakes on the
+  blade; the cape is followed by the Ronin's visor; before the last pass the two pairs of eyes in
+  close-up (95 mm, focused on the eyes); after the crossing the blades parting close up. Cameras
+  that follow a joint glide between take frames in slow motion (`film.joint`).
+- Shock rings and ripples (`fightfx._shock`): the heaviest blows throw a ring of light out through
+  the air, square to the lens, and a ripple out over the wet floor; both run in film frames, so they
+  spread while the blow is held. The first clash and the crossing blow petals about.
+- Film finish (`post.finish`, `assemble --finish`): a grade (blacks lifted a little, contrast in the
+  middle, cool shadows, warm highlights, a touch more colour), grain that changes every frame, a
+  soft vignette and black bars to 2.1:1. It is laid on when the film is put together, so finished
+  frames are never rendered again for it; impact frames keep their own colours.
 - Impact frames and speed lines (`sd/post.py`): the four heaviest blows (the first clash, the third
   overhead cut, the kick, the crossing) each get two drawn frames as they land - light and dark
   swapped in ink on paper with what blazed in red, then red and black - and the two charges and
