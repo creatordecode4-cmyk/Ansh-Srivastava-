@@ -1381,10 +1381,11 @@ def shots(cast):
         return dict(pos=flat(r, 0.0) + b * 1.9 - l * 1.0 + Vector((0, 0, 0.70)), look=flat(r, 0.0) - b * 0.7 - l * 0.30 + Vector((0, 0, 0.90)), lens=30.0, hand=0.006)
     add("S08d the cape", 550, 563, torn)
 
-    def visor(ff):
+    def visor(ff):                                                   # under the brim: opened up a stop, so the visor reads on a small screen
         h, fwd, up = head_frame(ronin, ff)
         side = fwd.cross(up).normalized()
-        return dict(pos=h + fwd * 0.75 + side * 0.20 - up * 0.10, look=h + fwd * 0.10 + up * 0.06, lens=80.0, focus=h + fwd * 0.12 + up * 0.06, hand=0.005)
+        return dict(pos=h + fwd * 0.75 + side * 0.20 - up * 0.10, look=h + fwd * 0.10 + up * 0.06, lens=80.0, focus=h + fwd * 0.12 + up * 0.06, hand=0.005,
+                    ev=1.0)
     add("S08e the visor", 564, 576, visor)
 
     # 24 s: the eyes - his visor under the brim, the Oni's eyes in the mask; from the stones as they

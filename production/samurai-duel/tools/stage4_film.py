@@ -196,11 +196,15 @@ def render():
     out = out_dir(preset, tag)
     os.makedirs(out, exist_ok=True)
     font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(11, H // 34))
+    ev0 = sc.view_settings.exposure                                 # a shot's camera may open up from this ('ev', in stops)
+    if anime:
+        from sd import post
     t_all = time.time()
     for ff in (only or range(first, last + 1, step)):
         if skip and os.path.exists(os.path.join(out, f"f_{ff:04d}.png")):
             continue
         t1 = time.time()
+        kind = post.impact(ff) if anime else 0                      # an impact frame is a freeze: sharp shapes, no motion blur or depth of field
         st = film.scene_time(ff)
         sc.frame_set(int(math.floor(st)), subframe=st - math.floor(st))
         for who, obs in parts.items():
@@ -210,10 +214,11 @@ def render():
                     o.hide_render = hide
         sh = film.shot_at(shots, ff)
         c, pos, look = place(sh, ff)
+        sc.view_settings.exposure = ev0 + c.get("ev", 0.0)
         e0 = orient(pos, look, c.get("roll", 0.0))
         rate = film.rate_at(ff)
         if curves is not None:
-            sc.render.use_motion_blur = rate > 0.0
+            sc.render.use_motion_blur = rate > 0.0 and not kind
             sc.render.motion_blur_shutter = 0.5 * rate
             keys = []
             for k in (-1, 0, 1):
@@ -227,7 +232,7 @@ def render():
         cam.location = pos
         cam.rotation_euler = e0
         cd.lens = c["lens"]
-        cd.dof.use_dof = dof
+        cd.dof.use_dof = dof and not kind
         if dof:                                                     # focus on what the shot looks at; long lenses are opened up
             cd.dof.focus_distance = (Vector(c.get("focus", look)) - pos).length
             cd.dof.aperture_fstop = c.get("fstop", 2.0 if c["lens"] >= 70 else 2.8 if c["lens"] >= 45 else 4.0)
@@ -247,9 +252,7 @@ def render():
         rnd.still(sc, path, cam)
         if anime:
             from bpy_extras.object_utils import world_to_camera_view
-            from sd import post
             who, k = post.lines(ff)
-            kind = post.impact(ff)
             if k > 0.0 or kind:                                     # a matte of the fighters keeps the lines off them and draws them in ink
                 mpath = os.path.join(out, "mattes", f"m_{ff:04d}.png")
                 rnd.mask(sc, mpath, [o for obs in parts.values() for o in obs])
