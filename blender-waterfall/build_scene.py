@@ -13,6 +13,8 @@ import bpy, bmesh, math, random, sys, os, argparse
 from mathutils import Vector, noise
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import lookdev as LD
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 ap = argparse.ArgumentParser()
 ap.add_argument("--step", type=int, default=1)
@@ -20,6 +22,8 @@ ap.add_argument("--still", default="")
 ap.add_argument("--frame", type=int, default=1)
 ap.add_argument("--res", type=int, default=640)
 ap.add_argument("--samples", type=int, default=16)
+ap.add_argument("--sun", default="right", choices=["right", "left"],
+                help="right = matches colour reference (sun in frame, top-right); left = top-left")
 ap.add_argument("--save", default=os.path.join(HERE, "waterfall_valley.blend"))
 args = ap.parse_args(argv)
 
@@ -82,7 +86,7 @@ def river_cx(y):
     return FALL_X * (1 - t) + (-2.0) * t + 3.0 * math.sin(y * 0.06)
 
 def river_w(y):
-    return 7.0 + 9.0 * smooth(55, 0, y)        # widens toward the camera
+    return 7.0 + 4.5 * smooth(55, 0, y)        # widens a little toward the camera
 
 def ground_h(x, y):
     # base meadow/riverbank level
@@ -114,7 +118,36 @@ def build_terrain():
         for i in range(nx - 1):
             a = j * nx + i
             faces.append((a, a + 1, a + nx + 1, a + nx))
-    return mesh_obj("TER_Ground", verts, faces, "Terrain")
+    obj = mesh_obj("TER_Ground", verts, faces, "Terrain")
+    # --- scatter weight maps for the Geometry Nodes layers
+    W = {k: [] for k in ("w_grass", "w_bush", "w_forest", "w_fern", "w_gravel")}
+    cam = Vector((-2.0, -26.0))
+    for (x, y, h) in verts:
+        gx = (ground_h(x + 0.5, y) - h) / 0.5
+        gy = (ground_h(x, y + 0.5) - h) / 0.5
+        slope = math.sqrt(gx * gx + gy * gy)
+        cy = cliff_y(x)
+        d_riv = abs(x - river_cx(y)) / river_w(y)
+        below_rim = y < cy - 4.0          # keep scatter off the steep strip at the wall
+        plateau = y > cy + 3.0
+        dist = (Vector((x, y)) - cam).length
+        near = 1.0 - smooth(35, 110, dist)
+        grass = (below_rim and d_riv > 0.95 and slope < 3.0) * (0.15 + 0.85 * near)
+        W["w_grass"].append(grass * (0.6 + 0.4 * smooth(-0.3, 0.3, fbm((x * .08, y * .08, 4), 2))))
+        bank = below_rim and 1.0 < d_riv < 1.7 and y < 60 and slope < 1.2
+        W["w_bush"].append(1.0 if bank else (0.03 if (below_rim and x < -16 and slope < 2.5) else 0.0))
+        W["w_gravel"].append(1.0 - smooth(0.85, 1.25, d_riv) if y < cy else 0.0)
+        W["w_fern"].append(near * (1.0 if (below_rim and d_riv > 1.0) else 0.0))
+        forest = 0.0
+        if plateau and abs(x - FALL_X) > 6 and y < cy + 45:
+            forest = 1.0
+        elif x < -30 and below_rim and y > 8:
+            forest = 0.8
+        W["w_forest"].append(forest)
+    for k, vals in W.items():
+        a = obj.data.attributes.new(k, "FLOAT", "POINT")
+        a.data.foreach_set("value", vals)
+    return obj
 
 def build_cliff():
     """Vertical layered cliff wall following cliff_y(), with strata ledges."""
@@ -133,7 +166,7 @@ def build_cliff():
             # strata: horizontal bands with ledges and overhang variation
             band = (z / 3.2) + 0.4 * fbm((x * 0.03, 0, z * 0.02), 2)
             frac = band - math.floor(band)
-            ledge = 0.35 * (frac ** 3)                      # sharp step at each layer
+            ledge = 0.15 * (frac ** 3)                      # sharp step at each layer
             bulge = 4.5 * fbm((x * 0.06, z * 0.01, 5.0), 4)  # vertical rounded columns
             bulge += 1.5 * fbm((x * 0.02, z * 0.02, 3.0), 2)
             detail = 0.35 * fbm((x * 0.25, z * 0.25, 9.0), 3)
@@ -178,8 +211,8 @@ def build_mountains():
 def build_water():
     # river surface: plane following the channel
     verts, faces = [], []
-    ys = [y * 1.0 for y in range(-60, 61)]
-    nu = 24
+    ys = [y * 0.5 for y in range(-120, 124)]
+    nu = 64
     for y in ys:
         w = river_w(y) * 1.15
         for i in range(nu + 1):
@@ -257,8 +290,8 @@ def build_rocks():
         s = random.uniform(0.25, 1.1) * (1.2 - 0.5 * far)
         put(x, y, s)
     # dry gravel bank + scattered boulders in the foreground
-    for _ in range(110):
-        put(random.uniform(-24, 26), random.uniform(-20, 2), random.uniform(0.2, 1.3))
+    for _ in range(200):
+        put(random.uniform(-26, 26), random.uniform(-21, 4), random.uniform(0.25, 1.5))
     # pool rim boulders under the waterfall
     for _ in range(40):
         a = random.uniform(math.pi * 1.05, math.pi * 1.95)
@@ -274,34 +307,44 @@ def build_rocks():
 def make_pine_mesh(name, seed, tiers=11):
     rnd = random.Random(seed)
     bm = bmesh.new()
-    # trunk
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=0.22, radius2=0.06, depth=10.0,
+    # trunk (material slot 0 = bark, slot 1 = needles)
+    trunk = bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=0.22, radius2=0.06, depth=10.0,
                           matrix=__import__("mathutils").Matrix.Translation((0, 0, 5.0)))
-    # stacked drooping branch tiers
+    # core cone (keeps the silhouette solid) + drooping branch clumps per tier
+    from mathutils import Matrix, Euler
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=1.4, radius2=0.05, depth=8.6,
+                          matrix=Matrix.Translation((0, 0, 1.7 + 4.3)))
     for t in range(tiers):
         f = t / (tiers - 1)
-        z = 1.8 + f * 8.0
-        r = (1 - f) * 2.4 + 0.35
-        depth = 1.9 - f * 0.7
-        res = bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=r, radius2=0.02, depth=depth,
-                                    matrix=__import__("mathutils").Matrix.Translation((0, 0, z + depth / 2)))
-        for v in res["verts"]:
-            if v.co.z < z + 0.05:            # jagged branch tips
-                k = 1 + 0.35 * rnd.uniform(-1, 1)
-                v.co.x *= k; v.co.y *= k
-                v.co.z -= 0.35 * rnd.random()
+        z = 1.6 + f * 8.4
+        r = (1 - f) ** 1.1 * 2.6 + 0.3
+        n = max(4, int(11 - f * 6))
+        for b in range(n):
+            a = b / n * 6.283 + rnd.uniform(-0.3, 0.3) + t * 0.7
+            rr = r * rnd.uniform(0.55, 0.75)
+            mtx = (Matrix.Translation((math.cos(a) * rr, math.sin(a) * rr, z - 0.25 * rr))
+                   @ Euler((0, math.radians(rnd.uniform(14, 26)), a)).to_matrix().to_4x4()
+                   @ Matrix.Diagonal((r * rnd.uniform(0.5, 0.65), r * 0.28, 0.32 + 0.1 * (1 - f), 1.0)))
+            res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0, matrix=mtx)
+            for v in res["verts"]:
+                v.co += Vector((rnd.uniform(-.12, .12), rnd.uniform(-.12, .12), rnd.uniform(-.1, .1)))
+    bm.verts.index_update()
+    n_trunk = len(trunk["verts"])          # trunk verts were created first
+    for f in bm.faces:
+        f.material_index = 0 if all(v.index < n_trunk for v in f.verts) else 1
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me); bm.free()
+    me.shade_smooth()
     return me
 
 def make_bush_mesh(name, seed):
     rnd = random.Random(seed)
     bm = bmesh.new()
-    for _ in range(6):
-        m = __import__("mathutils").Matrix.Translation((rnd.uniform(-.7, .7), rnd.uniform(-.7, .7), rnd.uniform(.3, .8)))
-        bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rnd.uniform(.5, .9), matrix=m)
+    for _ in range(14):
+        m = __import__("mathutils").Matrix.Translation((rnd.uniform(-.8, .8), rnd.uniform(-.8, .8), rnd.uniform(.15, .75)))
+        bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rnd.uniform(.25, .5), matrix=m)
     for v in bm.verts:
-        v.co *= 1 + 0.25 * noise.noise(v.co * 2.5 + Vector((seed, 0, 0)))
+        v.co *= 1 + 0.4 * noise.noise(v.co * 4.0 + Vector((seed, 0, 0)))
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me); bm.free()
     me.shade_smooth()
@@ -330,31 +373,40 @@ def build_vegetation():
     # hero pine mid-left (clay A ~x=0.43 of frame)
     tree(-10.0, 24.0, 19.0)
     tree(-14.0, 30.0, 14.0)
-    # left forested slope + left cliff top
-    for _ in range(140):
-        x = random.uniform(-95, -30); y = random.uniform(10, 75)
-        if y < cliff_y(x) - 2:
-            tree(x, y, random.uniform(8, 18))
-    # cliff-top forest along the rim (dense dark band in clay A)
-    for _ in range(260):
-        x = random.uniform(-100, 110)
-        y = cliff_y(x) + random.uniform(2, 40)
-        if abs(x - FALL_X) > 5:
-            tree(x, y, random.uniform(7, 15))
+    # forest on the left slope + cliff top: Geometry Nodes scatter (see below)
     # right bank sparse trees
     for _ in range(12):
         x = random.uniform(28, 70); y = random.uniform(10, 40)
         if y < cliff_y(x) - 3:
             tree(x, y, random.uniform(8, 14))
-    # bushes on banks and slopes
-    for _ in range(220):
-        side = random.choice([-1, 1])
-        y = random.uniform(-35, 60)
-        x = river_cx(y) + side * (river_w(y) * random.uniform(1.0, 3.2))
-        bush(x, y, random.uniform(.5, 1.4))
-    for _ in range(120):
-        bush(random.uniform(-70, -15), random.uniform(-30, 60), random.uniform(.6, 1.6))
-    return trees, shrubs
+    # ---- instance library (hidden) + Geometry Nodes scatter layers
+    lib = bpy.data.collections.new("VEG_Library")
+    COLS["Vegetation"].children.link(lib)
+    lib.hide_render = True; lib.hide_viewport = True
+    lib_tree = bpy.data.collections.new("VEG_Lib_Pines"); lib.children.link(lib_tree)
+    lib_bush = bpy.data.collections.new("VEG_Lib_Bushes"); lib.children.link(lib_bush)
+    lib_grass = bpy.data.collections.new("VEG_Lib_Grass"); lib.children.link(lib_grass)
+    lib_fern = bpy.data.collections.new("VEG_Lib_Ferns"); lib.children.link(lib_fern)
+    for i, me in enumerate(pines):
+        o = bpy.data.objects.new(f"VEG_LibPine_{i}", me); o.scale = (1.15,) * 3; lib_tree.objects.link(o)
+    for i, me in enumerate(bushes):
+        lib_bush.objects.link(bpy.data.objects.new(f"VEG_LibBush_{i}", me))
+    for i in range(4):
+        lib_grass.objects.link(bpy.data.objects.new(f"VEG_LibGrass_{i}", LD.make_grass_clump(f"VEG_grass_mesh_{i}", i)))
+    for i in range(3):
+        lib_fern.objects.link(bpy.data.objects.new(f"VEG_LibFern_{i}", LD.make_fern(f"VEG_fern_mesh_{i}", i)))
+    ter = bpy.data.objects["TER_Ground"]
+    vc = COLS["Vegetation"]
+    LD.gn_scatter("Forest", ter, "w_forest", 0.045, lib_tree, (0.7, 1.45), 11, vc, wind=0.012)
+    LD.gn_scatter("Bushes", ter, "w_bush", 0.22, lib_bush, (0.5, 1.4), 21, vc, wind=0.035)
+    LD.gn_scatter("Ferns", ter, "w_fern", 0.025, lib_fern, (0.7, 1.5), 41, vc, wind=0.08)
+    LD.gn_scatter("Grass", ter, "w_grass", 22.0, lib_grass, (0.7, 1.4), 31, vc, wind=0.10)
+    lib_peb = bpy.data.collections.new("RCK_Lib_Pebbles"); lib.children.link(lib_peb)
+    for i in range(6):
+        lib_peb.objects.link(bpy.data.objects.new(f"RCK_LibPebble_{i}", bpy.data.meshes[f"RCK_mesh_{i}"]))
+    LD.gn_scatter("Pebbles", ter, "w_gravel", 3.0, lib_peb, (0.05, 0.28), 51, COLS["Rocks"])
+    return trees, shrubs, dict(pines=pines, bushes=bushes,
+                               grass=[o.data for o in lib_grass.objects], ferns=[o.data for o in lib_fern.objects])
 
 # ---------------------------------------------------------------- camera / light
 def build_camera():
@@ -407,13 +459,84 @@ def render_settings(res_x, samples):
     r.fps = 24
     scene.frame_start, scene.frame_end = 1, 480
     scene.view_settings.view_transform = "AgX"
+    if args.step >= 2:
+        scene.view_settings.look = "AgX - Medium High Contrast"
+        scene.view_settings.exposure = -0.35
+
+# ---------------------------------------------------------------- step 2
+def sun_direction(side):
+    """Direction TOWARD the sun. 'right' puts the disc top-right in frame like the
+    colour reference; 'left' mirrors it to top-left."""
+    yaw = math.radians(19.0 if side == "right" else -58.0)
+    el = math.radians(31.0 if side == "right" else 30.0)
+    return Vector((math.sin(yaw) * math.cos(el), math.cos(yaw) * math.cos(el), math.sin(el)))
+
+def apply_lookdev(objs, veg_meshes):
+    rock = LD.mat_rock("MAT_Rock", cracks=0.25, strata=0.4, base=(0.52, 0.44, 0.35), warm=(0.62, 0.48, 0.32), moss_amt=0.5, disp=0.06)
+    cliff = LD.mat_rock("MAT_Cliff", strata=0.8, base=(0.40, 0.33, 0.26), warm=(0.58, 0.36, 0.18),
+                        moss_amt=0.35, disp=0.25, scale=3.0)
+    ground = LD.mat_ground()
+    mount = LD.mat_mountain()
+    bark = LD.mat_bark()
+    needles = LD.mat_foliage("MAT_Needles", (0.03, 0.09, 0.025), (0.12, 0.24, 0.05), sss=0.2)
+    leaves = LD.mat_foliage("MAT_BushLeaves", (0.05, 0.12, 0.02), (0.22, 0.32, 0.05), sss=0.3, bump_scale=9)
+    grass = LD.mat_foliage("MAT_Grass", (0.08, 0.18, 0.03), (0.38, 0.45, 0.10), sss=0.3, bump_scale=3)
+    fern = LD.mat_foliage("MAT_Fern", (0.06, 0.16, 0.03), (0.20, 0.36, 0.06), sss=0.3, bump_scale=3)
+    water = LD.mat_water(); fall = LD.mat_waterfall()
+
+    def put(me, *mats):
+        # NB: materials.clear() would reset every face's material_index to 0
+        if len(me.materials) == 0:
+            for m in mats: me.materials.append(m)
+        else:
+            for i, m in enumerate(mats): me.materials[i] = m
+    put(bpy.data.objects["TER_Ground"].data, ground)
+    put(bpy.data.objects["TER_Cliff"].data, cliff)
+    for o in COLS["Terrain"].objects:
+        if o.name.startswith("TER_Mountain"): put(o.data, mount)
+    for me in {o.data for o in COLS["Rocks"].objects}: put(me, rock)
+    for me in veg_meshes["pines"]: put(me, bark, needles)
+    for me in veg_meshes["bushes"]: put(me, leaves)
+    for me in veg_meshes["grass"]: put(me, grass)
+    for me in veg_meshes["ferns"]: put(me, fern)
+    w = bpy.data.objects["WAT_River"]; put(w.data, water)
+    put(bpy.data.objects["WAT_Waterfall"].data, fall)
+    LD.bake_foam(w, [o for o in COLS["Rocks"].objects if not o.modifiers], (FALL_X, cliff_y(FALL_X) - 5))
+
+    # lighting
+    sdir = sun_direction(args.sun)
+    LD.setup_lighting(scene, COLS["Lights"], sdir, 4.5)
+
+    # atmosphere: valley haze (god rays), waterfall mist, distant clouds
+    haze = LD.box("ATM_Haze", (0, 120, 60), (220, 170, 75), COLS["Lights"])
+    haze.data.materials.append(LD.mat_volume("MAT_Haze", 0.0006, 0.7, (0.92, 0.95, 1.0)))
+    haze.visible_shadow = False
+    # denser local volume where the sun slants past the left forest -> god rays
+    rays = LD.box("ATM_GodRays", (-15, 40, 22), (45, 28, 24), COLS["Lights"])
+    rays.data.materials.append(LD.mat_volume("MAT_GodRays", 0.0045, 0.75, (1.0, 0.97, 0.9)))
+    rays.visible_shadow = False
+    mist = LD.sphere("ATM_Waterfall_Mist", (FALL_X, cliff_y(FALL_X) - 6, 3.0), (11, 7, 7), COLS["Water"])
+    mist.data.materials.append(LD.mat_volume("MAT_Mist", 0.35, 0.3, (1, 1, 1), noise_scale=0.6, animate=True))
+    cm = LD.mat_cloud()
+    for i, (x, z, sx, sz) in enumerate([(-900, 520, 420, 120), (-250, 640, 360, 90),
+                                         (420, 560, 500, 130), (1100, 700, 380, 100)]):
+        c = LD.plane(f"ATM_Cloud_{i}", (x, 2600, z), (sx, sz), (math.radians(90), 0, 0), COLS["Lights"])
+        c.data.materials.append(cm)
+        c.visible_shadow = False
+
+    # Cycles volume speed settings
+    scene.cycles.volume_step_rate = 4.0
+    scene.cycles.volume_max_steps = 96
+    scene.cycles.volume_bounces = 0
 
 # ---------------------------------------------------------------- main
 build_terrain(); build_cliff(); build_mountains()
-build_water(); build_rocks(); build_vegetation()
+build_water(); build_rocks(); _trees, _shrubs, VEG_MESHES = build_vegetation()
 build_camera(); build_clay_light()
 if args.step == 1:
     clay_override()
+else:
+    apply_lookdev(None, VEG_MESHES)
 render_settings(args.res, args.samples)
 
 bpy.ops.wm.save_as_mainfile(filepath=args.save)
