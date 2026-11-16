@@ -264,9 +264,11 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   on the simulated cape plus the cut-off piece falling by formula), his hat as two pre-cut halves
   from the frame it parts, and the crack laid on the Oni's mask by ray casts and grown over seven
   frames. The last half second fades to black.
-- Cloth for the whole film (scene frames 1-729) takes about 17 minutes to simulate. Of 5.7 million
-  cloth points 78458 were inside the Ronin's body or too close and were put back; 277 stayed
-  inside; no blade passes through cloth and nothing went below the ground.
+- Cloth for the whole film (scene frames 1-729) takes about 17 minutes to simulate. In the run the
+  fight preview was rendered from, 78679 of 5.7 million cloth points were inside the Ronin's body
+  or too close (deepest 87 mm) and were put back; 312 stayed inside; no blade passes through cloth,
+  nothing came up through the hat and nothing went below the ground. The Oni's trouser cage had
+  115867 points (over the whole film) through the other leg, put back on their own side.
 - The Oni's hair is not simulated: on his model it is a short stiff mane (no vertex held by the
   head is more than 22 cm from the middle of the skull, 14 cm behind it), which rides with the head.
 - Finished picture: preset `half` or `final` adds motion blur that follows the time map and depth
