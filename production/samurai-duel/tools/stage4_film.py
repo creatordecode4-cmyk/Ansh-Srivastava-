@@ -182,8 +182,10 @@ def render():
         fx = fightfx.FightFX(sc, cast, core.collection("FIGHT_FX"), folder if "--no-cloth" not in sys.argv else None)
         if "--no-trails" not in sys.argv:                           # the swords' elemental trails: fire for the Oni, water for the Ronin
             span = (film.DASH, film.J0)
-            trails = elemental.Trails(core.collection("FIGHT_FX"), [(cast["oni"], "main", "fire", span), (cast["ronin"], "R", "water", span),
-                                                                    (cast["ronin"], "L", "water", span)])
+            big_o = [(h - 8, h + 1, 1.5) for h in film.HAMMER] + [(film.F0 + 8, film.SLASH + 6, 2.0), (film.CROSS - 6, film.CROSS + 4, 1.7)]
+            big_r = [(film.HIT - 6, film.HIT + 2, 1.4), (film.SPIN - 2, film.KICK, 1.8), (film.CROSS - 6, film.CROSS + 4, 1.7)]
+            trails = elemental.Trails(core.collection("FIGHT_FX"), [(cast["oni"], "main", "fire", span, big_o), (cast["ronin"], "R", "water", span, big_r),
+                                                                    (cast["ronin"], "L", "water", span, big_r)])
     anime = fight and "--no-anime" not in sys.argv                  # impact frames and speed lines (sd/post.py)
     out = out_dir(preset, tag)
     os.makedirs(out, exist_ok=True)

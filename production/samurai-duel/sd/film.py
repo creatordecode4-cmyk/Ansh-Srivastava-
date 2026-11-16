@@ -1270,22 +1270,22 @@ def shots(cast):
                     lens=crash(ff, 27.0, hammers, 0.5), roll=7.0 * math.sin(u * math.pi * 1.5), hand=0.008)
 
     def first_cut(ff):
-        return round_cuts(0.30 * (ff - 289) / 21.0, ff)
-    add("S05a first cut", 289, 310, first_cut)
+        return round_cuts(0.42 * (ff - 289) / 32.0, ff)
+    add("S05a first cut", 289, 321, first_cut)
 
-    def grind(ff):                                                   # close on the blades where they meet, sparks in the lens
+    def grind(ff):                                                   # close on the Ronin's crossed blades as the second cut slams into them
         o, r, d, s = axis(327)
-        u = _smooth((ff - 311) / 20.0)
-        return dict(pos=C2 + s * (0.95 - 0.15 * u) - d * 0.25 + Vector((0.0, 0.0, 0.12)), look=C2, lens=crash(ff, 62.0, hammers, 0.3),
+        u = _smooth((ff - 322) / 11.0)
+        return dict(pos=C2 + s * (1.25 - 0.20 * u) - d * 0.30 + Vector((0.0, 0.0, 0.10)), look=C2, lens=crash(ff, 50.0, hammers, 0.3),
                     roll=-8.0 + 6.0 * u, focus=C2, hand=0.010)
-    add("S05b blades grind", 311, 331, grind)
+    add("S05b blades grind", 322, 333, grind)
 
-    def mask_up(ff):                                                 # the mask from below and to his side as he raises the last cut
+    def mask_up(ff):                                                 # the mask, from a little below and to his side, as he raises the last cut
         h, fwd, up = head_frame(oni, ff)
         side = fwd.cross(up).normalized()
-        u = _smooth((ff - 332) / 13.0)
-        return dict(pos=h + fwd * 0.60 + side * 0.75 - up * (0.58 - 0.08 * u), look=h + up * 0.10, lens=36.0, roll=6.0, focus=h + fwd * 0.10, hand=0.008)
-    add("S05c the mask", 332, 345, mask_up)
+        u = _smooth((ff - 334) / 11.0)
+        return dict(pos=h + fwd * 1.25 + side * 0.95 - up * (0.30 - 0.06 * u), look=h + up * 0.06, lens=55.0, roll=6.0, focus=h + fwd * 0.10, hand=0.008)
+    add("S05c the mask", 334, 345, mask_up)
 
     def third_cut(ff):
         return round_cuts(0.86 + 0.14 * (ff - 346) / 14.0, ff)
@@ -1349,11 +1349,17 @@ def shots(cast):
 
     # 21 s: close on his hands as the fire wakes on the blade; the wind-up from the stones at his feet;
     # the cut, the camera sliding along with it; behind the Ronin, his cape cut; his visor as he turns
-    def ignite(ff):
-        g = (joint(oni, "RightHand", ff) + joint(oni, "LeftHand", ff)) * 0.5
+    def blade_at(A, key, along, ff):                                 # a point on a blade, 'along' metres from the guard, on a film frame
+        f = min(A.frames - 1, max(0, int(round(take_time(ff)))))
+        return A.sword_m[key][f] @ Vector(A.swords[key].arc(along))
+
+    def ignite(ff):                                                  # his fists on the grip and the first half of the blade as the fire runs up it
+        g = blade_at(oni, "main", 0.0, ff)
+        b = blade_at(oni, "main", 0.30, ff)
         o, r, d, s = axis(ff)
         u = _smooth((ff - 505) / 11.0)
-        return dict(pos=g + s * 0.75 + d * 0.35 + Vector((0.0, 0.0, -0.10 + 0.06 * u)), look=g + Vector((0.0, 0.0, 0.12)), lens=55.0, roll=-6.0, focus=g, hand=0.006)
+        return dict(pos=_mix(g, b, 0.5) + s * 0.95 + d * 0.30 + Vector((0.0, 0.0, -0.06 + 0.05 * u)), look=_mix(g, b, 0.45), lens=50.0, roll=-6.0,
+                    focus=_mix(g, b, 0.45), fstop=2.8, hand=0.006)
     add("S08a the fire wakes", 505, 516, ignite)
 
     def wind(ff):
@@ -1384,11 +1390,11 @@ def shots(cast):
     # 24 s: the eyes - his visor under the brim, the Oni's eyes in the mask; from the stones as they
     # launch; the crossing slowed down, the camera going round it; close on the blades as they part;
     # then a crane rising at their side as they stand back to back
-    def eyes_r(ff):
+    def eyes_r(ff):                                                  # the visor under the brim, the brim's edge against the sky
         h, fwd, up = head_frame(ronin, ff)
         side = fwd.cross(up).normalized()
-        e = h + fwd * 0.12 + up * 0.07
-        return dict(pos=h + fwd * 0.62 - side * 0.10 - up * 0.04, look=e, lens=95.0, focus=e, hand=0.003)
+        e = h + fwd * 0.12 + up * 0.08
+        return dict(pos=h + fwd * 1.10 + side * 0.15 - up * 0.20, look=e, lens=60.0, focus=e, fstop=2.8, hand=0.003)
     add("S09a his visor", 577, 584, eyes_r)
 
     def eyes_o(ff):

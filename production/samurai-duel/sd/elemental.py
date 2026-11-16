@@ -142,7 +142,8 @@ def trail_mat(kind):
 
 class Trails:
     def __init__(self, col, specs, seed=7):
-        """specs: [(actor, sword key, 'water' | 'fire', (first take frame, last take frame))]."""
+        """specs: [(actor, sword key, 'water' | 'fire', (first take frame, last take frame)[, boosts])];
+        boosts [(first, last take frame, k)]: the signature moves, where the stream is k times as thick."""
         self.specs = []
         self.obs, self.lights, self.drops = {}, {}, {}
         for kind in sorted({s[2] for s in specs}):
@@ -156,7 +157,8 @@ class Trails:
             mat = hits.glow("MAT_Drops_" + kind, (0.70, 0.88, 1.0) if kind == "water" else (1.0, 0.45, 0.08), 10.0 if kind == "water" else 40.0)
             self.drops[kind] = (hits.holder("FX_Drops_" + kind, col, mat), [])
         rng = np.random.default_rng(seed)
-        for A, key, kind, (f0, f1) in specs:
+        for A, key, kind, (f0, f1), *rest in specs:
+            boosts = rest[0] if rest else []
             sw = A.swords[key]
             L = sw.spec["blade"]
             n = len(A.sword_m[key])
@@ -169,7 +171,12 @@ class Trails:
             w = np.clip((swing - SWING[0]) / (SWING[1] - SWING[0]), 0.0, 1.0)
             w = w * w * (3 - 2 * w)
             w = np.convolve(w, np.ones(3) / 3.0, mode="same")           # no flicker from one frame to the next
-            self.specs.append((A, key, kind, (f0, f1), w))
+            big = np.ones(n)
+            for b0, b1, k in boosts:                                  # eased in and out over four frames each side
+                for f in range(max(0, b0 - 4), min(n, b1 + 5)):
+                    e = min(1.0, (f - (b0 - 4)) / 4.0, ((b1 + 4) - f) / 4.0)
+                    big[f] = max(big[f], 1.0 + (k - 1.0) * e * e * (3 - 2 * e))
+            self.specs.append((A, key, kind, (f0, f1), w * big))
             last = -99
             for f in range(max(1, f0), min(f1, n - 1)):              # drops and embers from the fastest moments
                 if swing[f] < 8.0 or f - last < 2:
