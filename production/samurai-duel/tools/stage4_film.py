@@ -1,7 +1,7 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
     python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|half|hd|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
-                                           [--only F,F,...] [--skip-done] [--cache NAME] [--no-trails] [--no-anime]
+                                           [--only F,F,...] [--skip-done] [--cache NAME] [--no-trails] [--no-anime] [--no-persistent]
     python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME] [--finish]
                                              [--size WxH]
 
@@ -121,7 +121,7 @@ def render():
     sc.cycles.adaptive_min_samples = P["samples"]
     sc.cycles.use_adaptive_sampling = False
     sc.view_settings.exposure = 0.4
-    sc.render.use_persistent_data = True
+    sc.render.use_persistent_data = "--no-persistent" not in sys.argv     # --no-persistent: every frame synced afresh (slower, nothing carried over)
     bpy.data.objects["FOG_Volume"].hide_render = not P["fog"]
     if P["bloom"]:
         rnd.bloom(sc)
