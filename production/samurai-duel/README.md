@@ -323,7 +323,7 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   crest, an ink line round it; crests curl along a water trail's edge, tongues lick from a fire
   trail's; drops or embers fly from the fastest moments, and each trail lights the scene a little.
 - Cut as a drawn fight is cut (after "not like a game: a cinematic fight, every side"): the fight
-  is now 26 shots instead of 16, most of a second or two. The three overhead cuts become four
+  is now 28 shots instead of 18, most of a second or two. The three overhead cuts become four
   shots (low as the first lands; close on the blades grinding; the mask from below as he raises the
   third; over the Ronin's shoulder as it lands); the counter becomes the spin, the kick from the
   stones, his skidding feet, the throw; the great cut opens on his hands as the fire wakes on the
