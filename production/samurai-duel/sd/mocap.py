@@ -53,7 +53,9 @@ class Clip:
         for fr in self.F[:-1]:
             self.t.append(self.t[-1] + fr[0])
         self.T = self.t[-1]
-        a, b = self._parts(self.F[0]), self._parts(self.F[-1])
+        self.P = [self._parts(fr) for fr in self.F]
+        self.mended = self._mend()
+        a, b = self.P[0], self.P[-1]
         ya, yb = self._heading(a["root_q"]), self._heading(b["root_q"])
         turn = (yb - ya + math.pi) % (2 * math.pi) - math.pi
         self.turn = turn if abs(turn) > math.radians(20.0) else 0.0       # per cycle, about the vertical; a few degrees is capture noise
@@ -73,6 +75,59 @@ class Clip:
                     self.seam[key] = va @ vb.inverted()
                 else:
                     self.seam[key] = va - vb
+
+    UPPER = ("root_q", "chest", "r_shoulder", "l_shoulder")
+
+    def _mend(self, spread=6):
+        """Smooth out a frame on which the whole upper body jumps at once.
+
+        Some reference clips are a half cycle and its mirror image put end to end; where the two
+        meet, pelvis, chest and both shoulders turn several times further in one frame than on the
+        frames around it (the walk: 7 degrees at the chest, 29 at a shoulder, in a thirtieth of a
+        second). Seen on a fighter, the arms hitch there once a stride. The excess of that frame's
+        step over the steps either side is taken out of it and spread evenly over 'spread' frames
+        each side, so the clip covers the same ground and ends where it ended, without the hitch.
+        Returns the source frames that were mended."""
+        P, n = self.P, len(self.P)
+
+        def step(k, key):
+            a, b = P[k - 1][key], P[k][key]
+            if isinstance(a, Quaternion):
+                return math.degrees(min(a.rotation_difference(b).angle, 2 * math.pi - a.rotation_difference(b).angle))
+            return math.degrees(abs(b - a))
+
+        mended = []
+        for k in range(2, n - 2):
+            jumps = 0
+            for key in self.UPPER:
+                around = sorted(step(j, key) for j in range(max(1, k - 6), min(n, k + 7)) if j != k)
+                med = around[len(around) // 2]
+                if step(k, key) > max(4.0, 3.0 * med):
+                    jumps += 1
+            if jumps < 3 or k - spread < 1 or k + spread > n - 1:
+                continue
+            mended.append(k)
+            ease = lambda i: (lambda u: u * u * (3 - 2 * u))(min(1.0, max(0.0, (i - (k - spread)) / (2.0 * spread))))
+            for key, v in P[k].items():
+                if key == "root_p":
+                    continue
+                if isinstance(v, Quaternion):
+                    q = [P[i][key].copy() for i in range(n)]
+                    for i in range(1, n):                                   # one side of the double cover
+                        if q[i].dot(q[i - 1]) < 0.0:
+                            q[i].negate()
+                    s_before, s_at, s_after = (q[k - 1] @ q[k - 2].inverted(), q[k] @ q[k - 1].inverted(), q[k + 1] @ q[k].inverted())
+                    excess = s_at @ s_before.slerp(s_after, 0.5).inverted()
+                    for i in range(k - spread, k + spread + 1):
+                        f = ease(i) - (1.0 if i >= k else 0.0)
+                        part = Quaternion().slerp(excess, abs(f))
+                        P[i][key] = (part if f >= 0.0 else part.inverted()) @ q[i]
+                else:
+                    x = [P[i][key] for i in range(n)]
+                    excess = (x[k] - x[k - 1]) - 0.5 * ((x[k - 1] - x[k - 2]) + (x[k + 1] - x[k]))
+                    for i in range(k - spread, k + spread + 1):
+                        P[i][key] = x[i] + excess * (ease(i) - (1.0 if i >= k else 0.0))
+        return mended
 
     @staticmethod
     def _heading(q):
@@ -94,7 +149,7 @@ class Clip:
         t = min(max(t, 0.0), self.T)
         k = max(0, min(len(self.t) - 2, next((i for i in range(len(self.t) - 1) if self.t[i + 1] >= t), len(self.t) - 2)))
         u = (t - self.t[k]) / max(1e-9, self.t[k + 1] - self.t[k])
-        a, b = self._parts(self.F[k]), self._parts(self.F[k + 1])
+        a, b = self.P[k], self.P[k + 1]
         o = {}
         for key, va in a.items():
             vb = b[key]
@@ -246,6 +301,10 @@ def controls(pp, P, ground=SOLE, widen=0.0):
         n = (J["wrist"] - J["shoulder"]).normalized()
         ev = J["elbow"] - J["shoulder"]
         ev -= n * ev.dot(n)
-        if ev.length > 0.03:
-            c["elbow_" + s] = ev.normalized()
+        # a nearly straight arm has no elbow direction of its own: it is eased toward the solver's own
+        # default as the arm straightens, instead of switching to it on the frame it passes 3 cm
+        dflt = (Dc @ Vector((pp.hand[tag]["side"] * 0.55, 0.45, -0.7))).normalized()
+        w = min(1.0, ev.length / 0.06)
+        mixed = ev.normalized() * w + dflt * (1.0 - w) if ev.length > 1e-6 else dflt
+        c["elbow_" + s] = mixed.normalized() if mixed.length > 1e-6 else dflt
     return pp.canon(c)

@@ -76,6 +76,7 @@ EASE = dict(
     slow_out=lambda u: 1 - (1 - u) ** 2,     # leaves at speed, settles
     wind=lambda u: u ** 3,
     snap=lambda u: 1 - (1 - u) ** 3,
+    smoother=lambda u: u * u * u * (u * (6 * u - 15) + 10),     # like inout, but sets off and arrives without a kick in acceleration
 )
 
 

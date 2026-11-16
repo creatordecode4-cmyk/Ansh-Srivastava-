@@ -33,11 +33,11 @@ from .skin import Skin
 FLOOR = 0.006                                        # lowest a cloth point may be: the cloth's own thickness above the ground
 
 
-def _ramp(f, a, b):
+def _ramp(f, a, b, kind="inout"):
     """0 before a, 1 after b, smooth between."""
     if b <= a:
         return 1.0 if f >= b else 0.0
-    return EASE["inout"](min(1.0, max(0.0, (f - a) / (b - a))))
+    return EASE[kind](min(1.0, max(0.0, (f - a) / (b - a))))
 
 
 class Sword:
@@ -235,11 +235,11 @@ class Actor:
                 y, p = (ks[i][1] + (ks[i + 1][1] - ks[i][1]) * u, ks[i][2] + (ks[i + 1][2] - ks[i][2]) * u)
             return ypr(y, p, 0.0) if (y or p) else None
 
-        for key, sw in self.swords.items():
-            sw.carry.prev = None
-            if clear:
-                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"], turned(key, f)) for f in range(n)]
-            else:
+        if clear:
+            saya.update(clr.scabbards({k: sw.carry for k, sw in self.swords.items()}, posed, [poses[f]["D"]["Hips"] for f in range(n)],
+                                      {k: [turned(k, f) for f in range(n)] for k in self.swords}))
+        else:
+            for key, sw in self.swords.items():
                 saya[key] = [pp.bone_matrix(poses[f], sw.bone) @ sw.rest for f in range(n)]
         self.saya_local = saya
         # 3. swords as planned, hands onto the grips
@@ -255,7 +255,8 @@ class Actor:
                 tr = swords.get(key)
                 planned[key][f] = self._track(sw, tr, f, sp) if tr else sp["sheath"]
             for h in holds:
-                wh = _ramp(f, h["f0"] - h.get("blend_in", 8), h["f0"]) * (1.0 - _ramp(f, h["f1"], h["f1"] + h.get("blend_out", 8)))
+                ek = h.get("ease", "inout")
+                wh = _ramp(f, h["f0"] - h.get("blend_in", 8), h["f0"], ek) * (1.0 - _ramp(f, h["f1"], h["f1"] + h.get("blend_out", 8), ek))
                 if wh <= 0.0:
                     continue
                 tag, s = h["hand"], h["hand"][0]
@@ -263,9 +264,19 @@ class Actor:
                     held[f][tag] = True
                     wrist, Dhand = self._on_hat(tag, poses[f], Tobj, h)
                     bw = self._hand_world(c, tag, sp)
-                    c["hand_" + s] = dict(pos=bw[0].lerp(wrist, wh), D=slerp(bw[1], Dhand, wh) if bw[1] is not None else Dhand)
+                    if wh < 1.0:
+                        pos = bw[0].lerp(wrist, wh)
+                        if h.get("via") is not None and f < h["f0"]:     # on the way up: one curve through 'via' (from the shoulder, in the chest's frame)
+                            cv = dict(c)
+                            cv["hand_" + s] = dict(rel=Vector(h["via"]))
+                            vw = self._hand_world(cv, tag, sp)[0]
+                            pos = bw[0] * (1 - wh) ** 2 + vw * (2 * (1 - wh) * wh) + wrist * (wh * wh)
+                        Dfree = bw[1] if bw[1] is not None else self._free_hand_D(c, tag, Rinv, tinv, Tobj)
+                        c["hand_" + s] = dict(pos=pos, D=slerp(Dfree, Dhand, wh))
+                    else:
+                        c["hand_" + s] = dict(pos=wrist, D=Dhand)
                     if h.get("elbow") is not None:
-                        c["elbow_" + s] = sp["chest"].to_3x3() @ Vector(h["elbow"])
+                        c["elbow_" + s] = self._elbow_toward(c, tag, sp["chest"].to_3x3() @ Vector(h["elbow"]), wh)
                     c["fingers_" + s] = mix_shapes(c["fingers_" + s], h.get("shape", "relaxed"), wh)
                     continue
                 sw = self.swords[h["sword"]]
@@ -277,10 +288,11 @@ class Actor:
                     if wp < 1.0:                                         # still on the way: between where the body had the hand and the grip
                         bw = self._hand_world(c, tag, sp)
                         wrist = bw[0].lerp(wrist, wp)
-                        Dhand = slerp(bw[1], Dhand, wp) if bw[1] is not None else Dhand
+                        Dfree = bw[1] if bw[1] is not None else self._free_hand_D(c, tag, Rinv, tinv, Tobj)
+                        Dhand = slerp(Dfree, Dhand, wp)
                     c["hand_" + s] = dict(pos=wrist, D=Dhand)
                     if h.get("elbow") is not None:
-                        c["elbow_" + s] = sp["chest"].to_3x3() @ Vector(h["elbow"])
+                        c["elbow_" + s] = self._elbow_toward(c, tag, sp["chest"].to_3x3() @ Vector(h["elbow"]), wp)
                 elif h.get("bend") is not None:                          # carried: the wrist is set so the blade points where it should
                     c["hand_" + s] = dict(c["hand_" + s], bend=ypr(*[v * wh for v in h["bend"]]))
                 c["fingers_" + s] = mix_shapes(c["fingers_" + s], "grip", min(1.0, max(0.0, (wh - 0.55) / 0.45)))
@@ -317,9 +329,8 @@ class Actor:
                 stats["blade_left"] = clr.blades(pp, skin, posed, local, poses, carried, blade_of, hat=hat)
             posed = skin.frames(poses)
             # 5. the scabbards once more: moving the arms moved the shoulders they lie on
-            for key, sw in self.swords.items():
-                sw.carry.prev = None
-                saya[key] = [sw.carry.frame(posed[f], poses[f]["D"]["Hips"], turned(key, f)) for f in range(n)]
+            saya.update(clr.scabbards({k: sw.carry for k, sw in self.swords.items()}, posed, [poses[f]["D"]["Hips"] for f in range(n)],
+                                      {k: [turned(k, f) for f in range(n)] for k in self.swords}))
             for f in range(n):
                 sp = self._spine(final[f])
                 for key, sw in self.swords.items():
@@ -473,6 +484,20 @@ class Actor:
         rest = Matrix((hd["a"], hd["n"].cross(hd["a"]), hd["n"])).transposed()
         now = Matrix((a, nb.cross(a), nb)).transposed()
         return wrist, now @ rest.inverted()
+
+    def _elbow_toward(self, c, tag, want, w):
+        """The elbow direction a hold asks for, eased in with the hold's weight from the one the body has."""
+        have = c.get("elbow_" + tag[0])
+        if have is None:
+            have = c["chest_D"] @ Vector((self.pp.hand[tag]["side"] * 0.55, 0.45, -0.7))
+        out = Vector(have).normalized().lerp(Vector(want).normalized(), min(1.0, max(0.0, w)))
+        return out.normalized() if out.length > 1e-6 else Vector(want).normalized()
+
+    def _free_hand_D(self, c, tag, Rinv, tinv, Tobj):
+        """World rotation of a hand the body leaves free (no rotation given): as the solver turns it,
+        so that a hand on its way to a grip or the hat turns over gradually instead of at once."""
+        pose = self.pp.solve(motion.moved(dict(c), Rinv, tinv))
+        return Tobj.to_3x3() @ pose["D"][tag + "Hand"]
 
     def _hand_world(self, c, tag, sp):
         """World wrist position (and hand rotation if given) of a body-driven hand control."""

@@ -51,6 +51,37 @@ def _smooth(a, k=5):
     return out / k
 
 
+def _cover(x, r=5):
+    """A smooth curve over time that is nowhere below x (x >= 0, one value per frame): the largest
+    value within r frames either side, then a Hann-weighted average no wider than that. A
+    correction that follows it eases in before it is needed and out after, instead of jumping
+    on and off frame by frame."""
+    x = np.asarray(x, dtype=np.float64)
+    n = len(x)
+    if n < 3 or not x.any():
+        return x.copy()
+    pad = np.pad(x, (r, r), mode="edge")
+    peak = np.max([pad[i:i + n] for i in range(2 * r + 1)], axis=0)
+    w = np.hanning(2 * r + 3)[1:-1]
+    w /= w.sum()
+    pad = np.pad(peak, (r, r), mode="edge")
+    return np.maximum(np.sum([w[i] * pad[i:i + n] for i in range(2 * r + 1)], axis=0), x)
+
+
+def _cover_vec(need, r=5):
+    """_cover for vectors: the size is covered as above, the way is the need's own, averaged over
+    the same frames (a frame that needs nothing borrows the way of its neighbours)."""
+    need = np.asarray(need, dtype=np.float64)
+    mag = np.linalg.norm(need, axis=1)
+    size = _cover(mag, r)
+    way = _smooth(need, 2 * r + 1)
+    wl = np.linalg.norm(way, axis=1)
+    out = np.zeros_like(need)
+    ok = wl > 1e-9
+    out[ok] = way[ok] / wl[ok, None] * size[ok, None]
+    return out
+
+
 # ----------------------------------------------------------------------------- arms
 def arm_points(pp, skin, pose, tag):
     """Centre-line points of one arm with the radius of the limb there: (name, position, radius)."""
@@ -212,39 +243,117 @@ def arms(pp, skin, posed, controls, poses, free, gap=0.012, hat=None):
             c["hand_" + s] = h
             poses[f] = pp.solve(c)
 
-        need = np.zeros((n, 3))
-        for f in range(n):
-            if free[f][tag]:
-                lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
-                if lack > 1e-4:
-                    need[f] = nrm * lack
-        if need.any():
-            sm = _smooth(need, 7)
-            add = np.where(np.linalg.norm(need, axis=1, keepdims=True) > np.linalg.norm(sm, axis=1, keepdims=True), need, sm)
-            total += add
+        # what each free frame lacks becomes a push that is smooth over time and never smaller than
+        # needed (_cover); what a pass leaves is taken up by the next one
+        for _ in range(4):
+            need = np.zeros((n, 3))
+            for f in range(n):
+                if free[f][tag]:
+                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
+                    if lack > 1e-4:
+                        need[f] = nrm * lack
+            if not need.any():
+                break
+            add = _cover_vec(need)
             for f in range(n):
                 if free[f][tag] and add[f].any():
+                    total[f] += add[f]
                     push(f, add[f])
-            for f in range(n):                                         # what that left is settled frame by frame (a frame's skin is asked for in one go)
-                if not free[f][tag]:
-                    continue
-                for _ in range(7):
-                    lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
-                    if lack <= 1e-4:
-                        break
-                    total[f] += nrm * lack
-                    push(f, nrm * lack)
-        worst = max(worst, float(np.linalg.norm(total, axis=1).max()))
-        # then elbows: turn them out of the way, following on from the frame before
-        prev = 0.0
-        for f in range(n):
-            got = _swivel(pp, skin, posed[f], controls[f], poses[f], tag, gap * 0.5, prev, hat, ways[f], near[f])
-            if got is None:
-                prev *= 0.7
+        for f in range(n):                                             # a last few tenths of a millimetre, frame by frame
+            if not free[f][tag]:
                 continue
-            prev, controls[f], poses[f] = got
-            turn = max(turn, abs(prev))
+            for _ in range(3):
+                lack, nrm, _ = arm_lack(pp, skin, posed[f], poses[f], tag, gap, hat=hat, way=ways[f], near=near[f])
+                if lack <= 1e-4:
+                    break
+                total[f] += nrm * lack
+                push(f, nrm * lack)
+        worst = max(worst, float(np.linalg.norm(total, axis=1).max()))
+        # then elbows: the turn each frame needs, made smooth over time the same way
+        turn = max(turn, _elbows(pp, skin, posed, controls, poses, tag, gap * 0.5, hat, ways, near))
     return worst, turn
+
+
+def _elbows(pp, skin, posed, controls, poses, tag, gap, hat, ways, near):
+    """Turn each elbow round the line from shoulder to wrist as far as its forearm needs to clear
+    the body, eased over time. A stretch of frames that needs turning turns one way throughout
+    (the way that asks for less). Returns the largest turn in degrees."""
+    n = len(poses)
+    key = "elbow_" + tag[0]
+
+    def axis(f):
+        H = pp.heads(poses[f])
+        A, T, E = H[tag + "Arm"], H[tag + "Hand"], H[tag + "ForeArm"]
+        nn = (T - A).normalized()
+        b0 = (E - A) - nn * (E - A).dot(nn)
+        return (nn, b0.normalized()) if b0.length > 1e-5 else (None, None)
+
+    def lack_at(f, ang):
+        nn, b0 = axis(f)
+        if nn is None:
+            return 0.0
+        c2 = dict(controls[f])
+        c2[key] = Matrix.Rotation(math.radians(ang), 3, nn) @ b0
+        return arm_lack(pp, skin, posed[f], pp.solve(c2), tag, gap, parts=("forearm", "elbow"), hat=hat, way=ways[f], near=near[f])[0]
+
+    def least(f, sign):
+        """Smallest turn one way that clears (or the best one up to 80 degrees), to a degree."""
+        lo, hi = 0.0, None
+        for a in (10, 20, 30, 45, 60, 80):
+            if lack_at(f, sign * a) <= 1e-4:
+                hi = float(a)
+                break
+            lo = float(a)
+        if hi is None:
+            return 80.0, lack_at(f, sign * 80.0)
+        for _ in range(4):
+            mid = 0.5 * (lo + hi)
+            if lack_at(f, sign * mid) <= 1e-4:
+                hi = mid
+            else:
+                lo = mid
+        return hi, 0.0
+
+    needs = np.array([lack_at(f, 0.0) > 1e-4 for f in range(n)])
+    if not needs.any():
+        return 0.0
+    want = np.zeros(n)
+    f = 0
+    while f < n:                                                       # stretches of frames that need a turn, a few frames apart at most
+        if not needs[f]:
+            f += 1
+            continue
+        g = f
+        while g + 1 < n and needs[g + 1:g + 4].any():
+            g += 1
+        while not needs[g]:
+            g -= 1
+        frames = [h for h in range(f, g + 1) if needs[h]]
+        best = None
+        for sign in (1.0, -1.0):
+            got = [least(h, sign) for h in frames]
+            cost = sum(a for a, _ in got) + 1000.0 * sum(r for _, r in got)
+            if best is None or cost < best[0]:
+                best = (cost, sign, got)
+        for h, (a, _) in zip(frames, best[2]):
+            want[h] = best[1] * a
+        f = g + 1
+    size = _cover(np.abs(want), 4)
+    marked = np.flatnonzero(want != 0.0)                             # every frame turns the way of the nearest stretch that needs it
+    near_k = marked[np.abs(np.arange(n)[:, None] - marked[None, :]).argmin(axis=1)]
+    sign = np.sign(want[near_k])
+    out = 0.0
+    for f in range(n):
+        if size[f] < 0.05:
+            continue
+        nn, b0 = axis(f)
+        if nn is None:
+            continue
+        controls[f] = dict(controls[f])
+        controls[f][key] = Matrix.Rotation(math.radians(sign[f] * size[f]), 3, nn) @ b0
+        poses[f] = pp.solve(controls[f])
+        out = max(out, float(size[f]))
+    return out
 
 
 def brim_points(pp, pose, hat_pos, pts):
@@ -298,6 +407,33 @@ def blades(pp, skin, posed, controls, poses, carried, blade_of, gap=0.02, hat=No
 
 
 # ----------------------------------------------------------------------------- scabbards
+def scabbards(carries, posed, hips_D, steer):
+    """Every scabbard's place on every frame of a shot, with the pushes that keep it off the body
+    smooth over time. carries {key: Scabbard}; hips_D a list; steer {key: list of 3x3 or None}.
+    Each scabbard is first placed frame by frame (Scabbard.frame), then what that pushed is covered
+    (_cover) so that it is eased away before the body reaches it and back afterwards, instead of
+    jumping clear on the frame it is touched. A frame where the smooth place would be more than
+    2 mm closer to the body than the frame-by-frame one keeps the latter.
+    Returns {key: [4x4 per frame]}. The posed skin of a frame is shared by all the scabbards."""
+    n = len(posed)
+    raw, meas = {k: [] for k in carries}, {k: [] for k in carries}
+    for k, c in carries.items():
+        c.prev = None
+    for f in range(n):
+        P = posed[f]
+        for k, c in carries.items():
+            m = c.frame(P, hips_D[f], steer[k][f])
+            raw[k].append(m)
+            meas[k].append(c._measure(P, f, m, hips_D[f], steer[k][f]))
+    smooth = {k: np.hstack([_cover_vec(np.array(meas[k])[:, i:i + 3], 4) for i in range(0, len(meas[k][0]), 3)]) for k in carries}
+    out = {k: [] for k in carries}
+    for f in range(n):
+        P = posed[f]
+        for k, c in carries.items():
+            out[k].append(c._keep(P, c._place(P, smooth[k][f], hips_D[f], steer[k][f]), raw[k][f]))
+    return out
+
+
 class Scabbard:
     """How one scabbard is carried: lying on the back between two points of the skin, or hanging
     from the belt. Set up once in the rest pose; frame(posed, ...) gives its place in a pose."""
@@ -371,6 +507,50 @@ class Scabbard:
         m = Rot.to_4x4()
         m.translation = A - Rot @ _vec(l0)
         return m
+
+    def _pref(self, hips_D, steer):
+        R0 = self.M0.to_3x3()
+        return hips_D @ (steer @ R0 if steer is not None else R0)
+
+    def _measure(self, posed, f, raw, hips_D, steer):
+        """What frame() pushed on this frame, as numbers that can be smoothed over time: for a scabbard
+        on the back how far each end was lifted, for one in the belt the turn away from the pelvis."""
+        if self.mode == "back":
+            (v0, o0, l0), (v1, o1, l1) = self.anchor
+            return np.concatenate([np.array(raw @ _vec(l0) - _vec(posed.carry(v0, o0))), np.array(raw @ _vec(l1) - _vec(posed.carry(v1, o1)))])
+        q = (self._pref(hips_D, steer).inverted() @ raw.to_3x3()).to_quaternion()
+        return np.array(q.axis * q.angle) if q.angle > 1e-9 else np.zeros(3)
+
+    def _place(self, posed, s, hips_D, steer):
+        """The scabbard's matrix from smoothed numbers (_measure)."""
+        if self.mode == "back":
+            (v0, o0, l0), (v1, o1, l1) = self.anchor
+            A, B = _vec(posed.carry(v0, o0)) + _vec(s[:3]), _vec(posed.carry(v1, o1)) + _vec(s[3:])
+            Rot = self._between(posed, v0, A, B, l0, l1, self.M0.to_3x3())
+        else:
+            (v0, o0, l0), = self.anchor
+            w = _vec(s)
+            Rot = self._pref(hips_D, steer) @ (Matrix.Rotation(w.length, 3, w.normalized()) if w.length > 1e-9 else I3)
+            A = _vec(posed.carry(v0, o0))
+        m = Rot.to_4x4()
+        m.translation = A - Rot @ _vec(l0)
+        return m
+
+    def _lack(self, posed, m):
+        """How far the scabbard's axis is inside its clearance (metres; <= 0 clear), as frame() judges it."""
+        pts = self.local @ np.array(m.to_3x3()).T + np.array(m.translation)
+        d, _, _ = posed.signed(pts, "body")
+        lack = self.need - d
+        if self.mode != "back":
+            lack[:2] = 0.0                                          # the mouth is held by the belt
+        return float(lack.max())
+
+    def _keep(self, posed, m, raw):
+        """The smoothed place, unless it is closer to the body than the frame-by-frame one by more than 2 mm."""
+        if self._lack(posed, m) <= max(self._lack(posed, raw), 0.0) + 0.002:
+            return m
+        self.fallbacks = getattr(self, "fallbacks", 0) + 1
+        return raw
 
     def _between(self, posed, v0, A, B, l0, l1, R0):
         ref = _rotation(posed.R[v0]) @ R0                           # turned as the skin under its upper end is turned

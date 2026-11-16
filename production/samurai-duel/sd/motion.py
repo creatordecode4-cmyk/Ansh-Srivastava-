@@ -164,8 +164,69 @@ class Take:
         frames = [mocap.controls(pp, clip.pose(t0 + i / FPS * speed), ground=ground, widen=widen) for i in range(n)]
         return cls(frames, clip.name)
 
+    @staticmethod
+    def _fill_poles(pp, keys):
+        """Keys that leave a knee or elbow to the solver get the solver's own default written in, when
+        another key gives it: blending a given direction with a missing one would hold the given one
+        to the end of the stretch and then let the joint jump to the default."""
+        has = {k for _, c, _ in keys for k in ("knee_L", "knee_R", "elbow_L", "elbow_R") if c.get(k) is not None}
+        for _, c, _ in keys:
+            for tag, s in (("Left", "L"), ("Right", "R")):
+                if "knee_" + s in has and c.get("knee_" + s) is None:
+                    c["knee_" + s] = ((c["foot_" + s]["D"] @ -Y) * 0.65 + (c["hips_D"] @ -Y) * 0.35).normalized()
+                if "elbow_" + s in has and c.get("elbow_" + s) is None:
+                    c["elbow_" + s] = (c["chest_D"] @ Vector((pp.hand[tag]["side"] * 0.55, 0.45, -0.7))).normalized()
+
+    @staticmethod
+    def carry_on(frames, before, n=14, tau=3.0):
+        """Ease the start of a stretch of keyed frames into the motion it follows. frames[0] is the
+        last frame of that motion and 'before' the frame ahead of it; without this the keyed part
+        sets off with a speed of its own and the body, arms and head change speed in one frame (a
+        walker who stops dead). The difference in speed on every control is added to the first
+        frames as a push that dies away: offset = difference * f * exp(-f / tau)."""
+        if before is None or len(frames) < 3:
+            return frames
+        a, b, c1 = before, frames[0], frames[1]
+        out = list(frames)
+
+        def rv(M):                                                       # rotation vector of a 3x3
+            q = M.to_quaternion()
+            return q.axis * q.angle if q.angle > 1e-9 else Vector((0.0, 0.0, 0.0))
+
+        dv, dw = {}, {}
+        if isinstance(b.get("hips"), Vector):
+            dv["hips"] = (b["hips"] - a["hips"]) - (c1["hips"] - b["hips"])
+        for k in ("hips_D", "chest_D", "head_D"):
+            if isinstance(b.get(k), Matrix) and isinstance(a.get(k), Matrix):
+                dw[k] = rv(b[k] @ a[k].transposed()) - rv(c1[k] @ b[k].transposed())
+        for s in "LR":
+            ha, hb, hc = a.get("hand_" + s, {}), b.get("hand_" + s, {}), c1.get("hand_" + s, {})
+            for part in ("rel", "pos"):
+                if all(isinstance(h.get(part), Vector) for h in (ha, hb, hc)):
+                    dv[("hand_" + s, part)] = (hb[part] - ha[part]) - (hc[part] - hb[part])
+            for k in ("elbow_" + s, "knee_" + s):
+                if all(isinstance(x.get(k), Vector) for x in (a, b, c1)):
+                    dv[k] = (b[k] - a[k]) - (c1[k] - b[k])
+        for f in range(1, min(n, len(frames))):
+            g = f * math.exp(-f / tau)
+            c = dict(out[f])
+            for k, d in dv.items():
+                if isinstance(k, tuple):
+                    h = dict(c[k[0]])
+                    h[k[1]] = h[k[1]] + d * g
+                    c[k[0]] = h
+                elif k.startswith(("knee", "elbow")):
+                    c[k] = (c[k] + d * g).normalized()
+                else:
+                    c[k] = c[k] + d * g
+            for k, w in dw.items():
+                if w.length > 1e-9:
+                    c[k] = Matrix.Rotation(w.length * g, 3, w.normalized()) @ c[k]
+            out[f] = c
+        return out
+
     @classmethod
-    def from_keys(cls, pp, keys, steps=(), name="keyed"):
+    def from_keys(cls, pp, keys, steps=(), name="keyed", before=None):
         """A take from poses set by hand: keys = [(frame, controls, ease)], frames counted from 0.
 
         Between two keys the controls are blended with the later key's ease ('inout', 'slow_in',
@@ -179,8 +240,12 @@ class Take:
         and lands heel first. A step without 'pos' keeps the ball of the foot planted and only
         changes yaw or pitch (rising onto the ball, pivoting). A step with slide=True is a skid:
         the foot stays on the ground and travels to 'pos' losing speed all the way (the one case
-        where a foot on the ground is meant to move; its frames are marked 'slide', not planted)."""
+        where a foot on the ground is meant to move; its frames are marked 'slide', not planted).
+
+        before: the controls of the frame ahead of the first key, when the keys carry on from other
+        motion (a walk): the keyed frames then set off at the speed that motion had (carry_on)."""
         keys = sorted(((f, pp.canon(c), e) for f, c, e in keys), key=lambda k: k[0])
+        cls._fill_poles(pp, keys)
         n = keys[-1][0] + 1
         frames = []
         for f in range(n):
@@ -196,6 +261,8 @@ class Take:
                 u2, u3 = u * u, u * u * u
                 c["hips"] = 0.5 * ((2 * p[1]) + (-p[0] + p[2]) * u + (2 * p[0] - 5 * p[1] + 4 * p[2] - p[3]) * u2 + (-p[0] + 3 * p[1] - 3 * p[2] + p[3]) * u3)
             frames.append(c)
+        if before is not None:
+            frames = cls.carry_on(frames, pp.canon(before))
         t = cls(frames, name)
         for tag in ("Left", "Right"):
             s = tag[0]

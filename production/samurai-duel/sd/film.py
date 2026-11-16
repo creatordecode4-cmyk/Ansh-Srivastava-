@@ -211,7 +211,7 @@ def oni_intro(A, mark=(-0.5, -1.9), heading=135.0, face=180.0):
     FR, FL = dict(pos=(-0.16, -0.26, 0.0), yaw=0), dict(pos=(0.20, 0.24, 0.0), yaw=32)
     near_L = dict(rel=tuple(Vector((0.16, -0.50, 1.20)) - pp.H0["LeftArm"]))    # in front of the belt: the left hand's way from scabbard to grip
     ready = dict(hips=(0.0, -0.02, 1.03), hips_rot=(10, 3, 0), chest_rot=(8, 6, 0), head_rot=(0, 3, 0), foot_R=FR, foot_L=FL)
-    breath = dict(ready, hips=(0.0, -0.02, 1.036), chest_rot=(8, 4.5, 0))
+    breath = dict(ready, hips=(0.0, -0.02, 1.042), chest_rot=(8, 3.0, 0), head_rot=(0, 1.5, 0))     # a slow breath: chest up, head lifts a little
     coil = dict(ready, hips=(0.0, 0.0, 1.015), hips_rot=(6, 4, 0), chest_rot=(4, 9, 0), head_rot=(0, 5, 0))       # he sinks as the thumb pushes the guard
     drawn = dict(ready, hips=(0.0, -0.10, 1.00), hips_rot=(24, 5, 0), chest_rot=(24, 12, 0), head_rot=(2, 5, 0))  # left hip pulled back, right arm long
     cut = dict(ready, hips=(0.0, -0.11, 0.99), hips_rot=(14, 5, 0), chest_rot=(-8, 9, 0), head_rot=(0, 5, 0), hand_L=near_L)   # the blade has swept across to the right
@@ -228,7 +228,7 @@ def oni_intro(A, mark=(-0.5, -1.9), heading=135.0, face=180.0):
             (WIDE - 2 - STOP, here(drawn), "inout"), (WIDE + 4 - STOP, here(cut), "slow_out"), k(237, guard), k(240, guard)]
     steps = [("Left", 2, 13, dict(pos=tuple(here(ready)["foot_L"]["pos"]), yaw=face + FL["yaw"]), 0.05),      # the rear foot is drawn up into the stance
              ("Right", 11, 20, dict(yaw=face + FR["yaw"]), 0.0)]                                                # and he turns on the ball of the front foot
-    tail = motion.Take.from_keys(pp, keys, steps, "oni_intro")
+    tail = motion.Take.from_keys(pp, keys, steps, "oni_intro", before=w.c[-2])
     take = joined(w, tail)
     take.fit_hips(pp)
     n = len(take)
@@ -263,11 +263,11 @@ def ronin_intro(A, mark=(0.25, 5.95), face=0.0):
     WIDE = tf(225)
     FR, FL = dict(pos=(-0.11, -0.07, 0.0), yaw=-6), dict(pos=(0.12, 0.06, 0.0), yaw=9)
     WR, WL = dict(pos=(-0.24, -0.20, 0.0), yaw=-12), dict(pos=(0.25, 0.20, 0.0), yaw=30)      # the wide stance he fights from
-    up_R = dict(rel=tuple(Vector((-0.36, -0.34, 1.30)) - pp.H0["RightArm"]))     # the right hand on its way up to the brim, clear of the chest
+    up_R = tuple(Vector((-0.36, -0.34, 1.30)) - pp.H0["RightArm"])  # where the right hand passes on its way up to the brim, clear of the chest
     stand = dict(hips=(0.0, 0.0, 0.985), hips_rot=(0, 0, 0), chest_rot=(0, 3, 0), head_rot=(0, 21, 0), foot_R=FR, foot_L=FL)
-    reach = dict(stand, hand_R=up_R)
-    lifted = dict(stand, chest_rot=(0, 1, 0), head_rot=(0, -4, 0), hand_R=up_R)
-    crouch = dict(stand, hips=(0.0, 0.0, 0.95), chest_rot=(0, 8, 0), head_rot=(0, 2, 0))       # as the hands go back to the grips
+    lifted = dict(stand, chest_rot=(0, 1, 0), head_rot=(0, -4, 0))
+    looks = dict(stand, hips=(0.0, 0.0, 0.978), chest_rot=(0, 2, 0), head_rot=(0, -6, 0))     # the lift carries on a little while he holds it
+    crouch = dict(stand, hips=(0.0, 0.0, 0.95), chest_rot=(0, 8, 0), head_rot=(0, -3, 0))      # he sinks, the brim still in his fingers
     high = dict(hips=(0.0, 0.02, 0.97), hips_rot=(0, 0, 0), chest_rot=(0, -3, 0), head_rot=(0, 2, 0))             # both blades out and up
     wings = dict(hips=(0.0, 0.0, 0.90), hips_rot=(6, 4, 0), chest_rot=(2, 10, 0), head_rot=(0, 2, 0))             # sunk into his stance, blades low and wide
     settle = dict(wings, hips=(0.0, 0.0, 0.915), chest_rot=(2, 8, 0))
@@ -280,12 +280,13 @@ def ronin_intro(A, mark=(0.25, 5.95), face=0.0):
     w = shifted(w, (mark[0] - stand_at.x, mark[1] - stand_at.y))
     here = lambda pose: to_world(pp, pose, mark, face)
     k = lambda film, pose, ease="inout": (tf(film) - STOP, here(pose), ease)
-    keys = [(0, w.c[-1], "inout"), k(196, stand, "slow_out"), k(202, reach), k(215, lifted), k(218, lifted), k(224, crouch),
+    gather = dict(stand, chest_rot=(0, 4, 0), head_rot=(0, 23, 0))   # the head dips a little more as the hand comes up
+    keys = [(0, w.c[-1], "inout"), k(196, stand, "slow_out"), k(205, gather), k(214, lifted), k(219, looks), k(224, crouch),
             (WIDE - 2 - STOP, here(crouch), "inout"), (WIDE - STOP, here(high), "inout"), (WIDE + 7 - STOP, here(wings), "slow_in"), k(238, settle), k(240, settle)]
     steps = [("Left", 2, 12, dict(pos=tuple(here(stand)["foot_L"]["pos"]), yaw=face + FL["yaw"]), 0.05),
              ("Left", WIDE - 7 - STOP, WIDE - 1 - STOP, dict(pos=tuple(here(dict(stand, foot_L=WL))["foot_L"]["pos"]), yaw=face + WL["yaw"]), 0.05),
              ("Right", WIDE - STOP, WIDE + 6 - STOP, dict(pos=tuple(here(dict(stand, foot_R=WR))["foot_R"]["pos"]), yaw=face + WR["yaw"]), 0.04)]
-    tail = motion.Take.from_keys(pp, keys, steps, "ronin_intro")
+    tail = motion.Take.from_keys(pp, keys, steps, "ronin_intro", before=w.c[-2])
     take = joined(w, tail)
     take.fit_hips(pp)
     n = len(take)
@@ -301,9 +302,11 @@ def ronin_intro(A, mark=(0.25, 5.95), face=0.0):
         tracks[key] = [dict(f=0, space="sheath", d=0.0), dict(f=tf(224), space="sheath", d=0.0), dict(f=WIDE - 3, space="sheath", d=0.42, ease="slow_in"),
                        k_high, k_out, k_low, k_set, dict(k_set, f=n - 1)]
         holds.append(dict(sword=key, hand=tag, f0=WIDE - 4, f1=n, along=0.058, roll=0.0, blend_in=4))
-    # the brim is taken at its front right corner, so that the hand does not cover the visor from the front
-    holds.append(dict(hat=(-0.225, -0.165, -0.150), hand="Right", f0=tf(204), f1=tf(217), blend_in=8, blend_out=6, fingers=(0.16, 0.10, 1.0), back=(-0.95, -0.3, 0.1),
-                      shape=PINCH, elbow=(-0.75, -0.25, -0.6)))
+    # the brim is taken at its front right corner, so that the hand does not cover the visor from the front.
+    # The hand rises in one curve (through up_R, clear of the chest) and arrives slowing down; it keeps
+    # the brim until the cut to the wide shot, which picks him up with both hands already at the grips.
+    holds.append(dict(hat=(-0.225, -0.165, -0.150), hand="Right", f0=tf(205), f1=tf(224), blend_in=14, blend_out=6, fingers=(0.16, 0.10, 1.0), back=(-0.95, -0.3, 0.1),
+                      shape=PINCH, elbow=(-0.75, -0.25, -0.6), via=up_R, ease="smoother"))
     return take, tracks, holds, None
 
 
