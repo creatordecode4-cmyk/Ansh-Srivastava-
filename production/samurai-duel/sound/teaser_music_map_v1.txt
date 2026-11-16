@@ -1,0 +1,75 @@
+Oni vs Ronin, the teaser (10.4 s): music map (A hirajoshi: A B C E F; drums on an elastic grid that lands on the blows)
+    0.25 s  f   7   -19.0 dB  drone A1
+    0.55 s  f  14   -21.0 dB  flute A4
+    0.92 s  f  23   -15.0 dB  boom on the cut
+    0.92 s  f  23   -21.0 dB  taiko on the cut
+    1.35 s  f  33   -21.0 dB  flute C5
+    1.67 s  f  41   -15.0 dB  boom on the cut
+    1.67 s  f  41   -21.0 dB  taiko on the cut
+    1.85 s  f  45   -21.0 dB  flute B4
+    2.17 s  f  53   -15.0 dB  boom on the cut
+    2.17 s  f  53   -21.0 dB  taiko on the cut
+    2.17 s  f  53   -14.0 dB  riser into the words
+    2.58 s  f  63   -15.0 dB  boom on the cut
+    2.58 s  f  63   -21.0 dB  taiko on the cut
+    3.12 s  f  76   -11.0 dB  braam (ONE MOON. TWO BLADES.)
+    3.12 s  f  76   -10.0 dB  sub boom
+    3.51 s  f  85   -12.0 dB  pull into the action
+    3.96 s  f  96   -16.0 dB  o-daiko
+    3.96 s  f  96   -20.0 dB  shamisen A3
+    4.06 s  f  99   -23.0 dB  shime
+    4.17 s  f 101   -23.0 dB  shime
+    4.17 s  f 101   -20.0 dB  shamisen C4
+    4.27 s  f 104   -23.0 dB  shime
+    4.38 s  f 106   -16.0 dB  o-daiko
+    4.38 s  f 106   -20.0 dB  shamisen E4
+    4.48 s  f 109   -23.0 dB  shime
+    4.58 s  f 111   -23.0 dB  shime
+    4.58 s  f 111   -20.0 dB  shamisen F4
+    4.69 s  f 114   -23.0 dB  shime
+    4.79 s  f 116   -16.0 dB  o-daiko
+    4.79 s  f 116   -20.0 dB  shamisen E4
+    4.90 s  f 119   -23.0 dB  shime
+    5.00 s  f 121   -13.0 dB  o-daiko (impact frame)
+    5.00 s  f 121   -23.0 dB  shime
+    5.00 s  f 121   -20.0 dB  shamisen C4
+    5.10 s  f 124   -23.0 dB  shime
+    5.21 s  f 126   -16.0 dB  o-daiko
+    5.21 s  f 126   -20.0 dB  shamisen B3
+    5.31 s  f 129   -23.0 dB  shime
+    5.42 s  f 131   -23.0 dB  shime
+    5.42 s  f 131   -20.0 dB  shamisen C4
+    5.52 s  f 134   -23.0 dB  shime
+    5.63 s  f 136   -16.0 dB  o-daiko
+    5.63 s  f 136   -20.0 dB  shamisen A3
+    5.73 s  f 139   -23.0 dB  shime
+    5.83 s  f 141   -23.0 dB  shime
+    5.83 s  f 141   -20.0 dB  shamisen C4
+    5.94 s  f 144   -23.0 dB  shime
+    6.04 s  f 146   -16.0 dB  o-daiko
+    6.04 s  f 146   -20.0 dB  shamisen E4
+    6.15 s  f 149   -23.0 dB  shime
+    6.25 s  f 151   -23.0 dB  shime
+    6.25 s  f 151   -20.0 dB  shamisen F4
+    6.35 s  f 154   -23.0 dB  shime
+    6.46 s  f 156   -16.0 dB  o-daiko
+    6.46 s  f 156   -20.0 dB  shamisen E4
+    6.56 s  f 159   -23.0 dB  shime
+    6.67 s  f 161   -23.0 dB  shime
+    6.67 s  f 161   -20.0 dB  shamisen C4
+    6.75 s  f 163   -13.0 dB  o-daiko (impact frame)
+    6.75 s  f 163   -12.0 dB  braam (the crossing)
+    6.77 s  f 164   -23.0 dB  shime
+    6.88 s  f 166   -16.0 dB  o-daiko
+    6.88 s  f 166   -20.0 dB  shamisen B3
+    6.98 s  f 169   -23.0 dB  shime
+    7.08 s  f 171   -23.0 dB  shime
+    7.08 s  f 171   -20.0 dB  shamisen C4
+    7.19 s  f 174   -23.0 dB  shime
+    7.29 s  f 176   -16.0 dB  o-daiko
+    7.29 s  f 176   -20.0 dB  shamisen A3
+    7.40 s  f 179   -23.0 dB  shime
+    7.79 s  f 188    -7.0 dB  o-daiko (title)
+    7.79 s  f 188    -8.0 dB  braam (title)
+    7.79 s  f 188    -8.0 dB  sub boom (title)
+    8.39 s  f 202   -18.0 dB  koto A4 (title)

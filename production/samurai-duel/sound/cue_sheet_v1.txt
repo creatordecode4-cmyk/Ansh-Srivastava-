@@ -1,0 +1,139 @@
+Oni vs Ronin, the film (30 s): cue sheet (time in s, film frame, stem, level in dB before the master, pan -1 left .. 1 right)
+Layers (run along the picture):
+  amb     -15.0 dB  night wind over the courtyard (gusts 0.6, 6.2, 9.5, 26.2, 28.2 s)
+  sfx     -15.0 dB  swing oni main (follows the blade's point)
+  sfx     -17.0 dB  swing ronin R (follows the blade's point)
+  sfx     -17.0 dB  swing ronin L (follows the blade's point)
+  foley   -25.0 dB  cloth oni (follows body and hands)
+  foley   -25.0 dB  cloth ronin (follows body and hands)
+  elem    -15.0 dB  fire on the oni's blade (follows the trail)
+  elem    -14.0 dB  water on the ronin's blade (follows the trail)
+  sfx     -17.0 dB  rush of air on the runs
+
+Cues:
+    0.04 s  f   2  amb    diegetic     -9.0 dB  pan -0.15  temple bell
+    1.70 s  f  42  amb    ambience    -29.0 dB  pan -0.60  wind chime, far off
+    3.25 s  f  79  foley  foley       -13.9 dB  pan -0.12  step oni Right
+    3.70 s  f  90  amb    ambience    -29.0 dB  pan +0.50  wind chime, far off
+    4.00 s  f  97  foley  foley       -12.7 dB  pan -0.06  step oni Left
+    4.54 s  f 110  foley  diegetic    -11.0 dB  pan +0.01  Oni breathes behind the mask
+    4.75 s  f 115  foley  foley       -10.7 dB  pan +0.01  step oni Right
+    5.42 s  f 131  foley  foley       -16.0 dB  pan +0.10  hand tightens on the grip
+    5.50 s  f 133  foley  foley       -11.2 dB  pan -0.08  step oni Left
+    6.41 s  f 155  foley  foley       -19.5 dB  pan +0.00  step ronin Right
+    6.79 s  f 164  foley  foley       -16.9 dB  pan -0.56  step oni Left
+    7.04 s  f 170  foley  foley       -19.9 dB  pan +0.01  step ronin Left
+    7.30 s  f 176  amb    ambience    -29.0 dB  pan -0.40  wind chime, far off
+    7.66 s  f 185  foley  foley       -10.6 dB  pan -0.05  step ronin Right
+    7.79 s  f 188  foley  foley       -19.0 dB  pan -0.02  hat brim lifted
+    8.16 s  f 197  foley  foley       -19.1 dB  pan +0.00  step ronin Left
+    8.60 s  f 208  sfx    aesthetic   -12.0 dB  pan -0.00  glint on the visor
+    9.12 s  f 220  sfx    diegetic     -8.0 dB  pan +0.10  guard pushed off the scabbard
+    9.21 s  f 222  sfx    diegetic     -5.0 dB  pan -0.44  blade drawn (oni)
+    9.25 s  f 223  sfx    diegetic     -6.5 dB  pan +0.50  blade drawn (ronin)
+    9.29 s  f 224  sfx    diegetic     -8.0 dB  pan +0.50  blade drawn (ronin)
+    9.33 s  f 225  foley  foley       -26.6 dB  pan +0.50  step ronin Left
+    9.62 s  f 232  foley  foley       -27.0 dB  pan +0.51  step ronin Right
+   10.29 s  f 248  foley  foley        -7.9 dB  pan -0.13  step oni Right
+   10.33 s  f 249  foley  foley       -21.0 dB  pan +0.75  step ronin Left
+   10.57 s  f 275  sfx    aesthetic   -12.0 dB  pan -0.00  suck-in
+   10.75 s  f 259  foley  foley        -8.1 dB  pan +0.06  step ronin Right
+   10.79 s  f 260  foley  foley        -9.2 dB  pan -0.75  step oni Left
+   11.25 s  f 271  foley  foley       -13.2 dB  pan -0.56  splash
+   11.25 s  f 271  foley  foley       -13.0 dB  pan +0.31  splash
+   11.41 s  f 275  foley  foley       -10.9 dB  pan -0.61  step oni Right
+   11.41 s  f 275  foley  foley       -18.2 dB  pan +0.56  step ronin Left
+   11.41 s  f 275  sfx    diegetic     -3.8 dB  pan -0.00  clash power 1.0 slow
+   11.42 s  f 275  sfx    aesthetic    -8.0 dB  pan +0.00  sub boom
+   11.43 s  f 275  sfx    diegetic    -15.0 dB  pan -0.00  sparks
+   12.66 s  f 305  sfx    diegetic     -5.0 dB  pan +0.09  clash power 1.0
+   12.68 s  f 305  sfx    diegetic    -15.0 dB  pan +0.09  sparks
+   13.20 s  f 318  foley  foley       -10.1 dB  pan +0.43  step ronin Right
+   13.41 s  f 323  foley  foley       -19.0 dB  pan +0.75  step ronin Left
+   13.58 s  f 327  sfx    diegetic     -2.0 dB  pan -0.00  clash power 1.2
+   13.58 s  f 327  foley  foley       -15.2 dB  pan -0.75  splash
+   13.58 s  f 327  foley  foley       -13.1 dB  pan +0.75  skid ronin
+   13.59 s  f 327  sfx    diegetic    -15.0 dB  pan -0.00  sparks
+   13.70 s  f 330  foley  foley       -11.8 dB  pan -0.75  step oni Right
+   13.83 s  f 333  foley  foley       -18.9 dB  pan -0.75  step oni Left
+   13.95 s  f 336  foley  foley       -20.9 dB  pan +0.75  step ronin Left
+   13.95 s  f 336  foley  foley       -20.5 dB  pan +0.75  step ronin Right
+   14.29 s  f 344  foley  foley       -19.2 dB  pan +0.00  step ronin Right
+   14.50 s  f 349  foley  foley       -17.0 dB  pan +0.24  step ronin Left
+   14.54 s  f 350  sfx    diegetic     -3.1 dB  pan +0.07  clash power 1.5
+   14.54 s  f 350  sfx    aesthetic    -8.0 dB  pan +0.00  sub boom
+   14.54 s  f 350  foley  foley       -14.4 dB  pan -0.21  splash
+   14.55 s  f 350  sfx    diegetic    -15.0 dB  pan +0.07  sparks
+   14.66 s  f 353  foley  foley       -11.4 dB  pan -0.12  step oni Right
+   14.79 s  f 356  foley  foley       -21.8 dB  pan -0.11  step oni Left
+   15.33 s  f 369  foley  foley        -8.8 dB  pan -0.13  step ronin Right
+   15.41 s  f 371  foley  foley       -12.8 dB  pan +0.24  step oni Left
+   15.46 s  f 372  sfx    motion      -11.0 dB  pan +0.00  spin: doppler fly-by, panned left to right
+   15.54 s  f 374  foley  foley       -12.1 dB  pan -0.14  step ronin Left
+   15.70 s  f 378  foley  foley       -11.0 dB  pan -0.15  step ronin Right
+   16.46 s  f 396  sfx    diegetic     -3.0 dB  pan +0.39  kick lands
+   16.46 s  f 396  foley  foley       -12.4 dB  pan +0.51  skid oni
+   16.46 s  f 396  sfx    aesthetic    -7.0 dB  pan +0.00  sub boom
+   17.00 s  f 409  foley  foley       -17.4 dB  pan +0.14  step ronin Right
+   17.29 s  f 416  foley  foley       -17.4 dB  pan -0.08  step oni Left
+   17.29 s  f 416  foley  foley       -17.5 dB  pan -0.08  step oni Right
+   17.29 s  f 416  foley  foley       -24.9 dB  pan +0.17  step ronin Left
+   17.95 s  f 432  foley  foley       -18.2 dB  pan -0.08  step oni Left
+   18.25 s  f 439  foley  foley       -11.7 dB  pan -0.00  step ronin Left
+   18.37 s  f 442  foley  foley       -10.3 dB  pan -0.46  step oni Right
+   18.41 s  f 443  sfx    diegetic     -3.6 dB  pan -0.06  clash power 1.0
+   18.43 s  f 443  sfx    diegetic    -15.0 dB  pan -0.06  sparks
+   18.54 s  f 446  foley  foley       -17.4 dB  pan -0.41  step ronin Right
+   18.58 s  f 447  foley  foley       -17.3 dB  pan +0.42  step oni Left
+   18.91 s  f 455  foley  foley       -11.0 dB  pan -0.49  step ronin Right
+   19.08 s  f 459  foley  foley       -10.7 dB  pan -0.49  step ronin Left
+   19.25 s  f 463  sfx    diegetic     -4.0 dB  pan -0.10  clash power 1.0
+   19.26 s  f 463  sfx    diegetic    -15.0 dB  pan -0.10  sparks
+   19.37 s  f 466  foley  foley       -21.6 dB  pan +0.02  step oni Right
+   19.54 s  f 470  foley  foley       -14.4 dB  pan +0.01  step oni Left
+   19.87 s  f 478  foley  foley       -11.2 dB  pan +0.33  step ronin Right
+   20.00 s  f 481  foley  foley        -9.4 dB  pan +0.32  step ronin Left
+   20.08 s  f 483  sfx    diegetic     -4.4 dB  pan +0.10  clash power 1.0
+   20.09 s  f 483  sfx    diegetic    -15.0 dB  pan +0.10  sparks
+   20.75 s  f 499  foley  foley       -17.5 dB  pan -0.36  step oni Left
+   20.75 s  f 499  foley  foley       -15.9 dB  pan +0.37  step ronin Left
+   20.83 s  f 501  foley  foley       -16.3 dB  pan +0.39  step ronin Right
+   20.91 s  f 503  foley  foley       -16.0 dB  pan -0.41  step oni Right
+   21.27 s  f 512  elem   aesthetic    -8.0 dB  pan +0.63  the fire wakes
+   22.29 s  f 536  foley  foley        -8.4 dB  pan -0.14  step oni Left
+   22.38 s  f 538  foley  foley       -13.4 dB  pan -0.12  splash
+   22.42 s  f 542  sfx    motion      -10.0 dB  pan -0.26  great cut: the lash
+   22.45 s  f 540  foley  foley       -10.1 dB  pan -0.25  step oni Right
+   22.51 s  f 542  elem   aesthetic    -7.0 dB  pan -0.26  great cut: the fire bursts
+   22.54 s  f 542  sfx    aesthetic    -9.0 dB  pan +0.00  sub boom
+   22.62 s  f 544  foley  foley        -9.0 dB  pan +0.22  cape torn
+   22.91 s  f 551  foley  foley        -7.1 dB  pan -0.24  step ronin Left
+   22.92 s  f 551  foley  foley       -12.9 dB  pan -0.11  splash
+   22.92 s  f 551  foley  foley       -11.5 dB  pan -0.24  skid ronin
+   23.37 s  f 562  foley  foley       -19.1 dB  pan -0.25  step ronin Left
+   23.37 s  f 562  foley  foley       -18.5 dB  pan -0.25  step ronin Right
+   23.46 s  f 564  sfx    aesthetic   -21.0 dB  pan -0.16  visor hum
+   23.70 s  f 570  foley  foley       -24.0 dB  pan +0.00  step oni Left
+   24.27 s  f 604  sfx    aesthetic   -12.0 dB  pan +0.00  suck-in
+   24.29 s  f 584  foley  foley       -15.8 dB  pan +0.00  step oni Left
+   24.29 s  f 584  foley  foley        -8.2 dB  pan -0.07  step ronin Left
+   24.33 s  f 585  foley  diegetic    -13.0 dB  pan -0.10  Oni breathes, eyes in the mask
+   24.45 s  f 588  foley  foley       -18.0 dB  pan -0.10  step oni Right
+   24.45 s  f 588  foley  foley       -26.0 dB  pan +0.00  step ronin Right
+   25.12 s  f 604  sfx    diegetic     -3.1 dB  pan +0.00  clash power 1.6 slow
+   25.12 s  f 604  sfx    aesthetic    -8.0 dB  pan +0.00  sub boom
+   25.14 s  f 604  sfx    diegetic    -15.0 dB  pan +0.00  sparks
+   26.12 s  f 628  foley  foley       -15.3 dB  pan +0.24  step ronin Right
+   26.16 s  f 629  foley  foley       -13.2 dB  pan -0.26  step oni Left
+   26.33 s  f 633  foley  foley       -17.1 dB  pan -0.31  splash
+   26.33 s  f 633  foley  foley       -16.9 dB  pan +0.35  splash
+   26.37 s  f 634  foley  foley       -16.7 dB  pan -0.32  step oni Right
+   26.37 s  f 634  foley  foley       -19.3 dB  pan +0.32  step ronin Left
+   26.70 s  f 642  amb    ambience    -29.0 dB  pan +0.55  wind chime, far off
+   27.33 s  f 657  sfx    diegetic    -16.0 dB  pan +0.04  hat: the cut line
+   27.54 s  f 662  foley  foley       -17.0 dB  pan +0.04  hat halves slide
+   28.08 s  f 675  foley  motion      -22.0 dB  pan +0.04  hat halves fall
+   28.62 s  f 688  foley  foley       -15.0 dB  pan -0.35  hat half lands
+   28.71 s  f 690  foley  foley       -17.0 dB  pan +0.30  hat half lands
+   28.79 s  f 692  sfx    diegetic     -2.0 dB  pan -0.07  mask cracks
+   28.88 s  f 694  amb    diegetic    -10.0 dB  pan +0.00  temple bell (the end)

@@ -1,0 +1,228 @@
+Oni vs Ronin, the film (30 s): music map (A hirajoshi: A B C E F; drums on an elastic grid that lands on the blows)
+    0.30 s  f   8   -17.0 dB  drone A1 (night)
+    1.00 s  f  25   -19.0 dB  flute A4
+    1.95 s  f  48   -19.0 dB  flute C5
+    2.50 s  f  61   -19.0 dB  flute B4
+    3.25 s  f  79   -23.0 dB  taiko under the Oni's step
+    3.90 s  f  95   -16.0 dB  reversed drum into the mask
+    4.00 s  f  97   -23.0 dB  taiko under the Oni's step
+    4.50 s  f 109   -17.0 dB  shamisen A2 (the mask)
+    5.25 s  f 127   -22.0 dB  koto tremolo E4
+    5.33 s  f 129   -22.0 dB  koto tremolo E4
+    5.40 s  f 131   -22.0 dB  koto tremolo E4
+    5.47 s  f 132   -22.0 dB  koto tremolo E4
+    5.55 s  f 134   -22.0 dB  koto tremolo E4
+    5.62 s  f 136   -22.0 dB  koto tremolo E4
+    5.70 s  f 138   -22.0 dB  koto tremolo E4
+    5.78 s  f 140   -22.0 dB  koto tremolo E4
+    5.85 s  f 141   -22.0 dB  koto tremolo E4
+    6.04 s  f 146   -27.0 dB  cyber pulse E2
+    6.30 s  f 152   -18.0 dB  flute E5
+    6.46 s  f 156   -26.7 dB  cyber pulse E2
+    6.87 s  f 166   -26.4 dB  cyber pulse E2
+    6.95 s  f 168   -18.0 dB  flute F5
+    7.29 s  f 176   -26.1 dB  cyber pulse E2
+    7.45 s  f 180   -18.0 dB  flute E5
+    7.60 s  f 183   -20.0 dB  shime roll
+    7.71 s  f 186   -25.9 dB  cyber pulse E2
+    7.76 s  f 187   -19.3 dB  shime roll
+    7.91 s  f 191   -18.6 dB  shime roll
+    8.05 s  f 194   -18.0 dB  shime roll
+    8.12 s  f 196   -25.6 dB  cyber pulse E2
+    8.17 s  f 197   -17.5 dB  shime roll
+    8.29 s  f 200   -16.9 dB  shime roll
+    8.32 s  f 201   -18.0 dB  koto run A4
+    8.38 s  f 202   -18.0 dB  koto run B4
+    8.40 s  f 203   -16.4 dB  shime roll
+    8.42 s  f 203   -18.0 dB  koto run C5
+    8.47 s  f 204   -18.0 dB  koto run E5
+    8.50 s  f 205   -16.0 dB  shime roll
+    8.52 s  f 206   -18.0 dB  koto run F5
+    8.54 s  f 206   -25.3 dB  cyber pulse E2
+    8.57 s  f 207   -18.0 dB  koto run A5
+    8.59 s  f 207   -15.6 dB  shime roll
+    8.68 s  f 209   -15.2 dB  shime roll
+    8.76 s  f 211   -14.8 dB  shime roll
+    8.83 s  f 213   -14.5 dB  shime roll
+    8.90 s  f 215   -14.2 dB  shime roll
+    9.33 s  f 225   -14.0 dB  o-daiko (the draw)
+    9.33 s  f 225   -20.0 dB  braam A1
+    9.85 s  f 237   -19.0 dB  heartbeat
+   10.00 s  f 241    -8.0 dB  o-daiko (they run)
+   10.00 s  f 241   -18.0 dB  o-daiko
+   10.00 s  f 241   -21.0 dB  shamisen A3
+   10.11 s  f 244   -24.0 dB  shime
+   10.22 s  f 246   -24.0 dB  shime
+   10.22 s  f 246   -21.0 dB  shamisen C4
+   10.33 s  f 249   -24.0 dB  shime
+   10.44 s  f 251   -18.0 dB  o-daiko
+   10.44 s  f 251   -21.0 dB  shamisen E4
+   10.55 s  f 254   -24.0 dB  shime
+   10.66 s  f 257   -24.0 dB  shime
+   10.66 s  f 257   -21.0 dB  shamisen F4
+   10.77 s  f 259   -24.0 dB  shime
+   10.92 s  f 263   -12.0 dB  drone under the slow strides
+   11.42 s  f 275    -9.0 dB  braam (first clash)
+   11.42 s  f 275    -8.0 dB  o-daiko (first clash)
+   11.79 s  f 284   -19.0 dB  heartbeat
+   12.00 s  f 289   -18.0 dB  o-daiko
+   12.00 s  f 289   -21.0 dB  shamisen A3
+   12.08 s  f 291   -24.0 dB  shime
+   12.17 s  f 293   -24.0 dB  shime
+   12.17 s  f 293   -21.0 dB  shamisen C4
+   12.25 s  f 295   -24.0 dB  shime
+   12.33 s  f 297   -18.0 dB  o-daiko
+   12.33 s  f 297   -21.0 dB  shamisen E4
+   12.42 s  f 299   -24.0 dB  shime
+   12.50 s  f 301   -24.0 dB  shime
+   12.50 s  f 301   -21.0 dB  shamisen F4
+   12.58 s  f 303   -24.0 dB  shime
+   12.67 s  f 305   -14.0 dB  o-daiko (blow)
+   12.67 s  f 305   -21.0 dB  shamisen E4
+   12.78 s  f 308   -24.0 dB  shime
+   12.90 s  f 311   -24.0 dB  shime
+   12.90 s  f 311   -21.0 dB  shamisen C4
+   13.01 s  f 313   -24.0 dB  shime
+   13.12 s  f 316   -18.0 dB  o-daiko
+   13.12 s  f 316   -21.0 dB  shamisen B3
+   13.24 s  f 319   -24.0 dB  shime
+   13.35 s  f 321   -24.0 dB  shime
+   13.35 s  f 321   -21.0 dB  shamisen C4
+   13.47 s  f 324   -24.0 dB  shime
+   13.58 s  f 327   -14.0 dB  o-daiko (blow)
+   13.58 s  f 327   -21.0 dB  shamisen A3
+   13.70 s  f 330   -24.0 dB  shime
+   13.82 s  f 333   -24.0 dB  shime
+   13.82 s  f 333   -21.0 dB  shamisen C4
+   13.94 s  f 336   -24.0 dB  shime
+   14.06 s  f 339   -18.0 dB  o-daiko
+   14.06 s  f 339   -21.0 dB  shamisen E4
+   14.18 s  f 341   -24.0 dB  shime
+   14.30 s  f 344   -24.0 dB  shime
+   14.30 s  f 344   -21.0 dB  shamisen F4
+   14.42 s  f 347   -24.0 dB  shime
+   14.54 s  f 350   -14.0 dB  o-daiko (blow)
+   14.54 s  f 350   -21.0 dB  shamisen E4
+   14.54 s  f 350   -11.0 dB  braam (third cut)
+   14.64 s  f 352   -24.0 dB  shime
+   14.73 s  f 355   -24.0 dB  shime
+   14.73 s  f 355   -21.0 dB  shamisen C4
+   14.82 s  f 357   -24.0 dB  shime
+   14.96 s  f 360   -18.0 dB  o-daiko
+   14.96 s  f 360   -21.0 dB  shamisen A3
+   15.08 s  f 363   -24.0 dB  shime
+   15.21 s  f 366   -24.0 dB  shime
+   15.21 s  f 366   -21.0 dB  shamisen C4
+   15.33 s  f 369   -24.0 dB  shime
+   15.46 s  f 372   -14.0 dB  o-daiko (blow)
+   15.46 s  f 372   -21.0 dB  shamisen E4
+   15.58 s  f 375   -24.0 dB  shime
+   15.71 s  f 378   -24.0 dB  shime
+   15.71 s  f 378   -21.0 dB  shamisen F4
+   15.83 s  f 381   -24.0 dB  shime
+   15.96 s  f 384   -18.0 dB  o-daiko
+   15.96 s  f 384   -21.0 dB  shamisen E4
+   16.08 s  f 387   -24.0 dB  shime
+   16.21 s  f 390   -24.0 dB  shime
+   16.21 s  f 390   -21.0 dB  shamisen C4
+   16.33 s  f 393   -24.0 dB  shime
+   16.46 s  f 396   -14.0 dB  o-daiko (blow)
+   16.46 s  f 396   -21.0 dB  shamisen B3
+   16.55 s  f 398   -24.0 dB  shime
+   16.64 s  f 400   -24.0 dB  shime
+   16.64 s  f 400   -21.0 dB  shamisen C4
+   16.73 s  f 403   -24.0 dB  shime
+   16.82 s  f 405   -18.0 dB  o-daiko
+   16.82 s  f 405   -21.0 dB  shamisen A3
+   16.91 s  f 407   -24.0 dB  shime
+   17.01 s  f 409   -24.0 dB  shime
+   17.01 s  f 409   -21.0 dB  shamisen C4
+   17.10 s  f 411   -24.0 dB  shime
+   17.19 s  f 413   -18.0 dB  o-daiko
+   17.19 s  f 413   -21.0 dB  shamisen E4
+   17.28 s  f 416   -24.0 dB  shime
+   17.37 s  f 418   -24.0 dB  shime
+   17.37 s  f 418   -21.0 dB  shamisen F4
+   17.46 s  f 420   -24.0 dB  shime
+   17.55 s  f 422   -18.0 dB  o-daiko
+   17.55 s  f 422   -21.0 dB  shamisen E4
+   17.64 s  f 424   -24.0 dB  shime
+   17.73 s  f 427   -24.0 dB  shime
+   17.73 s  f 427   -21.0 dB  shamisen C4
+   17.83 s  f 429   -24.0 dB  shime
+   18.00 s  f 433   -18.0 dB  o-daiko
+   18.00 s  f 433   -21.0 dB  shamisen A3
+   18.10 s  f 435   -24.0 dB  shime
+   18.21 s  f 438   -24.0 dB  shime
+   18.21 s  f 438   -21.0 dB  shamisen C4
+   18.31 s  f 441   -24.0 dB  shime
+   18.42 s  f 443   -14.0 dB  o-daiko (blow)
+   18.42 s  f 443   -21.0 dB  shamisen E4
+   18.52 s  f 446   -24.0 dB  shime
+   18.62 s  f 448   -24.0 dB  shime
+   18.62 s  f 448   -21.0 dB  shamisen F4
+   18.73 s  f 451   -24.0 dB  shime
+   18.83 s  f 453   -18.0 dB  o-daiko
+   18.83 s  f 453   -21.0 dB  shamisen E4
+   18.94 s  f 455   -24.0 dB  shime
+   19.04 s  f 458   -24.0 dB  shime
+   19.04 s  f 458   -21.0 dB  shamisen C4
+   19.15 s  f 461   -24.0 dB  shime
+   19.25 s  f 463   -14.0 dB  o-daiko (blow)
+   19.25 s  f 463   -21.0 dB  shamisen B3
+   19.35 s  f 465   -24.0 dB  shime
+   19.46 s  f 468   -24.0 dB  shime
+   19.46 s  f 468   -21.0 dB  shamisen C4
+   19.56 s  f 471   -24.0 dB  shime
+   19.67 s  f 473   -18.0 dB  o-daiko
+   19.67 s  f 473   -21.0 dB  shamisen A3
+   19.77 s  f 475   -24.0 dB  shime
+   19.88 s  f 478   -24.0 dB  shime
+   19.88 s  f 478   -21.0 dB  shamisen C4
+   19.98 s  f 480   -24.0 dB  shime
+   20.08 s  f 483   -14.0 dB  o-daiko (blow)
+   20.08 s  f 483   -21.0 dB  shamisen E4
+   20.19 s  f 485   -24.0 dB  shime
+   20.29 s  f 488   -24.0 dB  shime
+   20.29 s  f 488   -21.0 dB  shamisen F4
+   20.40 s  f 491   -24.0 dB  shime
+   20.50 s  f 493   -18.0 dB  o-daiko
+   20.50 s  f 493   -21.0 dB  shamisen E4
+   20.60 s  f 495   -24.0 dB  shime
+   20.71 s  f 498   -24.0 dB  shime
+   20.71 s  f 498   -21.0 dB  shamisen C4
+   20.81 s  f 501   -24.0 dB  shime
+   20.96 s  f 504   -13.0 dB  riser into the great cut
+   21.00 s  f 505   -20.0 dB  shime roll
+   21.17 s  f 509   -19.2 dB  shime roll
+   21.33 s  f 513   -18.5 dB  shime roll
+   21.47 s  f 516   -17.8 dB  shime roll
+   21.54 s  f 518   -11.0 dB  o-daiko (he comes in)
+   21.60 s  f 519   -17.2 dB  shime roll
+   21.72 s  f 522   -16.6 dB  shime roll
+   21.84 s  f 525   -16.1 dB  shime roll
+   21.94 s  f 528   -15.6 dB  shime roll
+   22.03 s  f 530   -15.2 dB  shime roll
+   22.12 s  f 532   -14.8 dB  shime roll
+   22.20 s  f 534   -14.4 dB  shime roll
+   22.28 s  f 536   -14.0 dB  shime roll
+   22.34 s  f 537   -13.7 dB  shime roll
+   22.41 s  f 539   -13.4 dB  shime roll
+   22.46 s  f 540   -13.2 dB  shime roll
+   22.54 s  f 542    -9.0 dB  braam (great cut)
+   22.54 s  f 542    -9.0 dB  o-daiko (great cut)
+   22.79 s  f 548   -18.0 dB  drone (the stare)
+   22.95 s  f 552   -21.0 dB  flute A4
+   23.50 s  f 565   -21.0 dB  flute F4
+   23.55 s  f 566   -19.0 dB  heartbeat
+   24.00 s  f 577   -21.0 dB  flute E4
+   24.21 s  f 582   -12.0 dB  riser (they launch)
+   24.25 s  f 583   -19.0 dB  heartbeat
+   25.12 s  f 604    -8.0 dB  braam (the crossing)
+   25.12 s  f 604    -8.0 dB  o-daiko (the crossing)
+   25.12 s  f 604   -17.0 dB  drone chord (they pass)
+   25.21 s  f 606   -21.0 dB  koto A4 (they pass)
+   27.04 s  f 650   -20.0 dB  drone (the end)
+   27.33 s  f 657   -22.0 dB  koto A4 (the hat parts)
+   27.71 s  f 666   -24.0 dB  koto E4
+   28.96 s  f 696   -14.0 dB  o-daiko (after the crack)

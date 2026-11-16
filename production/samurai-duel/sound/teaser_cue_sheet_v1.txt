@@ -1,0 +1,17 @@
+Oni vs Ronin, the teaser (10.4 s): cue sheet (time in s, film frame, stem, level in dB before the master, pan -1 left .. 1 right)
+Layers (run along the picture):
+
+Cues:
+    0.25 s  f  57  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 57 for 16 frames (sfx)
+    0.25 s  f   7  amb    diegetic    -11.0 dB  pan +0.00  temple bell
+    0.92 s  f 109  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 109 for 18 frames (sfx)
+    1.67 s  f 164  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 164 for 12 frames (sfx)
+    2.17 s  f 129  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 129 for 10 frames (sfx)
+    2.58 s  f 204  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 204 for 13 frames (sfx)
+    3.96 s  f 243  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 243 for 18 frames (sfx)
+    4.71 s  f 268  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 268 for 21 frames (sfx)
+    5.58 s  f 346  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 346 for 6 frames (sfx)
+    5.83 s  f 451  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 451 for 6 frames (sfx)
+    6.08 s  f 529  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 529 for 9 frames (sfx)
+    6.46 s  f 597  sfx    from the film   +0.0 dB  pan +0.00  film's sound from frame 597 for 26 frames (sfx)
+    7.84 s  f 189  amb    diegetic     -9.0 dB  pan +0.00  temple bell (title)
