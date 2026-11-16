@@ -406,7 +406,7 @@ PEAKS = [(P(172, 520), 170.0, 90.0), (P(45, 620), 235.0, 110.0), (P(-200, 600), 
          (P(400, 700), 215.0, 160.0), (P(-450, 750), 225.0, 180.0)]
 
 
-def mountains_mesh(step=15.0):
+def mountains_mesh(step=8.0):
     xs = [-900 + i * step for i in range(int(1800 / step) + 1)]
     ys = [280 + j * step for j in range(int(720 / step) + 1)]
     verts = []
@@ -417,7 +417,7 @@ def mountains_mesh(step=15.0):
                 r2 = ((x - px) / W) ** 2 + ((y - py) / W) ** 2
                 h = max(h, H * math.exp(-(r2 ** 0.8)))
             ridge = (1.0 - abs(vnoise(x * 0.012, y * 0.012, 0.0, SEED + 50))) ** 2
-            h += (22.0 * ridge + 12.0 * fbm(x * 0.03, y * 0.03, 0.0, 3, SEED + 51)) * smoothstep(0.0, 60.0, h)
+            h += (40.0 * ridge + 16.0 * fbm(x * 0.03, y * 0.03, 0.0, 4, SEED + 51)) * smoothstep(0.0, 60.0, h)
             verts.append((x, y, h))
     return verts, grid_faces(len(xs), len(ys))
 

@@ -1,0 +1,8 @@
+[0:v]format=gbrp,split[base][hi];
+[hi]curves=all='0/0 0.8/0 1/1',gblur=sigma=28[glow];
+[base][glow]blend=all_mode=screen:all_opacity=0.18,format=yuv444p,
+eq=contrast=1.06:saturation=1.16:gamma=0.98,
+colorbalance=rs=-0.02:gs=0.01:bs=0.03:rh=0.045:gh=0.025:bh=-0.03,
+curves=master='0/0.02 0.25/0.23 0.5/0.51 0.78/0.81 1/0.98',
+vignette=angle=PI/7,
+noise=alls=3:allf=t,format=yuv420p[v]

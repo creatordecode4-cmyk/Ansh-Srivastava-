@@ -41,3 +41,25 @@ Clay override: `MAT_Clay` (grey 0.6, roughness 0.8) on the View Layer. Render: C
 5. Render: 1920x1080, 24 fps, Cycles 128 + denoise, MP4 H.264
 6. Colour grade (colour-grading-expert)
 7. Sound suggestion (sound-design-expert)
+
+---
+
+## MP4 without Blender: the `web_render/` route
+You don't have Blender, so I rebuilt the same scene in **Three.js** (headless Chromium, software WebGL) and render it frame by frame.
+This is **not Blender Cycles**: it's a real-time renderer, so the look is stylized-realistic (low-poly pines, simple shadows, no path tracing).
+
+| Step | Tool | File |
+|---|---|---|
+| Geometry + vertex colours (grass, strata, moss, lichen, snow) | Python | `export_scene.py` → `scene_data/` |
+| Materials, water shader (turquoise, flow, foam), waterfall, mist, backlit weeping tree, grass, birds, camera path, god rays | Three.js r170 | `scene.js`, `index.html` |
+| 480 frames @ 1920x1080 | Playwright + Chromium | `render.js` |
+| Colour grade (bloom, warm highlights, saturation 1.16, lifted blacks, vignette, grain) | ffmpeg | `grade_filter.txt`, `encode.sh` |
+| Ambient sound (waterfall, river, wind, birds, soft pad), all synthesized | ffmpeg | `make_audio.sh` |
+
+Run:
+```bash
+cd web_render && npm install three@0.170.0
+python3 export_scene.py
+node render.js frames 1 480 1 1920          # ~5-8 s/frame on CPU
+./make_audio.sh && ./encode.sh frames ambience.wav waterfall_valley.mp4
+```
