@@ -78,3 +78,10 @@ node render.js frames 1 480 1 1920          # ~5-8 s/frame on CPU
 - Rebuild the notebook after editing the scripts: `python3 colab/make_notebook.py`.
 - Honest limits: this script hasn't been run in real Blender in this sandbox (no Blender here). The Colab
   preview cell is the first test. If something breaks, send a screenshot of the output.
+
+### Cinematic grade (v2)
+`web_render/cinematic_grade.py <frames_in> <frames_out>`: deband → sky graduated ND + warm sun glow → filmic
+S-curve (blacks 0.025, soft highlight shoulder) → teal shadows / golden highlights → emerald greens + vibrance
+→ bloom + halation → edge-only sharpening → subtle chromatic aberration + vignette → fine film grain.
+About 2.8 s/frame per CPU core. Then encode the graded frames with sound (x264 `-tune grain`); the 2.39:1 letterbox is optional (`drawbox` 138 px).
+Before/after: `previews/v2/before_after_cinematic.jpg`.
