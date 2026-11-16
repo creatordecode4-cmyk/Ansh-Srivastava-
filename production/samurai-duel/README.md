@@ -69,7 +69,10 @@ python3 -I tools/stage4_film.py render 241 720 --preset look --fight --cloth-to 
 python3 -I tools/stage4_film.py render 241 720 --preset look --fight --reuse-cloth --skip-done --tag _prev   # further jobs fill in what is missing
 python3 -I tools/stage4_film.py assemble --tag _prev --from 241 --out previews/stage4_fight.mp4
 python3 -I tools/stage4_film.py assemble --tag ,_prev --out previews/stage4_film.mp4   # intro (look) + fight (look_prev): the whole 30 s
+python3 -I tools/stage4_film.py render 1 720 --preset look --fight --cloth-to 720 --cache _v2 --tag _v2   # the whole film from one build, cloth in a cache of its own
+python3 -I tools/stage4_film.py render 1 720 --preset hd --fight --reuse-cloth --cache _v2 --tag _final --skip-done   # finished picture at 720p
 ```
+`--no-trails` leaves out the elemental sword trails and `--no-anime` the impact frames and speed lines.
 One render job here may run for two hours at most, and all jobs share 15 GB of memory. A film
 render holds 4 to 5 GB after an hour; three fit side by side, with nothing else running.
 Two or three jobs on the same four cores do not finish sooner in total (about 2 frames a minute
@@ -281,6 +284,48 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   points inside the body, 0 after they are put back, no blade through cloth.
 - The camera's near clip is 30 cm: a snowflake drifting past the lens filled a corner of the last
   frame of the standoff until it was.
+- Smooth hands (after the first preview: "the hands stop and start in the first nine seconds").
+  Measured as wrist speed against the chest, frame by frame (the arm's own motion), the hitches
+  had five causes, all fixed:
+  - the DeepMimic walk is a half cycle and its mirror put end to end; where they meet, pelvis,
+    chest and both shoulders turn 7 to 29 degrees in one frame (chest 405 degrees a second against
+    45 elsewhere). `mocap.Clip._mend` spreads that frame's excess over twelve frames; no other clip
+    has such a frame;
+  - pushes that keep a free arm off the body were found frame by frame and jumped on and off
+    (a 96 m/s² change of acceleration in one frame on the Oni's swinging arm, 17 now). They now
+    follow `clear._cover`: the largest need within five frames, Hann-smoothed, never below what a
+    frame needs. Elbow turns are found to a degree and covered the same way, one way per stretch;
+    the scabbards' pushes likewise (`clear.scabbards`);
+  - a mocap arm that is nearly straight has no elbow direction, and the solver's default took over
+    on the frame it passed 3 cm; it is now eased in. Keys that leave knees or elbows to the solver
+    get its default written in (`Take._fill_poles`), so a walk's last knee and elbow no longer
+    jump to the default at the second key; a hold's elbow hint is eased in with the hold;
+  - a keyed stop after a walk set off at a speed of its own: `Take.carry_on` adds the difference
+    as a push that dies away over a dozen frames;
+  - the Ronin's hand went up fast, paused in front of his chest, took the brim, and dropped away
+    at 3.7 m/s. It now rises in one curve through a point clear of the chest (`via`), arrives
+    slowing down (`ease="smoother"`), turns over gradually (a free hand's own turn is blended
+    in), lifts the brim and keeps it until the cut. Fastest wrist speed 1.7 m/s.
+  The fight measured afterwards: blades 2-7 mm apart at all eight clashes, nothing of one fighter
+  inside the other, planted feet still.
+- Fight cameras, second version: on the stones beside the Oni as he charges (19 mm, 24 cm up),
+  low in front of the Ronin; the clash slowed down with the camera swinging 108 degrees round the
+  point where the blades meet; the three cuts from under them, the camera going round to the
+  Ronin's shoulder so that the heaviest comes down toward the lens; the spin followed round; the throw
+  from 13 cm above the floor; the exchange hand-held and close from three sides; the wind-up from
+  his feet; the great cut with the camera sliding along it; the crossing with the camera going
+  200 degrees round it; then a crane rising at their side as they stand back to back, far apart. Every heavy blow
+  kicks the lens in (a fast zoom that eases back out, `crash`), and many shots lean the horizon
+  (`roll`, applied about the line of sight and kept continuous for motion blur).
+- Elemental trails (`sd/elemental.py`, our own design after woodblock-print waves and fire): a
+  blade swung faster than about 6 m/s leaves a ribbon over the path of its outer half and a little
+  past its point - water for the Ronin's two swords, fire for the Oni's - banded colour, a pale
+  crest, an ink line round it; crests curl along a water trail's edge, tongues lick from a fire
+  trail's; drops or embers fly from the fastest moments, and each trail lights the scene a little.
+- Impact frames and speed lines (`sd/post.py`): the four heaviest blows (the first clash, the third
+  overhead cut, the kick, the crossing) each get two drawn frames as they land - light and dark
+  swapped in ink on paper with what blazed in red, then red and black - and the two charges and
+  the start of the great cut get streaks closing in on the runner.
 - Fight preview (`previews/stage4_fight.mp4`, film frames 241-720; stills, one per shot, in
   `previews/stage4_fight.jpg`) and the whole film (`previews/stage4_film.mp4`: the intro preview's
   frames 1-240 joined to the fight's): look preset, no motion blur or depth of field, labels burned

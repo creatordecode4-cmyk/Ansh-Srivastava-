@@ -1184,82 +1184,130 @@ def shots(cast):
     add("S03d standoff", 225, 240, standoff)
 
     # ------------------------------------------------------------------ the fight
+    # Cameras that take part: low on the wet stones, swinging round the blows, kicked in by a fast
+    # zoom when a blow lands, tilted off the level when the fight tips, hand-held in the exchange.
     hips = lambda A, ff: joint(A, "Hips", ff)
     head = lambda A, ff: joint(A, "Head", ff)
     both = lambda ff: (hips(oni, ff) + hips(ronin, ff)) * 0.5
     flat = lambda v, z: Vector((v.x, v.y, z))
+    hit = film_of
 
     def polar(centre, azimuth, radius, height):                      # azimuth as for the studio cameras: 0 = from the south, 90 = from the east
         a = math.radians(azimuth)
         return Vector((centre.x + math.sin(a) * radius, centre.y - math.cos(a) * radius, height))
 
-    # 10 s: the dash. Each is followed low and from the side for a few strides, then the clash side on, slowed down
+    def azimuth(v):
+        return math.degrees(math.atan2(v.x, -v.y))
+
+    def axis(ff):
+        """The Oni, the Ronin, the way from the Oni to the Ronin on the ground, and the Oni's right."""
+        o, r = hips(oni, ff), hips(ronin, ff)
+        d = r - o
+        d.z = 0.0
+        d = d.normalized() if d.length > 1e-6 else Vector((0.0, 1.0, 0.0))
+        return o, r, d, Vector((d.y, -d.x, 0.0))
+
+    def struck(kind, f):
+        for e in EVENTS:
+            if e["kind"] == kind and e.get("f") == f and "at" in e:
+                return Vector(e["at"])
+        return None
+
+    def crash(ff, lens, at, amount=0.5, fall=3.2):
+        """A fast zoom in as a blow lands (on the film frames 'at'), easing back out over the next frames."""
+        k = 1.0
+        for a in at:
+            age = ff - a
+            if 0 <= age < 16:
+                k += amount * (1.0 - math.exp(-(age + 1) / 0.7)) * math.exp(-age / fall)
+        return lens * k
+
+    # 10 s: the dash. Skimming the stones beside the Oni; low in front of the Ronin as he comes on;
+    # the clash slowed down with the camera swinging round it
     def dash_oni(ff):
         h = hips(oni, ff)
-        return dict(pos=flat(h, 0.0) + Vector((3.1, 1.5, 0.55)), look=flat(h, 1.15) + Vector((0, 0.4, 0)), lens=32.0, hand=0.012)
+        d, r = _along(oni_face(ff)), _along(oni_face(ff) - 90.0)      # his front and his right
+        u = (ff - 241) / 10.0
+        return dict(pos=flat(h, 0.24) + r * 1.55 + d * (0.95 - 0.55 * u), look=flat(h, 1.0) + d * 0.5, lens=19.0, roll=5.0 + 6.0 * u, hand=0.016)
     add("S04a the Oni runs", 241, 251, dash_oni)
 
     def dash_ronin(ff):
         h = hips(ronin, ff)
-        return dict(pos=flat(h, 0.0) + Vector((-2.9, -1.6, 0.60)), look=flat(h, 1.10) + Vector((0, -0.4, 0)), lens=32.0, hand=0.012)
+        d, l = _along(ronin_face(ff)), _along(ronin_face(ff) + 90.0)  # his front and his left
+        u = (ff - 252) / 10.0
+        return dict(pos=flat(h, 0.42) + d * (2.5 - 0.9 * u) + l * 1.35, look=flat(h, 1.25) + d * 0.3, lens=23.0, roll=-7.0 - 4.0 * u, hand=0.016)
     add("S04b the Ronin runs", 252, 262, dash_ronin)
+
+    C1 = struck("clash", HIT) or Vector((-0.05, 1.95, 1.55))
 
     def clash(ff):
         u = _smooth((ff - 263) / 25.0)
-        return dict(pos=_mix((3.7, 1.70, 0.95), (3.1, 1.80, 1.12), u), look=(-0.05, 1.88, 1.40), lens=30.0)
+        return dict(pos=polar(C1, 62.0 + 108.0 * u, 2.45 - 0.35 * u, 1.05 + 0.35 * u), look=C1 + Vector((0.0, 0.0, -0.10)),
+                    lens=crash(ff, 30.0, [hit(HIT)], 0.55), roll=-5.0 + 9.0 * u, focus=C1)
     add("S04c the clash", 263, 288, clash)
 
-    # 12 s: the three cuts, the camera circling from the east round behind the Oni's shoulder
+    # 12 s: the three cuts, from low down, the camera circling round behind the Ronin's shoulder so that
+    # the last and heaviest cut comes down toward the lens
     def orbit(ff):
         u = (ff - 289) / 71.0
         c = both(ff)
-        return dict(pos=polar(c, 90.0 - 68.0 * _smooth(u), 4.3 - 0.6 * u, 1.55 - 0.40 * u), look=flat(c, 1.30), lens=32.0, hand=0.006)
+        return dict(pos=polar(c, 100.0 + 55.0 * _smooth(u), 3.3 - 0.7 * u, 0.55 + 0.30 * u), look=flat(c, 1.45),
+                    lens=crash(ff, 27.0, [hit(h) for h in HAMMER], 0.5), roll=7.0 * math.sin(u * math.pi * 1.5), hand=0.008)
     add("S05 three cuts", 289, 360, orbit)
 
-    # 15 s: the slip, the spin and the kick from the south-west; then low behind the Oni as he is thrown back toward the lens
+    # 15 s: the slip, the spin and the kick, the camera swinging round with the spin; then on the
+    # stones behind the Oni as he is thrown back toward the lens
     def spin(ff):
         u = (ff - 361) / 37.0
-        c = both(ff)
-        return dict(pos=polar(c, -62.0 - 14.0 * u, 4.0, 1.25), look=flat(c, 1.25), lens=35.0, hand=0.008)
+        c = _mix(hips(ronin, ff), hips(oni, ff), 0.4)
+        return dict(pos=polar(c, -40.0 - 120.0 * _smooth(u), 3.0, 0.62 + 0.25 * u), look=flat(c, 1.20),
+                    lens=crash(ff, 24.0, [hit(KICK)], 0.6), roll=-9.0 + 9.0 * u, hand=0.010)
     add("S06a spin and kick", 361, 398, spin)
 
     def thrown(ff):
         end = hips(oni, 432)
-        return dict(pos=Vector((end.x + 1.5, end.y - 2.7, 0.34)), look=flat(both(ff), 0.95), lens=28.0)
+        u = _smooth((ff - 399) / 33.0)
+        return dict(pos=Vector((end.x + 1.1, end.y - 2.2, 0.13)), look=flat(_mix(hips(oni, ff), both(ff), 0.4), 0.85), lens=18.0, roll=9.0 - 4.0 * u, hand=0.006)
     add("S06b thrown back", 399, 432, thrown)
 
-    # 18 s: the exchange, hand-held, a new angle for every blow
-    def trade_a(ff):
-        o = hips(oni, ff)
-        return dict(pos=flat(o, 0.0) + Vector((1.5, -1.7, 1.50)), look=flat(both(ff), 1.40), lens=38.0, hand=0.022)
+    # 18 s: the exchange, hand-held and close, a new angle for every blow
+    trades = [hit(h) for h in TRADE]
+
+    def trade_a(ff):                                                 # over the Oni's right shoulder
+        o, r, d, s = axis(ff)
+        return dict(pos=flat(o, 1.80) - d * 1.25 + s * 0.78, look=flat(r, 1.40), lens=crash(ff, 38.0, trades, 0.35), roll=11.0, hand=0.030)
     add("S07a first blow", 433, 445, trade_a)
 
-    def trade_b(ff):
-        c = both(ff)
-        return dict(pos=flat(c, 0.0) + Vector((-3.6, 0.4, 0.85)), look=flat(c, 1.38), lens=32.0, hand=0.022)
+    def trade_b(ff):                                                 # low at their side
+        o, r, d, s = axis(ff)
+        c = _mix(o, r, 0.5)
+        return dict(pos=flat(c, 0.42) - s * 2.3, look=flat(c, 1.35), lens=crash(ff, 26.0, trades, 0.35), roll=-13.0, hand=0.030)
     add("S07b second blow", 446, 465, trade_b)
 
-    def trade_c(ff):
-        r = hips(ronin, ff)
-        return dict(pos=flat(r, 0.0) + Vector((1.3, 1.9, 1.55)), look=flat(both(ff), 1.20), lens=38.0, hand=0.022)
+    def trade_c(ff):                                                 # high over the Ronin's shoulder, down on the Oni
+        o, r, d, s = axis(ff)
+        return dict(pos=flat(r, 2.20) + d * 1.65 + s * 0.95, look=flat(o, 1.30), lens=crash(ff, 34.0, trades, 0.35), roll=8.0, hand=0.030)
     add("S07c third blow", 466, 485, trade_c)
 
-    def trade_d(ff):
-        c = both(ff)
-        return dict(pos=Vector((5.4, c.y, 1.0)), look=flat(c, 1.15), lens=30.0, hand=0.012)
+    def trade_d(ff):                                                 # wide: they part, the camera creeps in
+        o, r, d, s = axis(ff)
+        c = _mix(o, r, 0.5)
+        u = _smooth((ff - 486) / 18.0)
+        return dict(pos=flat(c, 0.85) + s * (6.0 - 1.2 * u), look=flat(c, 1.15), lens=28.0, hand=0.008)
     add("S07d apart", 486, 504, trade_d)
 
-    # 21 s: the Oni winds up, seen low from in front; the cut from the side; then over the Ronin's shoulder
+    # 21 s: the Oni winds up, from the stones at his feet; the cut, the camera sliding along with it
     def wind(ff):
         u = _smooth((ff - 505) / 23.0)
-        o = hips(oni, ff)
-        return dict(pos=flat(o, 0.0) + _mix((1.5, 2.6, 0.50), (1.2, 2.1, 0.58), u), look=flat(o, 1.35), lens=40.0)
+        o, r, d, s = axis(ff)
+        return dict(pos=flat(o, 0.16) + d * (1.5 - 0.25 * u) + s * 1.0, look=flat(o, 1.55), lens=20.0, roll=12.0 - 4.0 * u, hand=0.004)
     add("S08a the Oni winds up", 505, 528, wind)
 
     def great(ff):
-        c = both(ff)
-        o = hips(oni, ff)
-        return dict(pos=Vector((5.2, c.y, 1.05)), look=flat(_mix(o, c, 0.6), 1.15), lens=28.0, hand=0.008)
+        u = _smooth((ff - 529) / 20.0)
+        o, r, d, s = axis(ff)
+        c = _mix(o, r, 0.5)
+        return dict(pos=flat(c, 1.0) + s * 2.6 + d * (-1.2 + 2.4 * u), look=flat(_mix(o, r, 0.35 + 0.3 * u), 1.15), lens=22.0, roll=-10.0 + 20.0 * u, hand=0.008)
     add("S08b the great cut", 529, 549, great)
 
     def torn(ff):                                                    # low behind the Ronin's right side: his cape with its corner gone, and past him the piece coming down in front of the Oni
@@ -1268,22 +1316,29 @@ def shots(cast):
         return dict(pos=flat(r, 0.0) + b * 1.9 - l * 1.0 + Vector((0, 0, 0.70)), look=flat(r, 0.0) - b * 0.7 - l * 0.30 + Vector((0, 0, 0.90)), lens=30.0, hand=0.006)
     add("S08c the cape", 550, 576, torn)
 
-    # 24 s: the last pass, side on and wide; at the crossing nearer and slowed down; then both still, back to back
+    # 24 s: the last pass. From the stones between them; the crossing slowed down, the camera going
+    # half round it; then a crane rising at their side as they stand back to back
     def last_a(ff):
-        c = both(ff)
-        return dict(pos=Vector((4.9, c.y, 0.80)), look=flat(c, 1.20), lens=30.0)
+        u = _smooth((ff - 577) / 18.0)
+        o, r, d, s = axis(ff)
+        c = _mix(o, r, 0.5)
+        return dict(pos=flat(c, 0.26) + s * (3.4 - 0.6 * u), look=flat(c, 1.0), lens=20.0, hand=0.003)
     add("S09a they set themselves", 577, 595, last_a)
 
+    X = struck("clash", CROSS) or both(604)
+
     def last_b(ff):
-        c = both(604)
         u = _smooth((ff - 596) / 27.0)
-        return dict(pos=_mix((5.2, c.y, 0.95), (4.7, c.y, 1.0), u), look=flat(c, 1.20), lens=35.0)
+        o, r, d, s = axis(596)
+        return dict(pos=polar(X, azimuth(s) - 30.0 + 200.0 * u, 2.7, 1.05 + 0.25 * u), look=X + Vector((0.0, 0.0, -0.05)),
+                    lens=crash(ff, 28.0, [hit(CROSS)], 0.45), roll=-6.0 + 12.0 * u, focus=X)
     add("S09b the crossing", 596, 623, last_b)
 
-    def last_c(ff):
-        c = both(648)
+    def last_c(ff):                                                  # a crane rising at their side: both of them, back to back, far apart
         u = _smooth((ff - 624) / 24.0)
-        return dict(pos=_mix((4.5, c.y, 0.62), (4.75, c.y, 0.60), u), look=flat(c, 1.20), lens=28.0)
+        c = both(648)
+        o, r, d, s = axis(640)
+        return dict(pos=flat(c, 1.2 + 2.6 * u) + s * (5.6 - 0.4 * u), look=flat(c, 1.0 - 0.2 * u), lens=24.0, roll=-4.0 * (1.0 - u))
     add("S09c back to back", 624, 648, last_c)
 
     # 27 s: the Ronin's hat, seen from in front of him with the moon behind; the Oni's mask; black

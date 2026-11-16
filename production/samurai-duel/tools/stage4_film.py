@@ -1,7 +1,7 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
     python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|half|hd|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
-                                           [--only F,F,...] [--skip-done]
+                                           [--only F,F,...] [--skip-done] [--cache NAME] [--no-trails] [--no-anime]
     python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
 
 --fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
@@ -75,7 +75,7 @@ def build(preset, cloth=True, last=240, fight=False):
     end = int(math.ceil(film.scene_time(last))) + 1
     print(f"BUILD {time.time() - t0:.1f}s", flush=True)
     t0 = time.time()
-    folder = os.path.join(HERE, "out", "cache", "stage4_fight" if fight else "stage4")
+    folder = os.path.join(HERE, "out", "cache", ("stage4_fight" if fight else "stage4") + arg("--cache", ""))   # --cache NAME: a cloth cache of its own
     if cloth and "--reuse-cloth" in sys.argv and actor.replay(list(cast.values()), folder):
         cloth = False                                                # played back from the last run's files
         print("cloth played back from", folder, flush=True)
@@ -95,7 +95,7 @@ def build(preset, cloth=True, last=240, fight=False):
 
 def render():
     import bpy
-    from mathutils import Vector
+    from mathutils import Quaternion, Vector
     from PIL import Image, ImageDraw, ImageFont
 
     from sd import core, film
@@ -141,6 +141,14 @@ def render():
                 kp.interpolation = "LINEAR"
         ad.action, ad.action_slot = act, slot
 
+    def orient(pos, look, roll=0.0, near=None):
+        """Camera rotation looking from pos at look, turned 'roll' degrees about the line of sight (a
+        tilted horizon), as Euler angles close to 'near' so that blur keys never wrap round."""
+        q = (Vector(look) - Vector(pos)).to_track_quat("-Z", "Y")
+        if roll:
+            q = q @ Quaternion((0.0, 0.0, 1.0), math.radians(roll))
+        return q.to_euler("XYZ", near) if near is not None else q.to_euler("XYZ")
+
     def place(sh, g):
         """Where the camera is and looks on film frame g of a shot (held to the shot's own frames)."""
         g = min(max(g, sh["first"]), sh["last"])
@@ -168,10 +176,15 @@ def render():
     glint.data.materials.append(gm)
     glint.visible_shadow = False
     glint.hide_render = True
-    fx = None
+    fx = trails = None
     if fight:
-        from sd import fightfx
+        from sd import elemental, fightfx
         fx = fightfx.FightFX(sc, cast, core.collection("FIGHT_FX"), folder if "--no-cloth" not in sys.argv else None)
+        if "--no-trails" not in sys.argv:                           # the swords' elemental trails: fire for the Oni, water for the Ronin
+            span = (film.DASH, film.J0)
+            trails = elemental.Trails(core.collection("FIGHT_FX"), [(cast["oni"], "main", "fire", span), (cast["ronin"], "R", "water", span),
+                                                                    (cast["ronin"], "L", "water", span)])
+    anime = fight and "--no-anime" not in sys.argv                  # impact frames and speed lines (sd/post.py)
     out = out_dir(preset, tag)
     os.makedirs(out, exist_ok=True)
     font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(11, H // 34))
@@ -189,23 +202,22 @@ def render():
                     o.hide_render = hide
         sh = film.shot_at(shots, ff)
         c, pos, look = place(sh, ff)
+        e0 = orient(pos, look, c.get("roll", 0.0))
         rate = film.rate_at(ff)
         if curves is not None:
             sc.render.use_motion_blur = rate > 0.0
             sc.render.motion_blur_shutter = 0.5 * rate
             keys = []
             for k in (-1, 0, 1):
-                _, p_k, l_k = place(sh, ff + k)
-                cam.location = p_k
-                core.look_at(cam, l_k)
-                keys.append((st + k * max(rate, 1e-3), tuple(cam.location), tuple(cam.rotation_euler)))
+                c_k, p_k, l_k = place(sh, ff + k)
+                keys.append((st + k * max(rate, 1e-3), tuple(p_k), tuple(orient(p_k, l_k, c_k.get("roll", 0.0), e0))))
             for i, fc in enumerate(curves):
                 for kp, (t, loc, eul) in zip(fc.keyframe_points, keys):
                     kp.co = (t, (loc + eul)[i])
                     kp.handle_left = kp.handle_right = kp.co
                 fc.update()
         cam.location = pos
-        core.look_at(cam, look)
+        cam.rotation_euler = e0
         cd.lens = c["lens"]
         cd.dof.use_dof = dof
         if dof:                                                     # focus on what the shot looks at; long lenses are opened up
@@ -214,6 +226,8 @@ def render():
         if fx is not None:
             bpy.context.view_layer.update()
             fx.update(ff, cam)
+        if trails is not None:
+            trails.update(film.take_time(ff))
         g = film.visor_glint(cast, ff) if sh["name"].startswith("S03b") else None
         glint.hide_render = g is None
         if g is not None:
@@ -223,6 +237,22 @@ def render():
             glint.scale = (g[1], g[1], g[1])
         path = os.path.join(out, f"f_{ff:04d}.png")
         rnd.still(sc, path, cam)
+        if anime:
+            from bpy_extras.object_utils import world_to_camera_view
+            from sd import post
+            who, k = post.lines(ff)
+            kind = post.impact(ff)
+            if k > 0.0 or kind:                                     # a matte of the fighters keeps the lines off them and draws them in ink
+                mpath = os.path.join(out, "mattes", f"m_{ff:04d}.png")
+                rnd.mask(sc, mpath, [o for obs in parts.values() for o in obs])
+                matte = Image.open(mpath).convert("L")
+                im = Image.open(path).convert("RGB")
+                if k > 0.0:
+                    p = world_to_camera_view(sc, cam, film.joint(cast[who], "Spine2", ff))
+                    im = post.speed_lines(im, (p.x * W, (1.0 - p.y) * H), k, seed=ff, matte=matte)
+                if kind:
+                    im = post.impact_frame(im, kind, matte=matte)
+                im.save(path)
         dark = min(1.0, max(0.0, (ff - 708) / 12.0))                   # the last half second goes to black
         if dark > 0.0:
             im = Image.open(path).convert("RGB")

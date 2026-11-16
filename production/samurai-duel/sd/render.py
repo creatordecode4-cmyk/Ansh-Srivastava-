@@ -48,6 +48,48 @@ def still(sc, path, camera=None, frame=None):
     return path
 
 
+def mask(sc, path, keep, samples=4):
+    """A quick render in which only the objects in 'keep' show, flat white on black: a matte of where
+    they are in the frame (motion blur as set). Everything is put back afterwards."""
+    names = {o.name for o in keep}
+    hidden = {}
+    for o in bpy.data.objects:
+        want = o.name not in names
+        if o.hide_render != want:
+            hidden[o.name] = o.hide_render
+            o.hide_render = want
+    white = bpy.data.materials.get("MAT_MaskWhite")
+    if white is None:
+        white = bpy.data.materials.new("MAT_MaskWhite")
+        white.use_nodes = True
+        nt = white.node_tree
+        for n in list(nt.nodes):
+            nt.nodes.remove(n)
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs["Color"].default_value = (1, 1, 1, 1)
+        nt.links.new(em.outputs[0], nt.nodes.new("ShaderNodeOutputMaterial").inputs["Surface"])
+    black = bpy.data.worlds.get("WORLD_Black")
+    if black is None:
+        black = bpy.data.worlds.new("WORLD_Black")
+        black.use_nodes = True
+        black.node_tree.nodes["Background"].inputs[1].default_value = 0.0
+    vl, cy, vs = sc.view_layers[0], sc.cycles, sc.view_settings
+    saved = (cy.samples, cy.use_denoising, cy.use_adaptive_sampling, sc.render.use_compositing, vs.view_transform, vs.look, vs.exposure,
+             vl.material_override, vl.world_override, sc.render.filepath)
+    try:
+        cy.samples, cy.use_denoising, cy.use_adaptive_sampling = samples, False, False
+        sc.render.use_compositing = False
+        vs.view_transform, vs.look, vs.exposure = "Standard", "None", 0.0
+        vl.material_override, vl.world_override = white, black
+        still(sc, path)
+    finally:
+        (cy.samples, cy.use_denoising, cy.use_adaptive_sampling, sc.render.use_compositing, vs.view_transform, vs.look, vs.exposure,
+         vl.material_override, vl.world_override, sc.render.filepath) = saved
+        for name, h in hidden.items():
+            bpy.data.objects[name].hide_render = h
+    return path
+
+
 def clay_override(sc, on=True):
     """Clay pass: every surface uses one grey material under a plain overcast sky, so only
     shape and light are judged."""
