@@ -20,10 +20,11 @@ Presets (4 CPU cores):
 Motion blur follows the time map: the shutter is open for half a film frame, which is half a take
 frame at full speed, an eighth in quarter-speed slow motion and nothing while a blow is held. The
 camera is placed by a formula per film frame; so that it blurs as well, it is keyed for the frame
-before, this frame and the frame after, at the scene times those have. A held frame or an impact
-frame is frozen with a shutter of a thousandth of a take frame and the camera keyed in one place;
-motion blur and depth of field are never switched off between frames (with persistent data the
-camera's blur was lost for every later frame of the job once it had been switched off and on).
+before, this frame and the frame after, at the scene times those have (never closer than 0.05 of a
+frame: Blender merges keys closer than about 0.01, and a held frame used to key them 0.001 apart,
+after which the camera of every later frame in the job had no blur and lagged a frame). A held
+frame or an impact frame is frozen with a shutter of a thousandth of a take frame and the camera
+keyed in one place; an impact frame also gets f/1000, so nothing in it is out of focus.
 
 Frames go to out/stage4/<preset><tag>/f_####.png (numbered by film frame). Every frame is rendered at
 the scene time the film's time map gives it (sd/film.py), with the camera of the shot it belongs to.
@@ -221,25 +222,30 @@ def render():
         e0 = orient(pos, look, c.get("roll", 0.0))
         rate = film.rate_at(ff)
         if curves is not None:
-            # A hold or an impact frame is frozen by a shutter of almost nothing and a camera that stays
-            # put, not by switching motion blur off: with persistent data, motion blur switched off for one
-            # frame and on again stays broken (the camera's blur is lost) for the rest of the job.
+            # A held frame or an impact frame is frozen: a shutter of almost nothing and the camera keyed in
+            # one place. The three camera keys always stay at least 0.05 of a frame apart: FCurve.update()
+            # merges keys closer than about 0.01, and once merged into one the camera had no blur and sat
+            # one film frame behind for every later frame of the job (a hold used to key them 0.001 apart).
             freeze = rate <= 0.0 or bool(kind)
             sc.render.use_motion_blur = True
             sc.render.motion_blur_shutter = 1e-3 if freeze else 0.5 * rate
             keys = []
             for k in (-1, 0, 1):
                 c_k, p_k, l_k = place(sh, ff + (0 if freeze else k))
-                keys.append((st + k * max(rate, 1e-3), tuple(p_k), tuple(orient(p_k, l_k, c_k.get("roll", 0.0), e0))))
+                keys.append((st + k * max(rate, 0.05), tuple(p_k), tuple(orient(p_k, l_k, c_k.get("roll", 0.0), e0))))
             for i, fc in enumerate(curves):
+                if len(fc.keyframe_points) != 3:                    # never render with a camera that has lost its keys
+                    raise RuntimeError(f"camera blur curve {fc.data_path}[{fc.array_index}] has {len(fc.keyframe_points)} keys")
                 for kp, (t, loc, eul) in zip(fc.keyframe_points, keys):
                     kp.co = (t, (loc + eul)[i])
                     kp.handle_left = kp.handle_right = kp.co
                 fc.update()
+                if len(fc.keyframe_points) != 3:
+                    raise RuntimeError(f"camera blur keys merged on film frame {ff}")
         cam.location = pos
         cam.rotation_euler = e0
         cd.lens = c["lens"]
-        cd.dof.use_dof = dof                                        # never switched off for one frame either (see above)
+        cd.dof.use_dof = dof                                        # an impact frame keeps it on at f/1000 (below)
         if dof:                                                     # focus on what the shot looks at; long lenses are opened up
             cd.dof.focus_distance = (Vector(c.get("focus", look)) - pos).length
             cd.dof.aperture_fstop = 1000.0 if kind else c.get("fstop", 2.0 if c["lens"] >= 70 else 2.8 if c["lens"] >= 45 else 4.0)
