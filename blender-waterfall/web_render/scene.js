@@ -265,25 +265,45 @@ water.position.set(5, 0.0, -37.5);
 water.renderOrder = 1;
 scene.add(water);
 
-// ------------------------------------------------------------------ waterfall + mist
-function fallMat(speed, bright) {
+// ------------------------------------------------------------------ waterfall: layered falling sheets, droplets, splash, mist
+// Exported fall normals point AWAY from the camera, so "outward" = -normal.
+const KEY_U = { value: KEY_DIR };
+function fallMat(speed, layer) {        // layer 0 = darker body behind, 1 = white aerated streams in front
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { uTime: U.time, uFogColor: { value: FOG_COLOR }, uFogDensity: { value: 0.0011 } },
-    vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vW = (modelMatrix*vec4(position,1.0)).xyz;
-      gl_Position = projectionMatrix*viewMatrix*vec4(vW,1.0); }`,
+    uniforms: { uTime: U.time, uKey: KEY_U, uFogColor: { value: FOG_COLOR }, uFogDensity: { value: 0.0011 } },
+    vertexShader: `varying vec2 vUv; varying vec3 vW; varying vec3 vN;
+      void main(){ vUv = uv; vec3 p = position + normal * ${layer === 0 ? '0.45' : '-0.05'};
+        vW = (modelMatrix * vec4(p, 1.0)).xyz; vN = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * vec4(vW, 1.0); }`,
     fragmentShader: `${NOISE}
-      uniform float uTime; uniform vec3 uFogColor; uniform float uFogDensity; varying vec2 vUv; varying vec3 vW;
+      uniform float uTime; uniform vec3 uKey; uniform vec3 uFogColor; uniform float uFogDensity;
+      varying vec2 vUv; varying vec3 vW; varying vec3 vN;
       void main(){
         float t = uTime * ${speed.toFixed(3)};
-        float n1 = noise3(vec3(vUv.x * 22.0, vUv.y * 5.0 - t * 2.6, 0.3));
-        float n2 = noise3(vec3(vUv.x * 55.0, vUv.y * 13.0 - t * 4.2, 1.7));
-        float n3 = fbm3(vec3(vUv.x * 8.0, vUv.y * 2.0 - t * 1.4, 4.1));
-        float streak = 0.45 * n1 + 0.35 * n2 + 0.4 * n3;
-        float edge = smoothstep(0.0, 0.14, vUv.x) * smoothstep(1.0, 0.86, vUv.x);
-        float a = edge * clamp(0.35 + streak * 0.85 + vUv.y * 0.25, 0.0, 1.0);
-        a *= smoothstep(0.0, 0.03, vUv.y);
-        vec3 c = mix(vec3(0.72, 0.84, 0.88), vec3(1.0, 0.99, 0.96), clamp(streak + vUv.y * 0.4, 0.0, 1.0)) * ${bright.toFixed(2)};
+        float v = vUv.y, sv = sqrt(max(v, 0.0));          // sqrt-space scroll = accelerating fall (gravity)
+        float y1 = sv * 7.0 - t * 2.4;
+        float y2 = sv * 16.0 - t * 5.4;
+        float n1 = noise3(vec3(vUv.x * 46.0, y1, 0.0));
+        float n2 = noise3(vec3(vUv.x * 110.0, y2, 3.0));
+        float cl = fbm3(vec3(vUv.x * 9.0, sv * 4.0 - t * 1.55, 7.0));
+        float streak = 0.45 * n1 + 0.3 * n2 + 0.55 * cl;
+        float aer = smoothstep(0.02, 0.3, v);
+        float ex = min(vUv.x, 1.0 - vUv.x);
+        float edge = smoothstep(0.0, 0.10 + 0.10 * noise3(vec3(vUv.x * 7.0, y1 * 0.6, 2.0)), ex);
+        float a; vec3 c;
+        if (${layer} == 0) {
+          a = edge * clamp(0.38 + 0.4 * streak + 0.2 * v, 0.0, 0.85);
+          c = mix(vec3(0.26, 0.38, 0.39), vec3(0.78, 0.84, 0.85), aer * (0.45 + 0.55 * streak));
+        } else {
+          float s = streak + 0.22 * (1.0 - aer);
+          a = edge * smoothstep(0.42, 0.62, s) * (0.6 + 0.4 * aer);
+          c = mix(vec3(0.58, 0.73, 0.72), vec3(1.0, 1.0, 0.98), aer) * (0.85 + 0.35 * n2);
+        }
+        a *= smoothstep(0.0, 0.025, v);
+        a = mix(a, a * 0.7, smoothstep(0.85, 1.0, v));
+        c *= (0.78 + 0.32 * abs(dot(normalize(vN), uKey))) * 1.15;
+        c += vec3(0.45, 0.5, 0.45) * smoothstep(0.08, 0.0, v) * n1;     // glassy lip where it pours over
         float dist = length(cameraPosition - vW);
         c = mix(c, uFogColor, 1.0 - exp(-pow(uFogDensity * dist, 2.0)));
         gl_FragColor = vec4(c, a);
@@ -292,16 +312,99 @@ function fallMat(speed, bright) {
       }`,
   });
 }
-const fallMain = new THREE.Mesh(await loadGroup('waterfall_main'), fallMat(1.0, 1.25));
-const fallStrand = new THREE.Mesh(await loadGroup('waterfall_strand'), fallMat(1.2, 1.1));
-fallMain.renderOrder = fallStrand.renderOrder = 2;
-scene.add(fallMain, fallStrand);
+const fallGeoMain = await loadGroup('waterfall_main'), fallGeoStrand = await loadGroup('waterfall_strand');
+for (const [geo, sp] of [[fallGeoMain, 1.0], [fallGeoStrand, 1.15]]) {
+  const back = new THREE.Mesh(geo, fallMat(sp, 0));
+  const front = new THREE.Mesh(geo, fallMat(sp * 1.1, 1));
+  back.renderOrder = 2; front.renderOrder = 3;
+  scene.add(back, front);
+}
 
-{ // mist at the base of the falls
-  const N = 520, geo = new THREE.BufferGeometry();
+function fallGrid(geo, cols) {
+  const P = geo.attributes.position.array, N = geo.attributes.normal.array;
+  return { cols, rows: P.length / 3 / (cols + 1), P, N };
+}
+function sampleFall(F, u, v, oP, oN) {
+  const fx = u * F.cols, i0 = Math.min(F.cols - 1, Math.floor(fx)), tx = fx - i0;
+  const fy = v * (F.rows - 1), j0 = Math.min(F.rows - 2, Math.floor(fy)), ty = fy - j0;
+  for (let k = 0; k < 3; k++) {
+    const g = (A, i, j) => A[(i * F.rows + j) * 3 + k];
+    const bil = (A) => (g(A, i0, j0) * (1 - tx) + g(A, i0 + 1, j0) * tx) * (1 - ty) + (g(A, i0, j0 + 1) * (1 - tx) + g(A, i0 + 1, j0 + 1) * tx) * ty;
+    oP[k] = bil(F.P); oN[k] = -bil(F.N);
+  }
+}
+const FALLS = [fallGrid(fallGeoMain, 24), fallGrid(fallGeoStrand, 6)];
+const particleSystems = [];
+function makeParticles(n, round, init) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3), al = new Float32Array(n), sz = new Float32Array(n);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(al, 1));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(sz, 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uH: { value: H } },
+    vertexShader: `attribute float aAlpha; attribute float aSize; uniform float uH; varying float vA;
+      void main(){ vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+        gl_PointSize = clamp(aSize * uH * 0.6 / -mv.z, 1.5, 72.0); }`,
+    fragmentShader: `varying float vA;
+      void main(){ vec2 c = gl_PointCoord - 0.5;
+        float streak = exp(-c.x * c.x * 90.0) * smoothstep(0.5, 0.1, abs(c.y));
+        float drop = smoothstep(0.5, 0.15, length(c));
+        float a = vA * ${round ? 'drop' : 'streak'};
+        gl_FragColor = vec4(vec3(1.0, 1.0, 0.98) * 1.35, a);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false; pts.renderOrder = 4;
+  scene.add(pts);
+  const sys = { n, pos, al, sz, geo, seeds: [] };
+  for (let i = 0; i < n; i++) sys.seeds.push(init(i));
+  particleSystems.push(sys);
+  return sys;
+}
+// falling droplets / spray streaks riding on the curtain (distance ~ t^2)
+const dropsMain = makeParticles(2600, false, () => [0, rr(0.03, 0.97), rnd(), 0.42 * rr(0.85, 1.2), rnd()]);
+const dropsStrand = makeParticles(450, false, () => [1, rr(0.05, 0.95), rnd(), 0.46 * rr(0.85, 1.2), rnd()]);
+// splash droplets thrown up at the base (ballistic)
+const splash = makeParticles(1200, true, () => [rnd() < 0.85 ? 0 : 1, rr(0.05, 0.95), rnd(), rr(0.9, 1.4), rr(1.0, 4.5), rr(-2.0, 2.0), rr(2.0, 5.5)]);
+const _p = [0, 0, 0], _n = [0, 0, 0];
+function updateFallParticles(t) {
+  for (const sys of [dropsMain, dropsStrand]) {
+    for (let i = 0; i < sys.n; i++) {
+      const [fi, u, ph, rate, out] = sys.seeds[i];
+      const life = (ph + t * rate) % 1, v = life * life;
+      sampleFall(FALLS[fi], u, v, _p, _n);
+      const o = 0.15 + out * 0.5 + v * 0.7;
+      sys.pos.set([_p[0] + _n[0] * o, _p[1] + _n[1] * o + (out - 0.5) * 0.2, _p[2] + _n[2] * o], i * 3);
+      sys.al[i] = Math.min(1, life * 10) * (1 - Math.max(0, (v - 0.86) / 0.14)) * 0.42;
+      sys.sz[i] = 0.7 * (0.5 + 2.0 * v);
+    }
+  }
+  for (let i = 0; i < splash.n; i++) {
+    const [fi, u, ph, rate, vOut, vLat, vUp] = splash.seeds[i];
+    sampleFall(FALLS[fi], u, 0.985, _p, _n);
+    const nx = _n[0], nz = _n[2], ln = Math.hypot(nx, nz) || 1;
+    const ox = nx / ln, oz = nz / ln, lx = -oz, lz = ox;
+    const tau = ((ph + t * rate) % 1) * 1.1;
+    const y = _p[1] + vUp * tau - 4.9 * tau * tau;
+    splash.pos.set([_p[0] + (ox * vOut + lx * vLat) * tau, y, _p[2] + (oz * vOut + lz * vLat) * tau], i * 3);
+    splash.al[i] = y > -0.05 ? (1 - tau / 1.1) * 0.45 : 0;
+    splash.sz[i] = 0.45;
+  }
+  for (const sys of particleSystems) {
+    sys.geo.attributes.position.needsUpdate = true;
+    sys.geo.attributes.aAlpha.needsUpdate = true;
+    sys.geo.attributes.aSize.needsUpdate = true;
+  }
+}
+
+{ // mist billowing from the base of the falls
+  const N = 900, geo = new THREE.BufferGeometry();
   const pos = new Float32Array(N * 3), seed = new Float32Array(N * 4);
   for (let i = 0; i < N; i++) {
-    seed.set([rnd(), rnd() * Math.PI * 2, rr(0.6, 1.4), rr(2.5, 7)], i * 4);
+    seed.set([rnd(), rnd() * Math.PI * 2, rr(0.6, 1.4), rr(2.5, 8)], i * 4);
     pos.set([0, rnd(), 0], i * 3);
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -315,14 +418,14 @@ scene.add(fallMain, fallStrand);
         float life = fract(uTime * aSeed.z * 0.07 + aSeed.x);
         vec3 dir = vec3(cos(aSeed.y), 0.0, sin(aSeed.y));
         float up = position.y < 0.3 ? position.y * uTop * 0.8 : 0.0;
-        vec3 p = uO + dir * vec3(1.0 + life * 6.0, 0.0, 1.0 + life * 3.0) + vec3(0.0, up + life * 5.0, 0.0) + vec3(0.0, 0.0, 2.0);
+        vec3 p = uO + dir * vec3(1.0 + life * 6.0, 0.0, 1.0 + life * 3.0) + vec3(0.0, up * 0.6 + life * 3.5, 0.0) + vec3(0.0, 0.0, 1.5);
         vA = sin(life * 3.14159) * (position.y < 0.3 ? 0.6 : 1.0);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = min(aSeed.w * (1.0 + life) * uH * 0.6 / -mv.z, 480.0);
       }`,
     fragmentShader: `varying float vA;
-      void main(){ float r = length(gl_PointCoord - 0.5); float a = vA * 0.055 * (1.0 - smoothstep(0.0, 0.5, r));
+      void main(){ float r = length(gl_PointCoord - 0.5); float a = vA * 0.028 * (1.0 - smoothstep(0.0, 0.5, r));
         gl_FragColor = vec4(vec3(1.0, 0.98, 0.95) * 2.2, a);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -330,7 +433,7 @@ scene.add(fallMain, fallStrand);
   });
   const mist = new THREE.Points(geo, mat);
   mist.frustumCulled = false;
-  mist.renderOrder = 3;
+  mist.renderOrder = 5;
   scene.add(mist);
 }
 
@@ -354,8 +457,8 @@ function leafTexture() {
 const LEAF_TEX = leafTexture();
 
 // Leaf material: translucent backlit glow toward the visible sun + per-instance wind sway.
-function leafMat({ glow = 1.4, rough = 0.4 } = {}) {
-  const m = new THREE.MeshStandardMaterial({ map: LEAF_TEX, alphaTest: 0.5, side: THREE.DoubleSide, roughness: rough, metalness: 0 });
+function leafMat({ glow = 1.4, rough = 0.4, map = LEAF_TEX, alphaTest = 0.5 } = {}) {
+  const m = new THREE.MeshStandardMaterial({ map, alphaTest, side: THREE.DoubleSide, roughness: rough, metalness: 0 });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = U.time; sh.uniforms.uSunVis = { value: SUN_VIS };
     sh.vertexShader = sh.vertexShader
@@ -455,54 +558,116 @@ const LEAF_FRESH = new THREE.Color('#B5D334'), LEAF_DEEP = new THREE.Color('#4C8
   scene.add(im);
 }
 
-// ------------------------------------------------------------------ pines (layered needle tiers)
-function pineGeometry(seed) {
+// ------------------------------------------------------------------ conifers: whorled branches carrying needle-spray cards
+function sprayTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256;
+  const g = c.getContext('2d');
+  _s = 555;
+  g.lineCap = 'round';
+  g.strokeStyle = '#2b2a17'; g.lineWidth = 2.4;
+  g.beginPath(); g.moveTo(64, 252); g.quadraticCurveTo(60, 130, 64, 6); g.stroke();
+  for (let i = 0; i < 130; i++) {
+    const t = i / 130, y = 250 - t * 240, x = 64 + Math.sin(t * 3) * 2;
+    const w = 46 * (1 - Math.pow(Math.abs(t - 0.45) * 1.6, 2)) + 6;
+    for (const sd of [-1, 1]) {
+      const len = w * rr(0.5, 1.0), ang = rr(0.3, 0.8), tone = rnd();
+      g.strokeStyle = `rgb(${Math.round(28 + 34 * tone)},${Math.round(58 + 56 * tone)},${Math.round(26 + 26 * tone)})`;
+      g.lineWidth = rr(1.5, 2.6);
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + sd * len * Math.cos(ang), y - len * Math.sin(ang)); g.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return tex;
+}
+function pineVariant(seed) {
   _s = seed;
-  const P = [], C = [];
-  const tri = (a, b, c, ca, cb, cc) => { P.push(...a, ...b, ...c); C.push(...ca, ...cb, ...cc); };
-  const bark = [0.16, 0.11, 0.07];
-  for (let k = 0; k < 6; k++) {               // trunk
-    const a0 = k / 6 * Math.PI * 2, a1 = (k + 1) / 6 * Math.PI * 2, r = 0.018;
-    const v = (a, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
-    tri(v(a0, -0.05), v(a1, -0.05), v(a1, 0.4), bark, bark, bark);
-    tri(v(a0, -0.05), v(a1, 0.4), v(a0, 0.4), bark, bark, bark);
-  }
-  const T = 14;
-  for (let t = 0; t < T; t++) {
-    const f = t / (T - 1);
-    const yb = 0.10 + 0.80 * f, r = 0.29 * Math.pow(1 - f, 0.95) + 0.035, hc = 0.17 - 0.07 * f;
-    const N = 18, ring = [];
-    for (let k = 0; k < N; k++) {
-      const a = k / N * Math.PI * 2 + rr(-0.08, 0.08);
-      const rad = r * (k % 2 ? 0.55 : 1.0) * rr(0.8, 1.15);
-      ring.push([Math.cos(a) * rad, yb - (k % 2 ? -0.01 : 0.05) * (r / 0.3) - rr(0, 0.02), Math.sin(a) * rad]);
+  const cards = [], wood = [], up = new THREE.Vector3(0, 1, 0);
+  let y = 1.4;
+  while (y < 15.4) {
+    const f = y / 16, nb = 5 + Math.floor(rnd() * 3), L = 4.3 * Math.pow(1 - f, 0.9) + 0.45;
+    for (let b = 0; b < nb; b++) {
+      const a = b / nb * Math.PI * 2 + rr(-0.3, 0.3) + y * 1.3;
+      const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      const P = (t) => dir.clone().multiplyScalar(L * t).add(new THREE.Vector3(0, y - 0.32 * L * t * t + 0.10 * L * t * f, 0));
+      wood.push([P(0), P(0.8), 0.035 * (1 - f) + 0.01]);
+      const steps = Math.max(2, Math.round(L / 0.42));
+      for (let s = 0; s < steps; s++) {
+        const t = (s + 0.3) / steps, p = P(t);
+        const tan = P(Math.min(1, t + 0.05)).sub(P(Math.max(0, t - 0.05))).normalize();
+        for (const k of [-1, 1, 0]) {
+          if (k === 0 && s % 2) continue;
+          const d = tan.clone().applyAxisAngle(up, k * rr(0.55, 0.95)).add(new THREE.Vector3(0, rr(-0.25, 0.05), 0)).normalize();
+          cards.push({ p: p.clone().add(new THREE.Vector3(0, rr(-0.05, 0.05), 0)), d, roll: rr(-0.5, 0.5),
+                       sc: rr(0.8, 1.2) * (1 - 0.4 * t) * (0.75 + 0.5 * (1 - f)), h: f });
+        }
+      }
     }
-    const apex = [rr(-0.01, 0.01), yb + hc, rr(-0.01, 0.01)], under = [0, yb - 0.01, 0];
-    const tipC = () => { const v = rr(0.8, 1.2); return [0.06 * v, 0.15 * v, 0.06 * v]; };
-    const inC = [0.03, 0.07, 0.035];
-    for (let k = 0; k < N; k++) {
-      const a = ring[k], b = ring[(k + 1) % N];
-      tri(apex, a, b, inC, tipC(), tipC());
-      tri(under, b, a, [0.02, 0.05, 0.025], [0.05, 0.11, 0.05], [0.05, 0.11, 0.05]);
-    }
+    y += rr(0.36, 0.52);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
-  geo.computeVertexNormals();
-  return geo;
+  for (let i = 0; i < 16; i++)
+    cards.push({ p: new THREE.Vector3(rr(-0.15, 0.15), 16 - rr(0, 1.6), rr(-0.15, 0.15)),
+                 d: new THREE.Vector3(rr(-0.5, 0.5), 1, rr(-0.5, 0.5)).normalize(), roll: rr(0, 6), sc: rr(0.5, 0.8), h: 1 });
+  return { cards, wood };
+}
+function cardMatrix(c, out) {
+  const yA = c.d.clone();
+  const zA = new THREE.Vector3(0, 1, 0).sub(yA.clone().multiplyScalar(yA.y));
+  if (zA.lengthSq() < 1e-6) zA.set(1, 0, 0);
+  zA.normalize().applyAxisAngle(yA, c.roll);
+  const xA = new THREE.Vector3().crossVectors(yA, zA);
+  out.makeBasis(xA, yA, zA).scale(new THREE.Vector3(c.sc, c.sc, c.sc)).setPosition(c.p);
+  return out;
 }
 {
-  const pineMat = detailMat({ rough: 0.85, colFreq: 6, colAmt: 0.3, bumpFreq: 9, bumpAmp: 0.05, fadeFar: 120, sway: 0.03, side: THREE.DoubleSide });
-  const geos = [11, 22, 33, 44].map(pineGeometry);
+  const sprayTex = sprayTexture();
+  const pineMat = leafMat({ map: sprayTex, alphaTest: 0.35, glow: 0.35, rough: 0.8 });
+  const barkPine = detailMat({ vertexColors: false, color: new THREE.Color(0.11, 0.09, 0.07), rough: 0.9, colFreq: 3, colAmt: 0.25, bumpFreq: 6, bumpAmp: 0.03 });
+  const variants = [11, 22, 33, 44].map(pineVariant);
+  const groups = [[], [], [], []];
   _s = 98765;
   M.pines.forEach(([x, y, z, h], i) => {
-    const m = new THREE.Mesh(geos[i % 4], pineMat);
-    m.position.copy(B(x, y, z));
-    m.scale.set(h * rr(0.9, 1.1), h, h * rr(0.9, 1.1));
-    m.rotation.y = rr(0, 6.28);
-    m.castShadow = true; m.receiveShadow = true;
-    scene.add(m);
+    const tm = new THREE.Matrix4().compose(B(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rr(0, 6.28)),
+      new THREE.Vector3(h / 16 * rr(0.9, 1.1), h / 16, h / 16 * rr(0.9, 1.1)));
+    groups[i % 4].push({ tm, ph: rr(0, 6.28), h });
+  });
+  const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true).translate(0, 0.5, 0);
+  const trunkGeo = new THREE.CylinderGeometry(0.03, 0.34, 16.4, 8, 1, false).translate(0, 7.9, 0);
+  const m = new THREE.Matrix4(), cm = new THREE.Matrix4(), local = new THREE.Matrix4(), col = new THREE.Color();
+  groups.forEach((trees, vi) => {
+    if (!trees.length) return;
+    const V = variants[vi];
+    const geo = new THREE.PlaneGeometry(0.6, 1.2).translate(0, 0.6, 0);
+    const n = V.cards.length * trees.length;
+    const sway = new Float32Array(n * 2);
+    geo.setAttribute('aSway', new THREE.InstancedBufferAttribute(sway, 2));
+    const im = new THREE.InstancedMesh(geo, pineMat, n);
+    im.frustumCulled = false; im.castShadow = true; im.receiveShadow = true;
+    im.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: sprayTex, alphaTest: 0.35 });
+    let k = 0;
+    for (const T of trees) for (const c of V.cards) {
+      m.multiplyMatrices(T.tm, cardMatrix(c, cm));
+      im.setMatrixAt(k, m);
+      const v = rr(0.75, 1.1);
+      col.setRGB(v * rr(0.9, 1.05), v, v * rr(0.85, 1.0));
+      if (c.h < 0.3) col.multiplyScalar(0.8);
+      im.setColorAt(k, col);
+      sway[k * 2] = T.ph; sway[k * 2 + 1] = 0.12 * c.h * c.h * T.h / 16;
+      k++;
+    }
+    scene.add(im);
+    const wim = new THREE.InstancedMesh(cylGeo, barkPine, V.wood.length * trees.length);
+    let w = 0;
+    for (const T of trees) {
+      const trunk = new THREE.Mesh(trunkGeo, barkPine);
+      trunk.applyMatrix4(T.tm); trunk.castShadow = true; scene.add(trunk);
+      for (const [a, b2, r] of V.wood) {
+        const d = b2.clone().sub(a), len = d.length();
+        local.compose(a, new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(r, len, r));
+        wim.setMatrixAt(w++, m.multiplyMatrices(T.tm, local));
+      }
+    }
+    wim.castShadow = true;
+    scene.add(wim);
   });
 }
 
@@ -687,6 +852,7 @@ window.renderFrame = (frame) => {
   camera.updateMatrixWorld();
   sky.position.copy(camera.position);
   updateBirds(t);
+  updateFallParticles(t);
   tmp.copy(camera.position).addScaledVector(SUN_VIS, 1000).project(camera);
   const onScreen = tmp.z < 1 && Math.abs(tmp.x) < 1.3 && Math.abs(tmp.y) < 1.3;
   rays.uniforms.uSun.value.set(tmp.x * 0.5 + 0.5, tmp.y * 0.5 + 0.5);
