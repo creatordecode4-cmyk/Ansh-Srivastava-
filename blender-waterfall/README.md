@@ -63,3 +63,18 @@ python3 export_scene.py
 node render.js frames 1 480 1 1920          # ~5-8 s/frame on CPU
 ./make_audio.sh && ./encode.sh frames ambience.wav waterfall_valley.mp4
 ```
+
+---
+
+## Photoreal route: Blender Cycles on a free Colab GPU (`final_scene.py` + `colab/`)
+- `final_scene.py`: on top of the Step 1 layout it adds procedural PBR materials (displacement, bump, roughness
+  variation, strata, moss, golden lichen, dirt, wet rock), glacial water (transmission + absorption/scatter
+  volume, animated ripples, foam), an animated waterfall + mist volume, a weeping tree with about 90k real leaf meshes
+  (curved, folded, crumpled, 0.3 mm thick, size ±30 %, colour, veins, translucency/SSS, waxy coat, spots,
+  dry edges, insect holes), needle-twig conifers, leafy bushes, GN grass, Nishita sky + clouds, sun lamp,
+  volumetric haze, 7 birds, eased camera glide + DOF, glare + chromatic aberration.
+- `colab/Waterfall_Valley_Colab.ipynb`: open it in Google Colab → T4 GPU → run the cells in order. Frames
+  are saved to Drive (resumable), and the last cell builds the graded MP4 with sound.
+- Rebuild the notebook after editing the scripts: `python3 colab/make_notebook.py`.
+- Honest limits: this script hasn't been run in real Blender in this sandbox (no Blender here). The Colab
+  preview cell is the first test. If something breaks, send a screenshot of the output.
