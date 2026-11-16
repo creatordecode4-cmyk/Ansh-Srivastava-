@@ -1,8 +1,8 @@
 """Stage 4: the film. Builds the arena with both fighters, runs the cloth, and renders film frames.
 
-    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
+    python3 -I tools/stage4_film.py render FIRST LAST [--preset block|look|half|hd|final] [--step K] [--no-cloth] [--reuse-cloth] [--cloth-to FILM_FRAME] [--tag NAME] [--fight]
                                            [--only F,F,...] [--skip-done]
-    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
+    python3 -I tools/stage4_film.py assemble [--preset look] [--tag NAME[,NAME...]] [--out previews/stage4_intro.mp4] [--from FILM_FRAME] [--to FILM_FRAME]
 
 --fight builds both fighters' whole parts (sd/film.py fight(): the intro and the fight) with the
 fight's effects and camera shake; without it only the intro is built, as it was rendered for the
@@ -12,6 +12,7 @@ Presets (4 CPU cores):
     block   640x360, 6 samples, light arena, no fog            about 10 s per frame: staging and timing
     look    960x540, 8 samples, fog and bloom                   about 35 s per frame: the preview that is shown (sharp: no blur)
     half    960x540, 24 samples, motion blur, depth of field    the finished picture at half size
+    hd      1280x720, 16 samples, motion blur, depth of field   the finished picture at 720p
     final   1920x1080, 96 samples, motion blur, depth of field  not for this machine (see README)
 --blur and --dof switch motion blur and depth of field on for any preset.
 
@@ -35,6 +36,7 @@ sys.path.insert(0, HERE)
 PRESETS = dict(block=dict(size=(640, 360), samples=6, fog=False, detail=False, bloom=False, label=True),
                look=dict(size=(960, 540), samples=8, fog=True, detail=True, bloom=True, label=True),
                half=dict(size=(960, 540), samples=24, fog=True, detail=True, bloom=True, label=False, blur=True, dof=True),
+               hd=dict(size=(1280, 720), samples=16, fog=True, detail=True, bloom=True, label=False, blur=True, dof=True),
                final=dict(size=(1920, 1080), samples=96, fog=True, detail=True, bloom=True, label=False, blur=True, dof=True))
 
 
@@ -238,21 +240,27 @@ def render():
 
 
 def assemble():
-    preset, tag = arg("--preset", "look"), arg("--tag", "")
-    d = out_dir(preset, tag)
+    """--tag may name several folders, comma separated (e.g. ',_prev' joins out/stage4/look and look_prev):
+    each film frame is taken from the first folder that has it."""
+    preset, tags = arg("--preset", "look"), arg("--tag", "").split(",")
     lo, hi = arg("--from", 1, cast=int), arg("--to", 10 ** 6, cast=int)
-    frames = sorted(f for f in os.listdir(d) if f.startswith("f_") and f.endswith(".png") and lo <= int(f[2:6]) <= hi)
+    found = {}
+    for tag in tags:
+        d = out_dir(preset, tag)
+        for f in os.listdir(d):
+            if f.startswith("f_") and f.endswith(".png") and lo <= int(f[2:6]) <= hi:
+                found.setdefault(int(f[2:6]), os.path.join(d, f))
+    nums = sorted(found)
     film_path = os.path.join(HERE, arg("--out", "previews/stage4_intro.mp4"))
-    lst = os.path.join(d, "frames.txt")
-    nums = [int(f[2:6]) for f in frames]
+    lst = os.path.join(out_dir(preset, tags[0]), "frames.txt")
     with open(lst, "w") as fh:
-        for k, f in enumerate(frames):                              # a frame that was not rendered (step > 1) is held
-            hold = (nums[k + 1] - nums[k]) if k + 1 < len(nums) else 1
-            fh.write(f"file '{os.path.join(d, f)}'\nduration {hold / 24.0:.6f}\n")
-        fh.write(f"file '{os.path.join(d, frames[-1])}'\n")
+        for k, n in enumerate(nums):                                # a frame that was not rendered (step > 1) is held
+            hold = (nums[k + 1] - n) if k + 1 < len(nums) else 1
+            fh.write(f"file '{found[n]}'\nduration {hold / 24.0:.6f}\n")
+        fh.write(f"file '{found[nums[-1]]}'\n")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-vf", "fps=24,format=yuv420p", "-c:v", "libx264",
                     "-crf", "17", "-preset", "slow", "-movflags", "+faststart", film_path], check=True)
-    print(f"FILM {film_path} {os.path.getsize(film_path) / 1e6:.1f} MB from {len(frames)} frames ({nums[0]}-{nums[-1]})")
+    print(f"FILM {film_path} {os.path.getsize(film_path) / 1e6:.1f} MB from {len(nums)} frames ({nums[0]}-{nums[-1]})")
 
 
 if __name__ == "__main__":

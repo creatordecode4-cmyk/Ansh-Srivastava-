@@ -65,6 +65,10 @@ python3 -I tools/stage4_film.py render 119 240 --preset look --reuse-cloth      
 python3 -I tools/stage4_film.py assemble --out previews/stage4_intro.mp4
 python3 -I tools/stage3_preview.py render s4_oni --proxy --samples 8 --step 3      # one fighter's part in clay on the studio floor
 python3 -I tools/stage4_film.py render 241 360 --preset block --step 4 --no-cloth --fight   # the fight: both whole parts, effects, camera shake
+python3 -I tools/stage4_film.py render 241 720 --preset look --fight --cloth-to 720 --tag _prev   # fight preview; the first job runs the cloth for the whole film
+python3 -I tools/stage4_film.py render 241 720 --preset look --fight --reuse-cloth --skip-done --tag _prev   # further jobs fill in what is missing
+python3 -I tools/stage4_film.py assemble --tag _prev --from 241 --out previews/stage4_fight.mp4
+python3 -I tools/stage4_film.py assemble --tag ,_prev --out previews/stage4_film.mp4   # intro (look) + fight (look_prev): the whole 30 s
 ```
 One render job here may run for two hours at most, and all jobs share 15 GB of memory. A film
 render holds 4 to 5 GB after an hour; three fit side by side, with nothing else running.
@@ -275,4 +279,10 @@ at the look preset either way); they are only a way to stay inside the two-hour 
   points inside the body, 0 after they are put back, no blade through cloth.
 - The camera's near clip is 30 cm: a snowflake drifting past the lens filled a corner of the last
   frame of the standoff until it was.
+- Fight preview (`previews/stage4_fight.mp4`, film frames 241-720; stills, one per shot, in
+  `previews/stage4_fight.jpg`) and the whole film (`previews/stage4_film.mp4`: the intro preview's
+  frames 1-240 joined to the fight's): look preset, no motion blur or depth of field, labels burned
+  in. With two jobs side by side a fight frame took 62-74 s; each job first spends 7 minutes
+  building the fight and 1 minute loading the cloth. The intro in this film is still the one built
+  without the fight (`out/stage4/look`); the finished film is rendered from the fight build alone.
 
