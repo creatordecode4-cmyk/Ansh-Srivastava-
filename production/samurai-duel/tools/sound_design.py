@@ -802,7 +802,7 @@ def film_main():
     write_sheets(mix, os.path.join(OUT, "cue_sheet_v2.txt"), os.path.join(OUT, "music_map_v2.txt"), "Oni vs Ronin, the film (30 s)")
     print("MASTER", {k: round(v, 2) for k, v in rep.items()})
     if USED:
-        SM.credits(os.path.join(HERE, "SOUND_CREDITS.txt"), USED)
+        SM.credits(os.path.join(HERE, "SOUND_CREDITS.txt"), USED, "film")
     video = os.path.join(HERE, arg("--video", "previews/stage4_film_v3.mp4"))
     out = os.path.join(HERE, arg("--out", "previews/stage4_film_v3_sound.mp4"))
     print("MP4", out, mux(video, wav, out))
@@ -946,7 +946,7 @@ def teaser_main():
     write_sheets(mix, os.path.join(OUT, "teaser_cue_sheet_v2.txt"), os.path.join(OUT, "teaser_music_map_v2.txt"), "Oni vs Ronin, the teaser (10.4 s)")
     print("MASTER", {k_: round(v, 2) for k_, v in rep.items()})
     if USED:
-        SM.credits(os.path.join(HERE, "SOUND_CREDITS.txt"), USED)
+        SM.credits(os.path.join(HERE, "SOUND_CREDITS.txt"), USED, "teaser")
     src = arg("--src", "previews/stage4_teaser_v3")
     for shape in ("vertical", "wide"):
         video = os.path.join(HERE, f"{src}_{shape}.mp4")

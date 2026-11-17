@@ -178,10 +178,26 @@ class Bank:
         return out
 
 
-def credits(path, used):
-    """The recordings used, with ids, titles and where they are from."""
+def credits(path, used, mix):
+    """The recordings used, with ids, titles and where they are from: one section per mix ('film',
+    'teaser'), so building one mix rewrites its own list and keeps the other's."""
+    sections = {}
+    if os.path.exists(path):
+        cur = None
+        with open(path) as fh:
+            for line in fh:
+                s = line.strip()
+                if s.startswith("[") and s.endswith("]"):
+                    cur = s[1:-1]
+                    sections[cur] = set()
+                elif cur is not None and s[:1].isdigit():
+                    sections[cur].add(int(s.split()[0]))
+    sections[mix] = set(used)
     with open(path, "w") as fh:
-        fh.write("Real recordings in this mix: Mixkit free sound effects (https://mixkit.co/free-sound-effects/),\n"
-                 "used under the Mixkit Sound Effects Free License (https://mixkit.co/license/). Not redistributed here.\n\n")
-        for i in sorted(used):
-            fh.write(f"  {i:5d}  {TITLES.get(i, '')}  https://mixkit.co/free-sound-effects/  (asset id {i})\n")
+        fh.write("Real recordings in these mixes: Mixkit free sound effects (https://mixkit.co/free-sound-effects/),\n"
+                 "used under the Mixkit Sound Effects Free License (https://mixkit.co/license/). Not redistributed here.\n"
+                 "One list per mix: [film] the 30 s film, [teaser] the teaser (both shapes).\n")
+        for name in sorted(sections):
+            fh.write(f"\n[{name}]\n")
+            for i in sorted(sections[name]):
+                fh.write(f"  {i:5d}  {TITLES.get(i, '')}  https://mixkit.co/free-sound-effects/  (asset id {i})\n")
