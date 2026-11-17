@@ -521,7 +521,7 @@ def lay_ambience(film, mix):
     mix.cues.append(dict(t=0.0, ff=1, stem="amb", name="night wind over the courtyard (gusts 0.6, 6.2, 9.5, 26.2, 28.2 s)", kind="ambience", db=-15.0, pan=0.0, layer=True))
     if REAL:
         x, pre = rec("bell", 0, speed=0.8, mono=False)
-        mix.add("amb", 0.04 - pre, x, -14.0, 0.0, "temple bell (recorded bell, a fifth lower)", "diegetic", room="hall", wet=0.3)
+        mix.add("amb", 0.04 - pre, x, -11.0, 0.0, "temple bell (recorded bell, a fifth lower)", "diegetic", room="hall", wet=0.3)
     mix.add("amb", 0.04, A.bell(55.0, 7.5, seed=201), -9.0 - (6.0 if REAL else 0.0), -0.15, "temple bell", "diegetic", room="hall", wet=0.35, log=not REAL)
     for k, (t, p) in enumerate(((1.7, -0.6), (3.7, 0.5), (7.3, -0.4), (26.7, 0.55))):
         mix.add("amb", t, A.chime(seed=210 + k), -29.0, p, "wind chime, far off", "ambience", room="court", wet=0.5)
@@ -640,7 +640,7 @@ def lay_score(film, mix):
     if REAL:
         x, to_pk = rec_into("riser", 0, T(601), T(601) - T(588) + 0.25, after=0.05)
         m(T(601) - to_pk, x, -11.0, 0.0, "riser (they launch, recorded)")
-    m(T(604), big_hit(3.0, seed=372, k=2), -8.0, 0.0, "trailer hit (the crossing)", "hall", 0.35)
+    m(T(604), big_hit(3.0, seed=372, k=2), -7.0, 0.0, "trailer hit (the crossing)", "hall", 0.35)
     m(T(604), brass(55.0, 1.6, seed=373, k=0), -12.0, 0.0, "war horn and braam (the crossing)")
     m(T(604), A.drone(55.0, 1.8, seed=374, dark=1400.0), -17.0, 0.0, "drone chord (they pass)")
     m(T(606), A.koto(NOTE["A4"], 2.4, 0.8, seed=375), -21.0, 0.3, "koto A4 (they pass)", "hall", 0.4)
@@ -651,7 +651,7 @@ def lay_score(film, mix):
     m(T(696), ens("o", 1.0, 2, seed=379), -14.0, 0.0, "o-daiko (after the crack)", "hall", 0.45)
     if REAL:
         x, pre = rec("bell", 0, speed=0.8, mono=False)
-        mix.add("amb", T(694) - pre, x, -14.0, 0.0, "temple bell (the end, recorded)", "diegetic", room="hall", wet=0.35)
+        mix.add("amb", T(694) - pre, x, -12.0, 0.0, "temple bell (the end, recorded)", "diegetic", room="hall", wet=0.35)
     mix.add("amb", T(694), A.bell(55.0, 6.0, seed=380), -10.0 - (6.0 if REAL else 0.0), 0.0, "temple bell (the end)", "diegetic", room="hall", wet=0.4, log=not REAL)
     return notes
 
