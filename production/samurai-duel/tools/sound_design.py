@@ -1,12 +1,16 @@
-"""The film's sound (v1): effects laid to the picture from the film's own code (out/sound/events.json,
-made by tools/sound_events.py), a score in the same spirit, mixed and mastered; the same sounds
-re-cut for the teaser. Everything is synthesized (sd/audio.py): no recordings, nothing borrowed.
+"""The film's sound (v2): effects laid to the picture from the film's own code (out/sound/events.json,
+made by tools/sound_events.py), a score with a trailer's grammar on Japanese drums, mixed and
+mastered; the same sounds re-cut for the teaser. Everything is synthesized (sd/audio2.py, built to
+sound recorded: steel from a blade's modes, thuds through real resonances, stick-slip scrapes,
+drummers on membranes, the courtyard's reflections): no recordings, nothing borrowed.
+v1 (sd/audio.py) is in the history.
 
     python3 -I tools/sound_design.py film   [--video previews/stage4_film_v3.mp4] [--out previews/stage4_film_v3_sound.mp4]
-    python3 -I tools/sound_design.py teaser [--src previews/stage4_teaser_v3]
+    python3 -I tools/sound_design.py teaser [--src previews/stage4_teaser_v3] [--tag _sound_v2]
 
 film writes the mastered track (out/sound/film_master.wav), its stems, the cue sheet and the music map
-(out/sound/), and the video with the track. teaser does the same for both teaser shapes.
+(out/sound/), and the video with the track. teaser does the same for both teaser shapes
+(<src>_<shape><tag>.mp4, --tag default _sound_v2).
 
 Sync: film frame f is on screen from (f - 1) / 24 s. A hit's loudest moment is put on the frame the
 blow lands; a swing follows its blade (the whoosh is as loud as the point is fast, slowed with the
@@ -23,7 +27,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
-from sd import audio as A  # noqa: E402
+from sd import audio2 as A  # noqa: E402
 
 SR, FPS = A.SR, 24
 SPF = SR // FPS                                                     # samples per film frame (2000)
@@ -365,8 +369,7 @@ def lay_score(film, mix):
         m(t, A.flute(NOTE[nm], d, seed=int(t * 10)), -18.0, 0.25, f"flute {nm}", wet=0.35)
     for k in range(int((9.0 - 6.04) / 0.4167)):
         t = 6.04 + k * 0.4167
-        x = np.sign(np.sin(2 * np.pi * NOTE["E2"] * A.t_of(A.n_of(0.18)))) * A.env_exp(A.n_of(0.18), 0.16, 0.003)
-        m(t, A.lp(x, 900).astype(np.float32), -27.0 + 2.0 * k / 7.0, 0.0, "cyber pulse E2")
+        m(t, A.pulse(NOTE["E2"], 0.18, 900.0, seed=600 + k), -27.0 + 2.0 * k / 7.0, 0.0, "cyber pulse E2")
     # M5 the hat (7.5-9 s): a drum roll that grows, a run up the koto into the glint
     t = 7.6
     while t < 8.95:
@@ -376,7 +379,7 @@ def lay_score(film, mix):
     for k, nm in enumerate(("A4", "B4", "C5", "E5", "F5", "A5")):
         m(T(208) - 0.3 + k * 0.05, A.koto(NOTE[nm], 1.4, 0.7, seed=340 + k), -18.0, 0.3, f"koto run {nm}")
     # M6 the guard (9.04-9.33 s): nothing but the wind; M7 the draw: one great drum and a low brass hit
-    m(T(225), A.taiko("o", 1.0, seed=350), -14.0, 0.0, "o-daiko (the draw)", "hall", 0.3)
+    m(T(225), A.taiko_ens("o", 1.0, 3, seed=350), -14.0, 0.0, "o-daiko x3 (the draw)", "hall", 0.3)
     m(T(225), A.braam(55.0, 1.6, seed=351), -20.0, 0.0, "braam A1")
     for t in (9.85,):
         m(t, A.heartbeat(seed=352), -19.0, 0.0, "heartbeat")
@@ -397,19 +400,21 @@ def lay_score(film, mix):
                 on_beat = i % sub == 0
                 if on_beat:
                     acc = i == 0 and a in accents
-                    m(t, A.taiko("o", (1.0 if acc else 0.7) * vel, seed=seed + k), -14.0 if acc else -18.0, r.uniform(-0.1, 0.1), "o-daiko" + (" (blow)" if acc else ""), "hall" if acc else "court", 0.25)
+                    m(t, A.taiko_ens("o", (1.0 if acc else 0.7) * vel, 3 if acc else 1, seed=seed + k), -14.0 if acc else -18.0, 0.0, "o-daiko" + (" x3 (blow)" if acc else ""), "hall" if acc else "court", 0.25)
                 else:
                     m(t, A.taiko("shime", r.uniform(0.5, 0.8) * vel, seed=seed + 500 + k), -24.0, r.uniform(-0.3, 0.3), "shime")
                 if riff and i % 2 == 0:
                     nm = riff_notes[(k // 2) % len(riff_notes)]
-                    m(t, A.shamisen(NOTE[nm], 0.5, r.uniform(0.6, 0.9), seed=seed + 900 + k), -21.0, -0.35, f"shamisen {nm}")
+                    m(t, A.pulse(NOTE[nm] / 4.0, step * 1.8, 700.0, seed=seed + 900 + k), -22.0, 0.0, f"pulse {nm} two octaves down")
+                if i % sub == 2:
+                    m(t, A.taiko("nagado", r.uniform(0.55, 0.75) * vel, seed=seed + 700 + k), -20.0, r.uniform(-0.25, 0.25), "nagado")
                 k += 1
 
-    m(T(241), A.taiko("o", 1.0, seed=360), -8.0, 0.0, "o-daiko (they run)", "hall", 0.25)
+    m(T(241), A.taiko_ens("o", 1.0, 3, seed=360), -9.0, 0.0, "o-daiko x3 (they run)", "hall", 0.25)
     drums(241, 262, [], seed=1000)
     m(T(263), A.drone(55.0, 1.6, seed=361, dark=500.0), -12.0, 0.0, "drone under the slow strides")
-    m(T(275), A.braam(55.0, 2.4, seed=362), -9.0, 0.0, "braam (first clash)")
-    m(T(275), A.taiko("o", 1.0, seed=363), -8.0, 0.0, "o-daiko (first clash)", "hall", 0.35)
+    m(T(275), A.trailer_hit(2.6, seed=362), -9.0, 0.0, "trailer hit (first clash)", "hall", 0.3)
+    m(T(275), A.braam(55.0, 2.4, seed=363), -13.0, 0.0, "braam (first clash)")
     m(T(284), A.heartbeat(seed=364), -19.0, 0.0, "heartbeat")
     H = [film.D["events"][i]["ff"] for i, e in enumerate(film.D["events"]) if e["kind"] == "clash"]
     hammer = [f for f in H if 289 <= f <= 360]
@@ -428,8 +433,8 @@ def lay_score(film, mix):
         m(t, A.taiko("shime", 0.4 + 0.6 * u, seed=int(t * 100)), -20.0 + 7.0 * u, 0.0, "shime roll")
         t += 0.17 - 0.12 * u
     m(T(518), A.taiko("o", 0.9, seed=367), -11.0, 0.0, "o-daiko (he comes in)")
-    m(T(542), A.braam(55.0, 1.0, seed=368), -9.0, 0.0, "braam (great cut)")
-    m(T(542), A.taiko("o", 1.0, seed=369), -9.0, 0.0, "o-daiko (great cut)", "hall", 0.2)
+    m(T(542), A.trailer_hit(2.2, seed=368), -9.0, 0.0, "trailer hit (great cut)", "hall", 0.25)
+    m(T(542), A.braam(55.0, 1.0, seed=369), -13.0, 0.0, "braam (great cut)")
     # the stare (22.6-24.6 s): the drone and a heart; the flute, low
     m(T(548), A.drone(55.0, T(601) - T(548), seed=370, dark=600.0), -18.0, 0.0, "drone (the stare)")
     for t in (23.55, 24.25):
@@ -438,8 +443,8 @@ def lay_score(film, mix):
         m(t, A.flute(NOTE[nm], d, seed=int(t * 10)), -21.0, -0.2, f"flute {nm}", wet=0.4)
     # the launch and the crossing: a riser, three frames of silence, the biggest hit
     m(T(588) - 0.25, A.riser(T(601) - T(588) + 0.25, seed=371), -12.0, 0.0, "riser (they launch)")
-    m(T(604), A.braam(55.0, 1.6, seed=372), -8.0, 0.0, "braam (the crossing)")
-    m(T(604), A.taiko("o", 1.0, seed=373), -8.0, 0.0, "o-daiko (the crossing)", "hall", 0.4)
+    m(T(604), A.trailer_hit(3.0, seed=372), -8.0, 0.0, "trailer hit (the crossing)", "hall", 0.35)
+    m(T(604), A.braam(55.0, 1.6, seed=373), -12.0, 0.0, "braam (the crossing)")
     m(T(604), A.drone(55.0, 1.8, seed=374, dark=1400.0), -17.0, 0.0, "drone chord (they pass)")
     m(T(606), A.koto(NOTE["A4"], 2.4, 0.8, seed=375), -21.0, 0.3, "koto A4 (they pass)", "hall", 0.4)
     # the end: a note for the hat, the crack heard first and the drum after it, the bell, then nothing
@@ -492,9 +497,23 @@ def limit(x, ceiling_db=-2.0, release=0.08, look=0.002):
     return y, float(-20 * np.log10(g.min())), k / SR
 
 
+def low_shelf(x, g_db, fc=90.0):
+    """The band under fc changed by g_db (a 4th-order Linkwitz-Riley split, so the two halves sum flat)."""
+    from scipy import signal
+    lo, hi = x, x
+    for _ in range(2):
+        lo = signal.sosfilt(signal.butter(2, fc, "lowpass", fs=SR, output="sos"), lo, axis=0)
+        hi = signal.sosfilt(signal.butter(2, fc, "highpass", fs=SR, output="sos"), hi, axis=0)
+    return (lo * db(g_db) + hi).astype(np.float32)
+
+
 def master(mix_sum, target=-14.0, ceiling=-2.0):
     import pyloudnorm as pyln
+    from scipy import signal
     meter = pyln.Meter(SR)
+    mix_sum = signal.sosfilt(signal.butter(2, 28.0, btype="highpass", fs=SR, output="sos"), mix_sum, axis=0)   # below 28 Hz: nothing plays it, it only eats headroom
+    mix_sum = low_shelf(mix_sum, -3.0, 90.0)       # phone first: a phone's speaker plays almost nothing under ~300 Hz, so the
+                                                   # hits must not spend the loudness on sub-bass (measured: v1's title lost 8 dB on a phone)
     L0 = meter.integrated_loudness(mix_sum.astype(np.float64))
     x, comp_db = compress(mix_sum * db(-18.0 - L0), thresh_db=-16.0)       # compress from a known level
     L = meter.integrated_loudness(x.astype(np.float64))
@@ -538,7 +557,7 @@ def write_sheets(mix, path_cues, path_music, title):
             if not c.get("layer") and c["stem"] != "music":
                 fh.write(f"  {c['t']:6.2f} s  f{c['ff']:4d}  {c['stem']:6s} {c['kind']:10s} {c['db']:+6.1f} dB  pan {c['pan']:+.2f}  {c['name']}\n")
     with open(path_music, "w") as fh:
-        fh.write(f"{title}: music map (A hirajoshi: A B C E F; drums on an elastic grid that lands on the blows)\n")
+        fh.write(f"{title}: music map (A hirajoshi: A B C E F; taiko ensemble, trailer hits, drums on a grid that lands on the blows)\n")
         for c in rows:
             if c["stem"] == "music":
                 fh.write(f"  {c['t']:6.2f} s  f{c['ff']:4d}  {c['db']:+6.1f} dB  {c['name']}\n")
@@ -580,7 +599,7 @@ def film_main():
         write_wav(os.path.join(OUT, "stems", f"film_{k}.wav"), s * end[:, None])
     wav = os.path.join(OUT, "film_master.wav")
     write_wav(wav, master_x)
-    write_sheets(mix, os.path.join(OUT, "cue_sheet_v1.txt"), os.path.join(OUT, "music_map_v1.txt"), "Oni vs Ronin, the film (30 s)")
+    write_sheets(mix, os.path.join(OUT, "cue_sheet_v2.txt"), os.path.join(OUT, "music_map_v2.txt"), "Oni vs Ronin, the film (30 s)")
     print("MASTER", {k: round(v, 2) for k, v in rep.items()})
     video = os.path.join(HERE, arg("--video", "previews/stage4_film_v3.mp4"))
     out = os.path.join(HERE, arg("--out", "previews/stage4_film_v3_sound.mp4"))
@@ -644,46 +663,56 @@ def teaser_main():
     holds = [j0 for k, j0, n, w in segs if k == "hold"]
     act0 = next(j0 for j0, n, w in shots if w[0] >= 241)
     act1 = max(j0 + n for j0, n, w in shots)
-    # stills: the bell and a drone, a soft boom on each cut, the flute
+    # stills: the bell and a drone; each cut lands on two drummers and a sub; the shakuhachi alone
     mix.add("amb", shots[0][0] / FPS, A.bell(55.0, 6.0, seed=401), -11.0, 0.0, "temple bell", "diegetic", room="hall", wet=0.35)
+    m(shots[0][0] / FPS, A.taiko_ens("o", 0.9, 3, seed=400), -13.0, 0.0, "o-daiko x3 (the opening)", "hall", 0.3)
     m(shots[0][0] / FPS, A.drone(55.0, text[0] / FPS - shots[0][0] / FPS + 0.5, seed=402), -19.0, 0.0, "drone A1")
     for k, (j0, n, w) in enumerate(shots):
         if j0 < text[0] and k > 0:
-            m(j0 / FPS, A.sub_boom(0.9, 55.0, seed=410 + k), -15.0, 0.0, "boom on the cut")
-            m(j0 / FPS, A.taiko("o", 0.6, seed=420 + k), -21.0, 0.0, "taiko on the cut")
+            m(j0 / FPS, A.sub_boom(0.9, 55.0, seed=410 + k), -17.0, 0.0, "sub on the cut")
+            m(j0 / FPS, A.taiko_ens("o", 0.55, 2, seed=420 + k), -19.0, 0.0, "two o-daiko on the cut", "hall", 0.25)
     for t, nm, d in ((0.55, "A4", 0.7), (1.35, "C5", 0.45), (1.85, "B4", 1.0)):
-        m(t, A.flute(NOTE[nm], d, seed=int(t * 10)), -21.0, -0.2, f"flute {nm}", wet=0.35)
+        m(t, A.flute(NOTE[nm], d, seed=int(t * 10)), -17.0, -0.2, f"shakuhachi {nm}", "hall", 0.35)
+    # into the words: a riser with a reversed cymbal, then the trailer's big hit and a braam
     rs = shots[3][0] / FPS
     m(rs, A.riser(text[0] / FPS - rs, seed=430), -14.0, 0.0, "riser into the words")
-    # the words: a deep hit, then a pull into the action
-    m(text[0] / FPS, A.braam(55.0, 0.9, seed=431), -11.0, 0.0, "braam (ONE MOON. TWO BLADES.)")
-    m(text[0] / FPS, A.sub_boom(1.2, 50.0, seed=432), -10.0, 0.0, "sub boom")
+    m(text[0] / FPS, A.trailer_hit(2.6, seed=431), -8.0, 0.0, "trailer hit (ONE MOON. TWO BLADES.)", "hall", 0.3)
+    m(text[0] / FPS, A.braam(55.0, 1.2, seed=432), -14.0, 0.0, "braam A1")
+    m(text[0] / FPS, A.braam(110.0, 1.0, seed=435), -16.0, 0.0, "braam A2")
+    m(text[0] / FPS, A.clang(1.4, seed=434, slow=0.7), -10.0, 0.0, "a blade's ring (TWO BLADES)", "hall", 0.3)
     m(act0 / FPS - 0.45, A.suck_in(0.45, seed=433), -12.0, 0.0, "pull into the action")
-    # the action: drums at 144 a minute from the first run, the shamisen riff, a big drum on each held impact frame
-    riff = ["A3", "C4", "E4", "F4", "E4", "C4", "B3", "C4"]
+    # the action: a taiko ensemble at 144 a minute (o-daiko DON, nagado DOKO, shime running, kachi on the rim),
+    # a low pulse in A that drops to F in the second bar, a trailer hit on the held impact frames
+    step16 = 60.0 / 144.0 / 4.0
+    groove = dict(o=(0, 6, 8, 14), nagado=(2, 3, 10, 11), rim=(4, 12))
     r = np.random.default_rng(440)
     k = 0
     t = act0 / FPS
     while t < act1 / FPS - 0.05:
-        on_beat = k % 4 == 0
-        if on_beat:
-            m(t, A.taiko("o", 0.75, seed=450 + k), -16.0, r.uniform(-0.1, 0.1), "o-daiko")
-        else:
-            m(t, A.taiko("shime", r.uniform(0.5, 0.8), seed=460 + k), -23.0, r.uniform(-0.3, 0.3), "shime")
-        if k % 2 == 0:
-            nm = riff[(k // 2) % len(riff)]
-            m(t, A.shamisen(NOTE[nm], 0.45, r.uniform(0.6, 0.9), seed=470 + k), -20.0, -0.35, f"shamisen {nm}")
+        s16 = k % 16
+        if s16 in groove["o"]:
+            m(t, A.taiko_ens("o", 0.8 if s16 in (0, 8) else 0.65, 2, seed=450 + k), -15.0 if s16 in (0, 8) else -17.0, 0.0, "o-daiko x2", "court", 0.2)
+        if s16 in groove["nagado"]:
+            m(t, A.taiko("nagado", r.uniform(0.6, 0.8), seed=460 + k), -19.0, r.uniform(-0.25, 0.25), "nagado")
+        if s16 in groove["rim"]:
+            m(t, A.taiko("rim", 0.8, seed=465 + k), -24.0, 0.3, "kachi (rim)")
+        m(t, A.taiko("shime", (0.75 if s16 % 4 == 0 else 0.45) * r.uniform(0.9, 1.0), seed=470 + k), -26.0 if s16 % 4 else -23.0, -0.3 + 0.15 * (s16 % 2), "shime")
+        if s16 % 2 == 0:
+            note = NOTE["A1"] if (k // 16) % 2 == 0 or s16 < 8 else NOTE["F3"] / 4.0
+            m(t, A.pulse(note, step16 * 1.8, 700.0, seed=480 + k), -23.0, 0.0, "pulse " + ("A1" if note == NOTE["A1"] else "F1"))
         k += 1
-        t += 60.0 / 144.0 / 4.0
+        t += step16
     for j0 in holds[::2] if len(holds) > 3 else holds:
-        m(j0 / FPS, A.taiko("o", 1.0, seed=480 + j0), -13.0, 0.0, "o-daiko (impact frame)", "hall", 0.3)
-    m(holds[-2] / FPS, A.braam(55.0, 1.4, seed=490), -12.0, 0.0, "braam (the crossing)")
-    # silence, then the title: the drum, the brass, the sub and the bell, and the ring-out
-    m(title[0] / FPS, A.taiko("o", 1.0, seed=492), -7.0, 0.0, "o-daiko (title)", "hall", 0.4)
-    m(title[0] / FPS, A.braam(55.0, 2.0, seed=493), -8.0, 0.0, "braam (title)")
-    m(title[0] / FPS, A.sub_boom(2.0, 48.0, seed=494), -8.0, 0.0, "sub boom (title)")
+        m(j0 / FPS, A.trailer_hit(1.6, seed=490 + j0), -12.0, 0.0, "trailer hit (impact frame)", "hall", 0.25)
+    m(holds[-2] / FPS, A.braam(55.0, 1.4, seed=491), -12.0, 0.0, "braam (the crossing)")
+    # silence, then the title: the biggest hit, the brass, the bell, the shakuhachi's last note, the ring-out
+    m(title[0] / FPS, A.trailer_hit(3.2, seed=492), -6.0, 0.0, "trailer hit (title)", "hall", 0.35)
+    m(title[0] / FPS, A.braam(55.0, 2.0, seed=493), -11.0, 0.0, "braam (title)")
+    m(title[0] / FPS, A.braam(110.0, 1.6, seed=499), -13.0, 0.0, "braam an octave up (the brass a phone plays)")
+    m(title[0] / FPS, A.clang(1.8, seed=498, slow=0.6), -8.0, 0.0, "a blade's ring (title)", "hall", 0.35)
     mix.add("amb", title[0] / FPS + 0.05, A.bell(55.0, 4.0, seed=495), -9.0, 0.0, "temple bell (title)", "diegetic", room="hall", wet=0.4)
-    m(title[0] / FPS + 0.6, A.koto(NOTE["A4"], 1.8, 0.7, seed=496), -18.0, 0.3, "koto A4 (title)", "hall", 0.4)
+    m(title[0] / FPS + 0.55, A.flute(NOTE["A4"], 1.5, seed=496), -19.0, -0.15, "shakuhachi A4 (title)", "hall", 0.4)
+    m(title[0] / FPS + 0.6, A.koto(NOTE["A4"], 1.8, 0.7, seed=497), -19.0, 0.3, "koto A4 (title)", "hall", 0.4)
     # the music steps aside for the blows; the black before the title is silent; the end fades
     key = np.abs(mix.stems["sfx"]).max(axis=1)
     cur, a_, r_ = 0.0, math.exp(-1.0 / (0.004 * SR / 8)), math.exp(-1.0 / (0.3 * SR / 8))
@@ -703,12 +732,12 @@ def teaser_main():
     write_wav(wav, x)
     for k_, s_ in mix.stems.items():
         write_wav(os.path.join(OUT, "stems", f"teaser_{k_}.wav"), s_ * end[:, None])
-    write_sheets(mix, os.path.join(OUT, "teaser_cue_sheet_v1.txt"), os.path.join(OUT, "teaser_music_map_v1.txt"), "Oni vs Ronin, the teaser (10.4 s)")
+    write_sheets(mix, os.path.join(OUT, "teaser_cue_sheet_v2.txt"), os.path.join(OUT, "teaser_music_map_v2.txt"), "Oni vs Ronin, the teaser (10.4 s)")
     print("MASTER", {k_: round(v, 2) for k_, v in rep.items()})
     src = arg("--src", "previews/stage4_teaser_v3")
     for shape in ("vertical", "wide"):
         video = os.path.join(HERE, f"{src}_{shape}.mp4")
-        print("MP4", shape, mux(video, wav, os.path.join(HERE, f"{src}_{shape}_sound.mp4")))
+        print("MP4", shape, mux(video, wav, os.path.join(HERE, f"{src}_{shape}{arg('--tag', '_sound_v2')}.mp4")))
 
 
 if __name__ == "__main__":
