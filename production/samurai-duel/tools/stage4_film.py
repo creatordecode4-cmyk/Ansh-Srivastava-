@@ -32,7 +32,8 @@ the scene time the film's time map gives it (sd/film.py), with the camera of the
 assemble --size WxH scales every frame to that size as the film is put together (Lanczos, then a
 light sharpening), e.g. --size 1920x1080 for the 720p render (hd) shown at 1080p. With --finish the
 scaling comes first, so the grain is laid at the full size; the finished frames then go to
-finished_WxH, next to the unscaled ones.
+finished_WxH, next to the unscaled ones, and a frame finished after its render is not finished again
+(--refinish does them all).
 """
 import math
 import os
@@ -317,6 +318,9 @@ def assemble():
         os.makedirs(fin, exist_ok=True)
         for n in nums:
             p = os.path.join(fin, f"f_{n:04d}.png")
+            if "--refinish" not in sys.argv and os.path.exists(p) and os.path.getmtime(p) >= os.path.getmtime(found[n]):
+                found[n] = p                                        # finished already, from this very frame
+                continue
             im = Image.open(found[n]).convert("RGB")
             if size and im.size != size:
                 im = im.resize(size, Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.2, percent=35, threshold=2))
